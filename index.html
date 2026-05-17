@@ -249,7 +249,7 @@ html[data-theme="dark"] .leaflet-container{background:#1a1d29}
     <div class="hdr-t1">Минстрой МО · Управление ликвидации аварийного жилья</div>
     <div class="hdr-t2">Министерство строительного комплекса Московской области</div>
   </div>
-  <div class="hdr-prog">Программа · 2026</div>
+  <div class="hdr-prog">Сертификаты · 2026</div>
   <div class="page-tabs">
     <button class="ptab active" onclick="switchPage('overview',this)">Обзор</button>
     <button class="ptab" onclick="switchPage('finance',this)">Финансирование</button>
@@ -348,10 +348,16 @@ html[data-theme="dark"] .leaflet-container{background:#1a1d29}
   </div>
   <div class="timeline-card">
     <div class="tl-head">
-      <div class="cc-title" style="margin-bottom:0">Подача заявлений по дням</div>
-      <div class="tl-nav">
-        <button class="tl-btn" onclick="tlScroll(-1)">‹</button>
-        <button class="tl-btn" onclick="tlScroll(1)">›</button>
+      <div class="cc-title" style="margin-bottom:0">Подача заявлений</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="page-tabs" style="padding:3px">
+          <button class="ptab active" id="tl-day" style="padding:6px 14px;font-size:11px" onclick="setTlMode('day',this)">По дням</button>
+          <button class="ptab" id="tl-mon" style="padding:6px 14px;font-size:11px" onclick="setTlMode('month',this)">По месяцам</button>
+        </div>
+        <div class="tl-nav">
+          <button class="tl-btn" onclick="tlScroll(-1)">‹</button>
+          <button class="tl-btn" onclick="tlScroll(1)">›</button>
+        </div>
       </div>
     </div>
     <div class="tl-scroll" id="tl-scroll"><div class="tl-inner" id="tl-inner"><canvas id="c-timeline"></canvas></div></div>
@@ -461,6 +467,13 @@ var mapObj,mkLayer,mapInited=false;
 var charts={dec:null,own:null,tl:null,fin:null};
 var selR=null;
 var fState={round:'',dec:'',type:''};
+var tlMode='day';
+var bordersLayer=null;
+// ⬇⬇⬇ ВСТАВЬТЕ СЮДА ССЫЛКУ НА GeoJSON С ГРАНИЦАМИ ГОРОДСКИХ ОКРУГОВ МО ⬇⬇⬇
+// Пример: 'https://раздача.example/mo_okruga.geojson'
+// Файл должен содержать поля свойств с названием округа (name / NAME / NL_NAME_2 и т.п.)
+var BORDERS_URL='';
+// ⬆⬆⬆ Пока пусто — границы не рисуются, остальная карта работает ⬆⬆⬆
 var autoT,cdT,secs=7200;
 
 var decCfg=[
@@ -552,11 +565,12 @@ var HOUSES=[
 function renderMapPage(){
   if(!mapInited){
     mapInited=true;
-    mapObj=L.map('map',{zoomControl:true,scrollWheelZoom:true}).setView([55.796638,37.925102],13);
+    mapObj=L.map('map',{zoomControl:true,scrollWheelZoom:true}).setView([55.55,37.5],8);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
       attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19
     }).addTo(mapObj);
     mkLayer=L.layerGroup().addTo(mapObj);
+    loadBorders();
   }
   mapObj.invalidateSize();
   if(mkLayer)mkLayer.clearLayers();
@@ -564,13 +578,34 @@ function renderMapPage(){
   var bounds=[],mapRowsHtml=[];
   HOUSES.forEach(function(h){
     var fromIcon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;background:#b05a4f;border:3px solid #fff;border-radius:50%;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center"><div style="width:7px;height:7px;background:#fff;border-radius:50%"></div></div>',iconSize:[22,22],iconAnchor:[11,11]});
-    var match=balData.filter(function(r){var ra=String(r[C.addr]||'').toLowerCase().replace(/[.,]/g,'');var ha=h.addr.toLowerCase().replace(/[ул\. ]/g,'').split(',')[0].trim();return ra.indexOf(ha)>=0;})[0];
-    var toLat=match?n(String(match[C.lat]||'').replace(',','.')):0;
-    var toLon=match?n(String(match[C.lon]||'').replace(',','.')):0;
+    // Агрегируем ВСЕ квартиры этого дома (одна строка = одна квартира)
+    var ha=h.addr.toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
+    var haKey=ha.split(' ').filter(Boolean);
+    var matches=balData.filter(function(r){
+      var ra=String(r[C.addr]||'').toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
+      return haKey.every(function(part){return ra.indexOf(part)>=0;});
+    });
+    var aptCnt=matches.length;
+    var citSum=0,areaSum=0,apts={};
+    var toLat=0,toLon=0,newAddrTxt='',decision='';
+    matches.forEach(function(r){
+      citSum+=n(r[C.citizens]);areaSum+=n(r[C.area]);
+      if(r[C.apt])apts[String(r[C.apt]).trim()]=1;
+      var tla=n(String(r[C.lat]||'').replace(',','.')),tlo=n(String(r[C.lon]||'').replace(',','.'));
+      if(tla>50&&tlo>30&&!toLat){toLat=tla;toLon=tlo;}
+      if(!newAddrTxt){var na=String(r[C.newAddr]||'').trim();if(na&&na!=='—'&&na!=='-')newAddrTxt=na;}
+      if(!decision&&r[C.decision])decision=normDecision(r[C.decision]);
+    });
+    var aptNum=Object.keys(apts).length||aptCnt;
     var hasRoute=toLat>50&&toLon>30;
-    var newAddrTxt=match?String(match[C.newAddr]||'').trim():'';
-    var popHtml='<div style="font-family:Inter,sans-serif;font-size:12px;min-width:200px"><b style="color:#b05a4f">🏚️ '+h.addr+'</b><br><span style="color:#9097a8;font-size:10px">Балашиха · Аварийный дом</span>';
-    if(match){popHtml+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee">Площадь: <b>'+n(match[C.area]).toFixed(1)+' м²</b> · Граждан: <b>'+(match[C.citizens]||'—')+'</b><br>Решение: <b style="color:'+cdec(match[C.decision])+'">'+normDecision(match[C.decision])+'</b>';}
+    var popHtml='<div style="font-family:Inter,sans-serif;font-size:12px;min-width:210px"><b style="color:#b05a4f">🏚️ '+h.addr+'</b><br><span style="color:#9097a8;font-size:10px">Балашиха · Аварийный дом</span>';
+    if(aptCnt>0){
+      popHtml+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee">'+
+        'Квартир: <b>'+aptNum+'</b><br>'+
+        'Граждан (сумма): <b>'+citSum+'</b><br>'+
+        'Площадь (сумма): <b>'+areaSum.toFixed(1)+' м²</b>'+
+        (decision?'<br>Решение: <b style="color:'+cdec(decision)+'">'+decision+'</b>':'');
+    }else{popHtml+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee"><span style="color:#9097a8;font-size:10px">Нет данных в таблице по этому адресу</span>';}
     popHtml+='</div>';
     L.marker([h.lat,h.lon],{icon:fromIcon}).bindPopup(popHtml).addTo(mkLayer);
     bounds.push([h.lat,h.lon]);
@@ -581,11 +616,41 @@ function renderMapPage(){
       L.polyline([[h.lat,h.lon],[toLat,toLon]],{color:'#b08d4f',weight:2.5,opacity:.85,dashArray:'8 5'}).addTo(mkLayer);
     }
     var gmUrl=hasRoute?'https://maps.google.com/maps/dir/'+h.lat+','+h.lon+'/'+toLat+','+toLon+'?hl=ru':'https://maps.google.com/maps?q='+h.lat+','+h.lon+'&hl=ru&z=17';
-    mapRowsHtml.push('<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid '+(hasRoute?'#3a7d5c':'#b05a4f')+'"><div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">'+h.addr+'</div>'+(hasRoute?'<div style="font-size:10px;color:#3a7d5c;font-weight:600">→ '+(newAddrTxt||'Новый адрес задан')+'</div>':'<div style="font-size:10px;color:var(--muted)">Координаты нового жилья не заданы</div>')+'</div><a href="'+gmUrl+'" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 14px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">'+(hasRoute?'🗺️ Маршрут':'📍 Карта')+'</a></div>');
+    mapRowsHtml.push('<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid '+(hasRoute?'#3a7d5c':'#b05a4f')+'"><div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">'+h.addr+' <span style="color:var(--muted);font-weight:600">· '+aptNum+' кв. · '+citSum+' чел. · '+areaSum.toFixed(0)+' м²</span></div>'+(hasRoute?'<div style="font-size:10px;color:#3a7d5c;font-weight:600">→ '+(newAddrTxt||'Новый адрес задан')+'</div>':'<div style="font-size:10px;color:var(--muted)">Координаты нового жилья не заданы</div>')+'</div><a href="'+gmUrl+'" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 14px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">'+(hasRoute?'🗺️ Маршрут':'📍 Карта')+'</a></div>');
   });
   var mr=document.getElementById('map-rows');if(mr)mr.innerHTML=mapRowsHtml.join('');
   if(bounds.length>0)mapObj.fitBounds(L.latLngBounds(bounds),{padding:[40,40]});
-  document.getElementById('geost').textContent='Балашиха: '+HOUSES.length+' домов на карте';
+  document.getElementById('geost').textContent='Балашиха: '+HOUSES.length+' домов · граждане и площадь суммируются по всем квартирам дома';
+}
+
+/* Границы городских округов — раскраска палитрой дашборда */
+function loadBorders(){
+  if(!BORDERS_URL){
+    document.getElementById('geost').textContent='Карта готова · вставьте ссылку на GeoJSON границ в переменную BORDERS_URL';
+    return;
+  }
+  fetch(BORDERS_URL).then(function(r){return r.json();}).then(function(gj){
+    var palette=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8','#9c8552','#6f8a9c'];
+    var idx=0;
+    if(bordersLayer)mapObj.removeLayer(bordersLayer);
+    bordersLayer=L.geoJSON(gj,{
+      style:function(f){
+        var c=palette[idx%palette.length];idx++;
+        return{color:c,weight:1.5,opacity:.7,fillColor:c,fillOpacity:.10};
+      },
+      onEachFeature:function(f,layer){
+        var p=f.properties||{};
+        var nm=p.name||p.NAME||p.NL_NAME_2||p.NAME_2||p.district||p.okrug||'Округ';
+        layer.bindTooltip(String(nm),{sticky:true,className:'okrug-tip'});
+        layer.on('mouseover',function(){layer.setStyle({fillOpacity:.24,weight:2.5,opacity:1});});
+        layer.on('mouseout',function(){bordersLayer.resetStyle(layer);});
+      }
+    }).addTo(mapObj);
+    bordersLayer.bringToBack();
+    document.getElementById('geost').textContent='Границы округов загружены · '+(gj.features?gj.features.length:0)+' полигонов';
+  }).catch(function(){
+    document.getElementById('geost').textContent='Не удалось загрузить границы (проверьте BORDERS_URL и CORS)';
+  });
 }
 
 /* MODALS */
@@ -816,30 +881,31 @@ function renderCharts(d){
         plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
         scales:{x:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:F,weight:'700'}},grid:{display:false}}}}});}
 
-  /* Таймлайн по ДНЯМ + округа в тултипе */
-  var dayMap={};
+  /* Таймлайн: ДНИ или МЕСЯЦЫ + округа в тултипе */
+  var bucketMap={};
   d.forEach(function(r){
     var raw=String(r[C.dateApp]||'').trim();if(!raw||raw==='—'||raw==='-')return;
     var p=raw.split('.');if(p.length<3)return;
     var dd=p[0].trim().padStart(2,'0'),mo=p[1].trim().padStart(2,'0'),yr=p[2].trim();if(yr.length===2)yr='20'+yr;
     if(yr.length!==4)return;
-    var key=yr+'-'+mo+'-'+dd;
-    if(!dayMap[key])dayMap[key]={cnt:0,rounds:{}};
-    dayMap[key].cnt++;
-    var rn=r._sheet||'—';dayMap[key].rounds[rn]=(dayMap[key].rounds[rn]||0)+1;
+    var key=tlMode==='day'?(yr+'-'+mo+'-'+dd):(yr+'-'+mo);
+    if(!bucketMap[key])bucketMap[key]={cnt:0,rounds:{}};
+    bucketMap[key].cnt++;
+    var rn=r._sheet||'—';bucketMap[key].rounds[rn]=(bucketMap[key].rounds[rn]||0)+1;
   });
-  var dk=Object.keys(dayMap).sort();
-  var dv=dk.map(function(k){return dayMap[k].cnt;});
+  var dk=Object.keys(bucketMap).sort();
+  var dv=dk.map(function(k){return bucketMap[k].cnt;});
   var roundsByDay=dk.map(function(k){
-    return Object.entries(dayMap[k].rounds).sort(function(a,b){return b[1]-a[1];}).slice(0,6).map(function(e){return e[0]+': '+e[1];});
+    return Object.entries(bucketMap[k].rounds).sort(function(a,b){return b[1]-a[1];}).slice(0,6).map(function(e){return e[0]+': '+e[1];});
   });
   var mns=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-  var dl=dk.map(function(k){var p=k.split('-');return parseInt(p[2])+' '+(mns[parseInt(p[1])]||p[1]);});
+  var dl=dk.map(function(k){var p=k.split('-');return tlMode==='day'?(parseInt(p[2])+' '+(mns[parseInt(p[1])]||p[1])):((mns[parseInt(p[1])]||p[1])+' '+p[0]);});
+  var step=tlMode==='day'?46:90;
   var inner=document.getElementById('tl-inner');
-  if(inner)inner.style.width=Math.max(dk.length*46,800)+'px';
+  if(inner)inner.style.width=Math.max(dk.length*step,800)+'px';
   var c3=document.getElementById('c-timeline');
   if(c3){if(charts.tl){charts.tl.destroy();charts.tl=null;}
-    charts.tl=new Chart(c3,{type:'bar',data:{labels:dl,datasets:[{label:'Заявлений',data:dv,backgroundColor:'#b08d4f',borderRadius:5,borderSkipped:false,maxBarThickness:26}]},
+    charts.tl=new Chart(c3,{type:'bar',data:{labels:dl,datasets:[{label:'Заявлений',data:dv,backgroundColor:'#b08d4f',borderRadius:5,borderSkipped:false,maxBarThickness:tlMode==='day'?26:50}]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(20,22,30,.95)',titleColor:'#d4b87a',bodyColor:'#fff',padding:14,cornerRadius:10,
           callbacks:{
@@ -847,8 +913,15 @@ function renderCharts(d){
             label:function(i){return ' Всего: '+i.parsed.y+' заявлений';},
             afterBody:function(items){var idx=items[0].dataIndex;var rb=roundsByDay[idx];return rb&&rb.length?['','По округам:'].concat(rb.map(function(s){return '  '+s;})):[];}
           }}},
-        scales:{x:{ticks:{color:tick,font:{size:9,family:F},maxRotation:60,minRotation:45},grid:{display:false}},y:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid},beginAtZero:true}},
+        scales:{x:{ticks:{color:tick,font:{size:9,family:F},maxRotation:60,minRotation:tlMode==='day'?45:0},grid:{display:false}},y:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid},beginAtZero:true}},
         animation:{duration:700}}});}
+}
+function setTlMode(m,btn){
+  tlMode=m;
+  document.getElementById('tl-day').classList.remove('active');
+  document.getElementById('tl-mon').classList.remove('active');
+  btn.classList.add('active');
+  renderCharts(filteredData);
 }
 function tlScroll(dir){
   var el=document.getElementById('tl-scroll');
@@ -886,7 +959,7 @@ function renderFinance(){
   });
   var avgE=cnt>0?tE/cnt:0;
   document.getElementById('fin-kpi-row').innerHTML=
-    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Средняя: '+fmtMln(avgE)+' ₽/кв.</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Средняя: '+fmtMln(avgE)+' ₽</div></div>'+
     '<div class="fin-kpi"><div class="fk-lbl">Цена договора ДКП/ДДУ (сумма)</div><div class="fk-val">'+fmtMln(tC)+' млн ₽</div><div class="fk-sub">Заключено: '+dkpCnt+' договоров</div></div>'+
     '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+paidCnt+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех квартир</div></div>'+
     '<div class="fin-kpi"><div class="fk-lbl">Разница оценка vs договор</div><div class="fk-val" style="color:'+(tC>=tE?'#3a7d5c':'#b05a4f')+'">'+fmtMln(Math.abs(tC-tE))+' млн ₽</div><div class="fk-sub">'+(tC>=tE?'▲ Договор выше':'▼ Договор ниже')+'</div></div>';
