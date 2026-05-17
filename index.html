@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Минстрой МО · Премиальная аналитика переселения</title>
+<title>Минстрой МО · Премиум аналитика переселения</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -18,42 +18,49 @@
 
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: radial-gradient(circle at 10% 20%, #0c0f15 0%, #020305 100%);
-    color: #f5f7fb;
+    background: linear-gradient(145deg, #0a0c12 0%, #05070a 100%);
+    color: #f0f4fa;
     line-height: 1.5;
     font-weight: 400;
     min-height: 100vh;
   }
 
-  /* Премиальное стекло */
-  .glass-premium {
-    background: rgba(255, 255, 255, 0.08);
+  /* Премиальное стекло – только полупрозрачный белый фон с размытием */
+  .glass {
+    background: rgba(30, 35, 45, 0.55);
     backdrop-filter: blur(30px);
-    border-radius: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 20px 40px -20px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
-    transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px;
+    box-shadow: 0 20px 40px -20px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.05);
+    transition: all 0.25s ease;
   }
 
-  .glass-premium:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 215, 0, 0.3);
+  .glass-card {
+    background: rgba(25, 30, 40, 0.5);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 32px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .glass-card:hover {
     transform: translateY(-2px);
+    box-shadow: 0 30px 40px -20px rgba(0,0,0,0.5);
+    border-color: rgba(212, 175, 55, 0.3);
   }
 
   /* Header */
-  .hdr {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
+  .header {
     padding: 20px 40px;
-    background: rgba(5, 7, 12, 0.5);
+    background: rgba(10, 12, 18, 0.6);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(255,255,255,0.05);
     position: sticky;
     top: 0;
     z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
   }
   .logo-area {
     display: flex;
@@ -61,21 +68,20 @@
     gap: 18px;
   }
   .logo-icon {
-    width: 48px;
-    height: 48px;
-    background: rgba(255,215,0,0.2);
-    border-radius: 24px;
+    width: 46px;
+    height: 46px;
+    background: rgba(255,215,0,0.12);
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 26px;
-    border: 1px solid rgba(255,215,0,0.4);
-    box-shadow: 0 0 15px rgba(255,215,0,0.2);
+    font-size: 24px;
+    border: 1px solid rgba(255,215,0,0.3);
   }
   .title-main {
-    font-size: 1.2rem;
     font-weight: 500;
-    letter-spacing: -0.3px;
+    font-size: 1rem;
+    letter-spacing: -0.2px;
     background: linear-gradient(135deg, #fff, #e0e4ff);
     -webkit-background-clip: text;
     background-clip: text;
@@ -83,38 +89,36 @@
   }
   .title-sub {
     font-size: 0.7rem;
-    color: #a0a8c0;
-    margin-top: 2px;
+    color: #a0aac0;
   }
   .badge {
-    background: rgba(255,215,0,0.12);
-    border: 1px solid rgba(255,215,0,0.3);
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.25);
     border-radius: 40px;
-    padding: 6px 20px;
+    padding: 4px 14px;
     font-size: 0.7rem;
     font-weight: 500;
     color: #ffd966;
   }
-  .page-tabs {
+  .nav-tabs {
     display: flex;
-    gap: 12px;
+    gap: 8px;
   }
-  .ptab {
+  .tab-btn {
     background: transparent;
     border: none;
-    padding: 10px 24px;
+    padding: 8px 20px;
     font-weight: 500;
     color: #b0b8d0;
     cursor: pointer;
-    border-radius: 40px;
-    transition: all 0.2s;
+    border-radius: 30px;
+    transition: 0.2s;
   }
-  .ptab.active, .ptab:hover {
-    background: rgba(255,255,255,0.08);
+  .tab-btn.active, .tab-btn:hover {
+    background: rgba(255,255,255,0.06);
     color: #ffd966;
-    backdrop-filter: blur(8px);
   }
-  .msk-block {
+  .datetime {
     text-align: right;
   }
   #msk-time {
@@ -125,10 +129,10 @@
   }
   #msk-date {
     font-size: 0.7rem;
-    color: #a0a8c0;
+    color: #a0aac0;
   }
-  .icon-btn {
-    background: rgba(255,255,255,0.05);
+  .refresh-btn {
+    background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 40px;
     padding: 8px 20px;
@@ -136,66 +140,64 @@
     cursor: pointer;
     transition: 0.2s;
   }
-  .icon-btn:hover {
-    background: rgba(255,215,0,0.15);
+  .refresh-btn:hover {
+    background: rgba(255,215,0,0.1);
     border-color: #ffd966;
   }
 
   /* Filter bar */
-  .fbar {
+  .filter-bar {
     margin: 24px 40px;
-    padding: 12px 28px;
-    background: rgba(10, 14, 20, 0.6);
-    backdrop-filter: blur(40px);
+    padding: 10px 28px;
+    background: rgba(15, 18, 26, 0.6);
+    backdrop-filter: blur(20px);
     border-radius: 80px;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.06);
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
     align-items: center;
   }
-  .fbar-select {
+  .filter-select {
     background: rgba(0,0,0,0.4);
-    border: 1px solid rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 40px;
-    padding: 8px 24px;
+    padding: 7px 20px;
     color: #fff;
     font-family: 'Inter', sans-serif;
     font-weight: 500;
     cursor: pointer;
     outline: none;
-    transition: 0.2s;
   }
-  .fbar-select:hover {
-    border-color: rgba(255,215,0,0.5);
-  }
-  .btn-rst {
+  .reset-btn {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 40px;
-    padding: 8px 20px;
+    padding: 7px 18px;
     color: #ccd6f0;
     cursor: pointer;
   }
-  .btn-rst:hover {
-    background: rgba(255,255,255,0.05);
+  .filter-count {
+    color: #ffd966;
+    font-size: 0.7rem;
+    margin-left: auto;
   }
 
-  /* Content */
-  .content {
-    padding: 20px 40px 40px;
+  /* Main content */
+  .main-content {
+    padding: 20px 40px 50px;
     max-width: 1600px;
     margin: 0 auto;
   }
 
-  /* KPI cards */
+  /* KPI сетка */
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 24px;
     margin-bottom: 40px;
   }
-  .kpi-card {
+  .kpi-item {
     padding: 28px 20px;
     cursor: pointer;
   }
@@ -208,10 +210,10 @@
     margin-bottom: 12px;
   }
   .kpi-value {
-    font-size: 3rem;
+    font-size: 3.2rem;
     font-weight: 600;
     letter-spacing: -1px;
-    background: linear-gradient(135deg, #fff, #e0e4ff);
+    background: linear-gradient(135deg, #fff, #e8edff);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -223,7 +225,7 @@
     margin-top: 8px;
   }
 
-  /* Decision cards */
+  /* Решения – единый стиль, без лишних цветов */
   .decisions-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -233,48 +235,56 @@
   .dec-card {
     padding: 24px 20px;
     cursor: pointer;
-    transition: all 0.2s;
   }
   .dec-label {
     font-size: 0.7rem;
     text-transform: uppercase;
-    opacity: 0.7;
+    letter-spacing: 1px;
+    color: #b8c5e0;
+    margin-bottom: 8px;
   }
   .dec-value {
-    font-size: 2.4rem;
+    font-size: 2.5rem;
     font-weight: 600;
-    margin-top: 8px;
+    letter-spacing: -0.5px;
   }
   .dec-percent {
     font-size: 0.7rem;
-    opacity: 0.6;
-    margin-top: 4px;
+    color: #a0aac0;
+    margin-top: 6px;
   }
 
-  /* Charts */
-  .chart-card {
+  /* Графики */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin: 32px 0;
+  }
+  .chart-box {
     padding: 28px;
-    margin-bottom: 32px;
   }
   .chart-title {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    font-weight: 600;
+    font-weight: 500;
     color: #ffd966;
     margin-bottom: 24px;
   }
-  .two-columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 32px;
-  }
 
-  /* Table */
-  .registry-card {
+  /* Таблица */
+  .registry-box {
     padding: 28px;
-    margin-top: 20px;
+    margin-top: 24px;
+  }
+  .registry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
   }
   table {
     width: 100%;
@@ -283,41 +293,41 @@
   }
   th {
     text-align: left;
-    padding: 14px 8px;
+    padding: 12px 8px;
     font-weight: 500;
     color: #b8c5e0;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
   }
   td {
-    padding: 12px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
   }
 
-  /* Modal (премиум) */
+  /* Modal */
   .modal-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.5);
     backdrop-filter: blur(12px);
-    z-index: 2000;
+    z-index: 1000;
     align-items: center;
     justify-content: center;
   }
   .modal-overlay.open {
     display: flex;
   }
-  .modal-window {
-    width: 520px;
+  .modal {
+    width: 500px;
     max-width: 90vw;
-    background: rgba(20, 24, 32, 0.85);
+    background: rgba(25, 30, 40, 0.9);
     backdrop-filter: blur(40px);
-    border-radius: 48px;
-    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 32px;
+    border: 1px solid rgba(255,255,255,0.15);
     overflow: hidden;
   }
   .modal-header {
-    padding: 20px 24px;
+    padding: 18px 24px;
     display: flex;
     justify-content: space-between;
     border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -335,26 +345,38 @@
     padding: 20px;
   }
 
-  /* Map */
+  /* Карта */
+  .map-container {
+    padding: 28px;
+    margin-bottom: 30px;
+  }
   #map {
     height: 500px;
-    border-radius: 32px;
+    border-radius: 28px;
     overflow: hidden;
-    margin: 20px 0;
     border: 1px solid rgba(255,255,255,0.1);
+    margin: 16px 0;
   }
   .map-legend {
     display: flex;
-    gap: 24px;
+    gap: 28px;
     justify-content: center;
-    padding: 16px;
+    margin-top: 16px;
     font-size: 0.7rem;
   }
   .legend-dot {
+    display: inline-block;
     width: 10px;
     height: 10px;
     border-radius: 50%;
+    margin-right: 8px;
+  }
+  .legend-line {
     display: inline-block;
+    width: 20px;
+    height: 2px;
+    background: #ffd966;
+    vertical-align: middle;
     margin-right: 8px;
   }
 
@@ -362,9 +384,9 @@
   .loading {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.7);
     backdrop-filter: blur(20px);
-    z-index: 3000;
+    z-index: 2000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -372,8 +394,8 @@
     gap: 20px;
   }
   .spinner {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border: 2px solid rgba(255,215,0,0.2);
     border-top: 2px solid #ffd966;
     border-radius: 50%;
@@ -387,6 +409,7 @@
   .page.active {
     display: block;
   }
+
   button, select {
     font-family: 'Inter', sans-serif;
   }
@@ -394,7 +417,7 @@
 </head>
 <body>
 
-<div class="hdr">
+<div class="header">
   <div class="logo-area">
     <div class="logo-icon">🏛️</div>
     <div>
@@ -402,24 +425,24 @@
       <div class="title-sub">Управление ликвидации аварийного жилья — цифровой дашборд</div>
     </div>
   </div>
-  <div class="page-tabs">
-    <button class="ptab active" data-page="overview">Обзор</button>
-    <button class="ptab" data-page="finance">Финансы</button>
-    <button class="ptab" data-page="map">Маршруты</button>
+  <div class="nav-tabs">
+    <button class="tab-btn active" data-page="overview">Обзор</button>
+    <button class="tab-btn" data-page="finance">Финансы</button>
+    <button class="tab-btn" data-page="map">Маршруты</button>
   </div>
-  <div class="msk-block">
+  <div class="datetime">
     <div id="msk-time">--:--:--</div>
     <div id="msk-date">--</div>
   </div>
-  <button class="icon-btn" id="refreshBtn">⟳ Обновить</button>
+  <button class="refresh-btn" id="refreshData">⟳ Обновить</button>
 </div>
 
-<div class="fbar">
-  <select id="f-round" class="fbar-select"><option>Все округа</option></select>
-  <select id="f-dec" class="fbar-select"><option>Все решения</option></select>
-  <select id="f-type" class="fbar-select"><option>Все типы</option></select>
-  <button class="btn-rst" id="resetFilters">Сброс фильтров</button>
-  <span id="fcnt" style="color:#ffd966;"></span>
+<div class="filter-bar">
+  <select id="selectRound" class="filter-select"><option value="">Все округа</option></select>
+  <select id="selectDecision" class="filter-select"><option value="">Все решения</option></select>
+  <select id="selectType" class="filter-select"><option value="">Все типы</option></select>
+  <button class="reset-btn" id="resetFilters">Сброс</button>
+  <span id="filterCount" class="filter-count"></span>
 </div>
 
 <div class="loading" id="loading">
@@ -427,8 +450,9 @@
   <div id="loadText">Загрузка данных из системы...</div>
 </div>
 
+<!-- Модальное окно -->
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal-window">
+  <div class="modal">
     <div class="modal-header">
       <span id="modalTitle"></span>
       <button class="modal-close" id="closeModalBtn">&times;</button>
@@ -437,77 +461,73 @@
   </div>
 </div>
 
-<!-- OVERVIEW PAGE -->
+<!-- ОБЗОР -->
 <div class="page active" id="page-overview">
-<div class="content">
-  <div class="kpi-grid" id="kpiContainer"></div>
-
-  <div style="margin: 40px 0 16px 0;"><span style="font-weight: 500;">Решения комиссии</span></div>
-  <div class="decisions-grid" id="decisionsContainer"></div>
-
-  <div class="two-columns">
-    <div class="chart-card glass-premium"><div class="chart-title">Статус решений</div><canvas id="c-dec" height="200"></canvas></div>
-    <div class="chart-card glass-premium"><div class="chart-title">Собственники / Наниматели</div><canvas id="c-own" height="200"></canvas></div>
+<div class="main-content">
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="decisions-grid" id="decisionsGrid"></div>
+  <div class="charts-row">
+    <div class="chart-box glass-card"><div class="chart-title">Статус решений</div><canvas id="chartDecisions" height="200"></canvas></div>
+    <div class="chart-box glass-card"><div class="chart-title">Собственники / Наниматели</div><canvas id="chartOwners" height="200"></canvas></div>
   </div>
-  <div class="chart-card glass-premium"><div class="chart-title">Динамика подачи заявлений</div><canvas id="c-timeline" height="200"></canvas></div>
-
-  <div class="registry-card glass-premium">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
-      <span style="font-weight: 500;" id="regTitle">Реестр объектов</span>
-      <span id="regCount" style="color:#ffd966;"></span>
-      <select id="regSort" class="fbar-select" style="padding: 4px 16px;">
+  <div class="chart-box glass-card" style="margin-bottom: 24px;"><div class="chart-title">Динамика подачи заявлений</div><canvas id="chartTimeline" height="200"></canvas></div>
+  <div class="registry-box glass-card">
+    <div class="registry-header">
+      <span style="font-weight: 500;">Реестр объектов</span>
+      <span id="regCount"></span>
+      <select id="sortRegistry" class="filter-select" style="padding: 4px 16px;">
         <option value="decision">По решению</option>
         <option value="area">По площади ↓</option>
         <option value="citizens">По гражданам ↓</option>
         <option value="round">По округу</option>
       </select>
     </div>
-    <div style="overflow-x: auto;"><table id="tblRegistry"><tr></div>
+    <div style="overflow-x: auto;"><table id="registryTable"></table></div>
   </div>
 </div>
 </div>
 
-<!-- FINANCE PAGE -->
+<!-- ФИНАНСЫ -->
 <div class="page" id="page-finance">
-<div class="content">
-  <div class="kpi-grid" id="finKpiRow" style="margin-bottom: 32px;"></div>
-  <div class="chart-card glass-premium"><div class="chart-title">Топ-10 округов: оценка vs цена договора (млн ₽)</div><canvas id="c-fin-compare" height="300"></canvas></div>
-  <div class="registry-card glass-premium">
-    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center;">
-      <span>Детализация по контрактам</span>
-      <select id="finSort" class="fbar-select">
+<div class="main-content">
+  <div class="kpi-grid" id="financeKpiGrid"></div>
+  <div class="chart-box glass-card"><div class="chart-title">Топ-10 округов: оценка vs договор (млн ₽)</div><canvas id="financeCompareChart" height="300"></canvas></div>
+  <div class="registry-box glass-card">
+    <div class="registry-header">
+      <span>Детализация контрактов</span>
+      <select id="sortFinance" class="filter-select">
         <option value="price_desc">По оценке ↓</option>
         <option value="price_asc">По оценке ↑</option>
         <option value="contract_desc">По договору ↓</option>
         <option value="round">По округу</option>
       </select>
     </div>
-    <div style="overflow-x: auto;"><table id="tblFin"></table></div>
+    <div style="overflow-x: auto;"><table id="financeTable"></table></div>
   </div>
 </div>
 </div>
 
-<!-- MAP PAGE -->
+<!-- КАРТА -->
 <div class="page" id="page-map">
-<div class="content">
-  <div class="glass-premium" style="padding: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
-      <span style="font-weight: 500;">🗺️ Маршруты переселения семей из аварийного жилья</span>
-      <span style="font-size: 0.7rem; color:#ffd966;">🔴 источник → 🟢 новостройка</span>
+<div class="main-content">
+  <div class="map-container glass-card">
+    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px;">
+      <span style="font-weight: 500;">🗺️ Маршруты переселения семей</span>
+      <span style="font-size: 0.7rem; color: #ffd966;">🔴 откуда → 🟢 куда</span>
     </div>
     <div id="map"></div>
     <div class="map-legend">
       <div><span class="legend-dot" style="background:#e74c3c;"></span> Аварийный дом</div>
-      <div><span class="legend-dot" style="background:#27ae60;"></span> Новое жильё</div>
-      <div><span style="display:inline-block; width:20px; height:2px; background:#ffd966; vertical-align:middle; margin-right:8px;"></span> Маршрут переселения</div>
+      <div><span class="legend-dot" style="background:#27ae60;"></span> Новостройка</div>
+      <div><span class="legend-line"></span> Маршрут переселения</div>
     </div>
-    <div id="mapStatus" style="text-align: center; font-size:0.7rem; margin-top: 16px; color:#a0a8c0;"></div>
+    <div id="mapStatus" style="text-align: center; font-size:0.7rem; margin-top: 16px; color:#a0aac0;"></div>
   </div>
 </div>
 </div>
 
 <script>
-// ---- Конфигурация данных (Google Sheets) ----
+// ---------------------- DATA SOURCE ----------------------
 const PUB = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzyHOAkQRwBuyLTWw0xyAkA3aQWjHNAT1wSRMmmB7zjYARDMG470ErejHEFid200TUUbGvbQNYUPsE/pub?output=csv';
 const SHEETS = [
   {name:'Балашиха',gid:'1795562364'},{name:'Богородский',gid:'0'},{name:'Бронницы',gid:'1103582215'},
@@ -532,10 +552,10 @@ const C = { mo:3, np:4, addr:5, apt:6, area:7, citizens:8, owner:11, certType:12
   builder:25, contractType:26, contractPrice:27, minPay:28, lat:29, lon:30 };
 
 let allData = [], filteredData = [];
-let charts = { dec:null, own:null, tl:null, fin:null };
+let charts = { dec: null, own: null, timeline: null, finance: null };
 let mapObj, mapInited = false;
 
-// ---- helper functions ----
+// Helper functions
 function normDecision(v) { let s=String(v||'').toLowerCase(); if(s.includes('положительн')) return 'Положительное'; if(s.includes('отриц')) return 'Отрицательное'; if(s.includes('рассм')) return 'На рассмотрении'; if(s.includes('отказ')) return 'Отказ'; return 'Не указано'; }
 function normOwner(v) { let s=String(v||'').toLowerCase(); if(s.includes('собственник')) return 'Собственник'; if(s.includes('наниматель')) return 'Наниматель'; return 'Не указано'; }
 function normType(v) { let s=String(v||'').toLowerCase(); if(s.includes('сертификат')) return 'Сертификат'; if(s.includes('выкуп')) return 'Выкуп'; return 'Другое'; }
@@ -543,7 +563,7 @@ function n(x) { let num=parseFloat(String(x).replace(/\s/g,'').replace(',','.'))
 function lo(s) { return String(s||'').toLowerCase(); }
 function fmtRub(v) { return v>0?new Intl.NumberFormat('ru-RU').format(v)+' ₽':'—'; }
 function fmtMln(v) { if(!v||v===0) return '0'; if(v>=1e9) return (v/1e9).toFixed(2)+' млрд'; if(v>=1e6) return (v/1e6).toFixed(2)+' млн'; return v.toLocaleString('ru')+' ₽'; }
-function bdec(v) { let l=lo(v); if(l.includes('полож')) return `<span style="background:rgba(39,174,96,0.2); color:#2ecc71; padding:2px 12px; border-radius:20px;">${v}</span>`; if(l.includes('отриц')) return `<span style="background:rgba(231,76,60,0.2); color:#e74c3c; padding:2px 12px; border-radius:20px;">${v}</span>`; return v; }
+function bdec(v) { let l=lo(v); if(l.includes('полож')) return `<span style="background:rgba(39,174,96,0.15); color:#2ecc71; padding:2px 12px; border-radius:20px;">${v}</span>`; if(l.includes('отриц')) return `<span style="background:rgba(231,76,60,0.15); color:#e74c3c; padding:2px 12px; border-radius:20px;">${v}</span>`; return v; }
 
 // Московское время
 function updateMsk() {
@@ -559,7 +579,7 @@ updateMsk();
 async function loadData() {
   document.getElementById('loading').style.display = 'flex';
   allData = [];
-  let loaded = 0, total = SHEETS.length;
+  let total = SHEETS.length, loaded = 0;
   let promises = SHEETS.map(sheet => new Promise(resolve => {
     Papa.parse(PUB+'&gid='+sheet.gid+'&cachebust='+Date.now(), {
       download: true, header: false, skipEmptyLines: true,
@@ -590,38 +610,40 @@ function fillFilters() {
   let rounds = [...new Set(allData.map(r=>r._sheet))].sort();
   let decs = [...new Set(allData.map(r=>normDecision(r[C.decision])))];
   let types = [...new Set(allData.map(r=>normType(r[C.certType])))];
-  let selRound = document.getElementById('f-round');
-  selRound.innerHTML = '<option value="">Все округа</option>' + rounds.map(r=>`<option>${r}</option>`).join('');
-  let selDec = document.getElementById('f-dec');
-  selDec.innerHTML = '<option value="">Все решения</option>' + decs.map(d=>`<option>${d}</option>`).join('');
-  let selType = document.getElementById('f-type');
-  selType.innerHTML = '<option value="">Все типы</option>' + types.map(t=>`<option>${t}</option>`).join('');
+  let roundSel = document.getElementById('selectRound');
+  roundSel.innerHTML = '<option value="">Все округа</option>' + rounds.map(r=>`<option>${r}</option>`).join('');
+  let decSel = document.getElementById('selectDecision');
+  decSel.innerHTML = '<option value="">Все решения</option>' + decs.map(d=>`<option>${d}</option>`).join('');
+  let typeSel = document.getElementById('selectType');
+  typeSel.innerHTML = '<option value="">Все типы</option>' + types.map(t=>`<option>${t}</option>`).join('');
 }
 
 function applyFilters() {
-  let fr = document.getElementById('f-round').value;
-  let fd = document.getElementById('f-dec').value;
-  let ft = document.getElementById('f-type').value;
-  filteredData = allData.filter(r => (!fr || r._sheet===fr) && (!fd || normDecision(r[C.decision])===fd) && (!ft || normType(r[C.certType])===ft));
-  document.getElementById('fcnt').innerText = filteredData.length < allData.length ? `▶ ${filteredData.length} из ${allData.length}` : '';
+  let round = document.getElementById('selectRound').value;
+  let dec = document.getElementById('selectDecision').value;
+  let type = document.getElementById('selectType').value;
+  filteredData = allData.filter(r => (!round || r._sheet===round) && (!dec || normDecision(r[C.decision])===dec) && (!type || normType(r[C.certType])===type));
+  document.getElementById('filterCount').innerText = filteredData.length < allData.length ? `▶ ${filteredData.length} из ${allData.length}` : '';
   renderAll();
 }
 function resetFilters() {
-  document.getElementById('f-round').value = '';
-  document.getElementById('f-dec').value = '';
-  document.getElementById('f-type').value = '';
+  document.getElementById('selectRound').value = '';
+  document.getElementById('selectDecision').value = '';
+  document.getElementById('selectType').value = '';
   applyFilters();
 }
 
+// Главный рендер
 function renderAll() {
-  renderKPIs();
+  renderKPI();
   renderDecisions();
   renderCharts();
   renderRegistry();
   renderFinance();
   if(document.getElementById('page-map').classList.contains('active')) initMap();
 }
-function renderKPIs() {
+
+function renderKPI() {
   let total = filteredData.length;
   let area = filteredData.reduce((s,r)=>s+n(r[C.area]),0);
   let sob = filteredData.filter(r=>normOwner(r[C.owner])==='Собственник').length;
@@ -630,15 +652,15 @@ function renderKPIs() {
   let vyk = filteredData.filter(r=>normType(r[C.certType])==='Выкуп').length;
   let kpis = { total, sob, nan, cert, vyk };
   let labels = { total:'Всего квартир', sob:'Собственники', nan:'Наниматели', cert:'Сертификаты', vyk:'Выкуп' };
-  let container = document.getElementById('kpiContainer');
+  let container = document.getElementById('kpiGrid');
   container.innerHTML = Object.keys(kpis).map(key => `
-    <div class="kpi-card glass-premium" data-kpi="${key}">
+    <div class="kpi-item glass-card" data-kpi="${key}">
       <div class="kpi-label">${labels[key]}</div>
       <div class="kpi-value">${kpis[key].toLocaleString('ru')}</div>
       <div class="kpi-sub">${key==='total'?`Общая площадь ${area.toFixed(0)} м²`:''}</div>
     </div>
   `).join('');
-  document.querySelectorAll('.kpi-card').forEach(el => el.addEventListener('click', (e) => openKpiModal(el.dataset.kpi)));
+  document.querySelectorAll('.kpi-item').forEach(el => el.addEventListener('click', () => openKpiModal(el.dataset.kpi)));
 }
 function openKpiModal(type) {
   let labels = { total:'Всего квартир', sob:'Собственники', nan:'Наниматели', cert:'Сертификаты', vyk:'Выкуп' };
@@ -660,79 +682,88 @@ function openKpiModal(type) {
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalOverlay').classList.add('open');
 }
+
 function renderDecisions() {
   let counts = { Положительное:0, 'На рассмотрении':0, Отрицательное:0, Отказ:0, 'Не указано':0 };
   filteredData.forEach(r => counts[normDecision(r[C.decision])]++);
   let order = ['Положительное','На рассмотрении','Отрицательное','Отказ','Не указано'];
-  let colors = { 'Положительное':'linear-gradient(135deg,#0f3a1f,#1f5e2e)','На рассмотрении':'linear-gradient(135deg,#4a3a0a,#b87a0b)','Отрицательное':'linear-gradient(135deg,#4a1a1a,#a12323)','Отказ':'linear-gradient(135deg,#2e1a4a,#6b2e9e)','Не указано':'linear-gradient(135deg,#1a2e4a,#246b9e)' };
-  let container = document.getElementById('decisionsContainer');
+  let container = document.getElementById('decisionsGrid');
   container.innerHTML = order.map(dec => `
-    <div class="dec-card glass-premium" data-decision="${dec}" style="background:${colors[dec]}; border: none;">
+    <div class="dec-card glass-card" data-decision="${dec}">
       <div class="dec-label">${dec}</div>
       <div class="dec-value">${counts[dec]}</div>
       <div class="dec-percent">${filteredData.length?Math.round(counts[dec]/filteredData.length*100):0}% от всех</div>
     </div>
   `).join('');
-  document.querySelectorAll('.dec-card').forEach(card => card.addEventListener('click', (e) => filterByDecision(card.dataset.decision)));
+  document.querySelectorAll('.dec-card').forEach(card => card.addEventListener('click', () => filterByDecision(card.dataset.decision)));
 }
 function filterByDecision(decision) {
   let newFiltered = allData.filter(r => normDecision(r[C.decision]) === decision);
   filteredData = newFiltered;
-  document.getElementById('fcnt').innerText = `▶ ${filteredData.length} (решение: ${decision})`;
+  document.getElementById('filterCount').innerText = `▶ ${filteredData.length} (решение: ${decision})`;
   renderAll();
 }
+
 function renderCharts() {
   let decCount = { Положительное:0, 'На рассмотрении':0, Отрицательное:0, Отказ:0, 'Не указано':0 };
   filteredData.forEach(r => decCount[normDecision(r[C.decision])]++);
-  let ctxDec = document.getElementById('c-dec');
-  if(ctxDec) { if(charts.dec) charts.dec.destroy(); charts.dec = new Chart(ctxDec, { type:'bar', data:{ labels:Object.keys(decCount), datasets:[{ data:Object.values(decCount), backgroundColor:'rgba(255,215,0,0.6)', borderRadius:12 }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{ display:false } } } }); }
+  let ctxDec = document.getElementById('chartDecisions');
+  if(ctxDec) { if(charts.dec) charts.dec.destroy(); charts.dec = new Chart(ctxDec, { type:'bar', data:{ labels:Object.keys(decCount), datasets:[{ data:Object.values(decCount), backgroundColor:'rgba(255,215,0,0.6)', borderRadius:10 }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{ display:false } } } }); }
   let ownCount = { Собственник:0, Наниматель:0 };
   filteredData.forEach(r => ownCount[normOwner(r[C.owner])]++);
-  let ctxOwn = document.getElementById('c-own');
+  let ctxOwn = document.getElementById('chartOwners');
   if(ctxOwn) { if(charts.own) charts.own.destroy(); charts.own = new Chart(ctxOwn, { type:'doughnut', data:{ labels:Object.keys(ownCount), datasets:[{ data:Object.values(ownCount), backgroundColor:['#ffd966','#6c9ebf'] }] }, options:{ responsive:true, maintainAspectRatio:true, cutout:'65%', plugins:{ legend:{ position:'bottom' } } } }); }
   let timeline = {};
-  filteredData.forEach(r => { let d = r[C.dateApp]; if(d && d.includes('.')) { let parts = d.split('.'); if(parts.length>=2) { let month = parts[1]; timeline[month] = (timeline[month]||0)+1; } } });
+  filteredData.forEach(r => { let d = r[C.dateApp]; if(d && typeof d==='string' && d.includes('.')) { let parts = d.split('.'); if(parts.length>=2) { let mon = parts[1]; timeline[mon] = (timeline[mon]||0)+1; } } });
   let months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
   let values = months.map(m=>timeline[m]||0);
-  let ctxTime = document.getElementById('c-timeline');
-  if(ctxTime) { if(charts.tl) charts.tl.destroy(); charts.tl = new Chart(ctxTime, { type:'line', data:{ labels:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'], datasets:[{ data:values, borderColor:'#ffd966', backgroundColor:'rgba(255,215,0,0.1)', borderWidth:2, tension:0.3, fill:true }] }, options:{ responsive:true, maintainAspectRatio:true } }); }
+  let ctxTime = document.getElementById('chartTimeline');
+  if(ctxTime) { if(charts.timeline) charts.timeline.destroy(); charts.timeline = new Chart(ctxTime, { type:'line', data:{ labels:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'], datasets:[{ data:values, borderColor:'#ffd966', backgroundColor:'rgba(255,215,0,0.05)', borderWidth:2, tension:0.3, fill:true }] }, options:{ responsive:true, maintainAspectRatio:true } }); }
 }
+
 function renderRegistry() {
   let d = [...filteredData];
-  let sort = document.getElementById('regSort').value;
+  let sort = document.getElementById('sortRegistry').value;
   if(sort==='decision') d.sort((a,b)=>normDecision(a[C.decision]).localeCompare(normDecision(b[C.decision])));
   else if(sort==='area') d.sort((a,b)=>n(b[C.area])-n(a[C.area]));
   else if(sort==='citizens') d.sort((a,b)=>n(b[C.citizens])-n(a[C.citizens]));
   else if(sort==='round') d.sort((a,b)=>(a._sheet||'').localeCompare(b._sheet||'','ru'));
-  document.getElementById('regTitle').innerHTML = 'Реестр объектов';
   document.getElementById('regCount').innerHTML = d.length+' записей';
-  let html = '<thead><table><th>№</th><th>Округ</th><th>Адрес</th><th>Площадь</th><th>Граждан</th><th>Решение</th><th>Стоимость</th></tr></thead><tbody>';
+  let html = '<thead><tr><th>№</th><th>Округ</th><th>Адрес</th><th>Площадь</th><th>Граждан</th><th>Решение</th><th>Стоимость</th></tr></thead><tbody>';
   d.slice(0,100).forEach((r,i)=> {
     html += `<tr><td>${i+1}</td><td>${r._sheet||'—'}</td><td>${r[C.addr]||'—'}</td><td>${n(r[C.area]).toFixed(1)} м²</td><td>${r[C.citizens]||'—'}</td><td>${bdec(r[C.decision])}</td><td>${fmtMln(n(r[C.price]))}</td></tr>`;
   });
   html += '</tbody>';
-  document.getElementById('tblRegistry').innerHTML = html;
+  document.getElementById('registryTable').innerHTML = html;
 }
+
 function renderFinance() {
   let totalEval = 0, totalContract = 0, paid = 0;
   filteredData.forEach(r => { totalEval += n(r[C.price]); totalContract += n(r[C.contractPrice]); if(lo(r[C.minPay])==='да') paid++; });
   let kpiHtml = `
-    <div class="kpi-card glass-premium"><div class="kpi-label">Стоимость по оценке</div><div class="kpi-value">${fmtMln(totalEval)}</div></div>
-    <div class="kpi-card glass-premium"><div class="kpi-label">Цена договора</div><div class="kpi-value">${fmtMln(totalContract)}</div></div>
-    <div class="kpi-card glass-premium"><div class="kpi-label">Оплачено Мин-вом</div><div class="kpi-value">${paid}</div></div>
-    <div class="kpi-card glass-premium"><div class="kpi-label">Разница</div><div class="kpi-value">${fmtMln(Math.abs(totalEval-totalContract))}</div></div>
+    <div class="kpi-item glass-card"><div class="kpi-label">Стоимость по оценке</div><div class="kpi-value">${fmtMln(totalEval)}</div></div>
+    <div class="kpi-item glass-card"><div class="kpi-label">Цена договора</div><div class="kpi-value">${fmtMln(totalContract)}</div></div>
+    <div class="kpi-item glass-card"><div class="kpi-label">Оплачено Мин-вом</div><div class="kpi-value">${paid}</div></div>
+    <div class="kpi-item glass-card"><div class="kpi-label">Разница</div><div class="kpi-value">${fmtMln(Math.abs(totalEval-totalContract))}</div></div>
   `;
-  document.getElementById('finKpiRow').innerHTML = kpiHtml;
+  document.getElementById('financeKpiGrid').innerHTML = kpiHtml;
   let rounds = {};
   filteredData.forEach(r => { let rd = r._sheet; if(rd) { if(!rounds[rd]) rounds[rd]={eval:0,contract:0}; rounds[rd].eval += n(r[C.price]); rounds[rd].contract += n(r[C.contractPrice]); } });
   let top = Object.entries(rounds).sort((a,b)=>b[1].eval-a[1].eval).slice(0,10);
-  let ctxFin = document.getElementById('c-fin-compare');
-  if(ctxFin) { if(charts.fin) charts.fin.destroy(); charts.fin = new Chart(ctxFin, { type:'bar', data:{ labels:top.map(t=>t[0]), datasets:[{ label:'Оценка, млн ₽', data:top.map(t=>t[1].eval/1e6), backgroundColor:'rgba(255,215,0,0.7)' },{ label:'Договор, млн ₽', data:top.map(t=>t[1].contract/1e6), backgroundColor:'rgba(108,158,191,0.7)' }] }, options:{ responsive:true, maintainAspectRatio:true } }); }
+  let ctxFin = document.getElementById('financeCompareChart');
+  if(ctxFin) { if(charts.finance) charts.finance.destroy(); charts.finance = new Chart(ctxFin, { type:'bar', data:{ labels:top.map(t=>t[0]), datasets:[{ label:'Оценка, млн ₽', data:top.map(t=>t[1].eval/1e6), backgroundColor:'rgba(255,215,0,0.7)' },{ label:'Договор, млн ₽', data:top.map(t=>t[1].contract/1e6), backgroundColor:'rgba(108,158,191,0.7)' }] }, options:{ responsive:true, maintainAspectRatio:true } }); }
   let finHtml = '<thead><tr><th>Округ</th><th>Адрес</th><th>Оценка</th><th>Договор</th></tr></thead><tbody>';
-  filteredData.slice(0,50).forEach(r => { finHtml += `<tr><td>${r._sheet||'—'}</td><td>${r[C.addr]||'—'}</td><td>${fmtMln(n(r[C.price]))}</td><td>${fmtMln(n(r[C.contractPrice]))}</td></tr>`; });
+  let finData = [...filteredData];
+  let finSort = document.getElementById('sortFinance').value;
+  if(finSort==='price_desc') finData.sort((a,b)=>n(b[C.price])-n(a[C.price]));
+  else if(finSort==='price_asc') finData.sort((a,b)=>n(a[C.price])-n(b[C.price]));
+  else if(finSort==='contract_desc') finData.sort((a,b)=>n(b[C.contractPrice])-n(a[C.contractPrice]));
+  else if(finSort==='round') finData.sort((a,b)=>(a._sheet||'').localeCompare(b._sheet||'','ru'));
+  finData.slice(0,60).forEach(r => { finHtml += `<tr><td>${r._sheet||'—'}</td><td>${r[C.addr]||'—'}</td><td>${fmtMln(n(r[C.price]))}</td><td>${fmtMln(n(r[C.contractPrice]))}</td></tr>`; });
   finHtml += '</tbody>';
-  document.getElementById('tblFin').innerHTML = finHtml;
+  document.getElementById('financeTable').innerHTML = finHtml;
 }
+
 function initMap() {
   if(!mapInited) {
     mapInited = true;
@@ -750,13 +781,13 @@ function initMap() {
   ];
   let balData = allData.filter(r => r._sheet === 'Балашиха');
   houses.forEach(h => {
-    let redIcon = L.divIcon({ html:'<div style="width:22px;height:22px;background:#e74c3c;border:2px solid white;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.3);"></div>', iconSize:[22,22], iconAnchor:[11,11] });
+    let redIcon = L.divIcon({ html:'<div style="width:22px;height:22px;background:#e74c3c;border:2px solid white;border-radius:50%;box-shadow:0 0 12px rgba(0,0,0,0.3);"></div>', iconSize:[22,22], iconAnchor:[11,11] });
     L.marker([h.lat, h.lng], { icon: redIcon }).bindPopup(`<b>${h.addr}</b><br>Аварийный дом`).addTo(mapObj);
     let match = balData.find(r => String(r[C.addr]||'').toLowerCase().includes(h.addr.split(',')[0].replace('ул.','').trim().toLowerCase()));
     if(match) {
       let toLat = n(match[C.lat]), toLng = n(match[C.lon]);
       if(toLat>50 && toLng>30) {
-        let greenIcon = L.divIcon({ html:'<div style="width:22px;height:22px;background:#27ae60;border:2px solid white;border-radius:50%;box-shadow:0 0 10px rgba(0,0,0,0.3);"></div>', iconSize:[22,22], iconAnchor:[11,11] });
+        let greenIcon = L.divIcon({ html:'<div style="width:22px;height:22px;background:#27ae60;border:2px solid white;border-radius:50%;box-shadow:0 0 12px rgba(0,0,0,0.3);"></div>', iconSize:[22,22], iconAnchor:[11,11] });
         L.marker([toLat, toLng], { icon: greenIcon }).bindPopup(`Новостройка: ${match[C.newAddr]||'—'}`).addTo(mapObj);
         L.polyline([[h.lat, h.lng],[toLat, toLng]], { color: '#ffd966', weight: 2.5, dashArray: '6 6', opacity: 0.9 }).addTo(mapObj);
       }
@@ -766,17 +797,17 @@ function initMap() {
 }
 
 // Event listeners
-document.getElementById('refreshBtn').addEventListener('click', () => location.reload());
+document.getElementById('refreshData').addEventListener('click', () => location.reload());
 document.getElementById('resetFilters').addEventListener('click', resetFilters);
-document.getElementById('f-round').addEventListener('change', applyFilters);
-document.getElementById('f-dec').addEventListener('change', applyFilters);
-document.getElementById('f-type').addEventListener('change', applyFilters);
-document.getElementById('regSort').addEventListener('change', renderRegistry);
-document.getElementById('finSort').addEventListener('change', renderFinance);
-document.querySelectorAll('.ptab').forEach(btn => {
+document.getElementById('selectRound').addEventListener('change', applyFilters);
+document.getElementById('selectDecision').addEventListener('change', applyFilters);
+document.getElementById('selectType').addEventListener('change', applyFilters);
+document.getElementById('sortRegistry').addEventListener('change', renderRegistry);
+document.getElementById('sortFinance').addEventListener('change', renderFinance);
+document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     let page = btn.dataset.page;
-    document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.getElementById(`page-${page}`).classList.add('active');
