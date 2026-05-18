@@ -739,28 +739,73 @@ function topModal(label,key){
 }
 
 /* DATA */
+function fetchSheet(sh){
+  return new Promise(function(resolve){
+    var url=PUB+'&gid='+sh.gid+'&cachebust='+Date.now();
+    var timer=setTimeout(function(){resolve([]);},8000); // таймаут 8 сек
+    Papa.parse(url,{
+      download:true,header:false,skipEmptyLines:true,
+      complete:function(r){
+        clearTimeout(timer);
+        var rows=[];
+        if(r.data&&r.data.length>1){
+          r.data.slice(1).forEach(function(row){
+            if(row[0]&&String(row[0]).match(/^\d+$/)){row._sheet=sh.name;rows.push(row);}
+          });
+        }
+        resolve(rows);
+      },
+      error:function(){clearTimeout(timer);resolve([]);}
+    });
+  });
+}
+
 function reloadAll(){
   clearInterval(autoT);clearInterval(cdT);secs=7200;
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-  document.getElementById('loading').style.display='flex';
+  var ld=document.getElementById('loading');ld.style.display='flex';
   allData=[];loaded=0;mapInited=false;selR=null;fState={round:'',dec:'',type:''};
-  if(mapObj){mapObj.remove();mapObj=null;}
+  if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){if(charts[k]){charts[k].destroy();charts[k]=null;}});
-  var total=SHEETS.length,chain=Promise.resolve();
-  SHEETS.forEach(function(sh){chain=chain.then(function(){return new Promise(function(res){
-    Papa.parse(PUB+'&gid='+sh.gid+'&cachebust='+Date.now(),{download:true,header:false,skipEmptyLines:true,
-      complete:function(r){if(r.data&&r.data.length>1)r.data.slice(1).forEach(function(row){if(row[0]&&String(row[0]).match(/^\d+$/)){row._sheet=sh.name;allData.push(row);}});
-      loaded++;document.getElementById('ldtxt').textContent='Загружено: '+loaded+'/'+total+' · '+allData.length+' строк';
-      document.getElementById('pgfill').style.width=Math.round(loaded/total*100)+'%';setTimeout(res,140);},
-      error:function(){loaded++;setTimeout(res,140);}});});});});
-  chain.then(function(){
-    if(!allData.length){document.getElementById('ldtxt').textContent='Нет данных.';return;}
-    filteredData=allData.slice();buildFilterMenus();renderAll();
-    document.getElementById('loading').style.display='none';
+
+  var total=SHEETS.length;
+  document.getElementById('ldtxt').textContent='Загрузка данных...';
+  document.getElementById('pgfill').style.width='0%';
+
+  // Параллельная загрузка батчами по 8 листов
+  var BATCH=8;
+  var batches=[];
+  for(var i=0;i<SHEETS.length;i+=BATCH)batches.push(SHEETS.slice(i,i+BATCH));
+
+  var batchIdx=0;
+  function nextBatch(){
+    if(batchIdx>=batches.length){finish();return;}
+    var b=batches[batchIdx++];
+    Promise.all(b.map(fetchSheet)).then(function(results){
+      results.forEach(function(rows){rows.forEach(function(r){allData.push(r);});});
+      loaded+=b.length;
+      document.getElementById('ldtxt').textContent='Загружено: '+loaded+'/'+total+' · '+allData.length+' строк';
+      document.getElementById('pgfill').style.width=Math.round(loaded/total*100)+'%';
+      nextBatch();
+    });
+  }
+
+  function finish(){
+    if(!allData.length){
+      document.getElementById('ldtxt').innerHTML=
+        'Данные не загрузились.<br><span style="font-size:11px;color:var(--muted)">Возможная причина: блокировка CORS в браузере или нет доступа к Google Sheets.<br>Откройте этот файл локально или на сервере с разрешёнными внешними запросами.</span>';
+      document.getElementById('pgfill').style.background='#b05a4f';
+      return;
+    }
+    filteredData=allData.slice();
+    buildFilterMenus();renderAll();
+    ld.style.display='none';
     document.getElementById('page-overview').classList.add('active');
     document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('ru')+' · '+allData.length+' строк';
     startAuto();
-  });
+  }
+
+  nextBatch();
 }
 function updateMskTime(){
   var now=new Date();
