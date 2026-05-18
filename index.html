@@ -620,7 +620,7 @@ function switchPage(name,btn){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   btn.classList.add('active');
   document.getElementById('page-'+name).classList.add('active');
-  if(name==='mappage')setTimeout(renderMapPage,60);
+  if(name==='mappage')setTimeout(function(){renderMapPage();},60);
   if(name==='finance')renderFinance();
   if(name==='gos')setTimeout(renderGos,60);
   if(name==='overview')setTimeout(function(){renderCharts(filteredData);},60);
@@ -1135,7 +1135,7 @@ function renderAll(){
   if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
   if(document.getElementById('page-gos').classList.contains('active'))renderGos();
   if(document.getElementById('page-mappage').classList.contains('active')&&ymap){
-    mapMarkersBuilt=false;setTimeout(buildMapMarkers,30);
+    setTimeout(drawMapMarkers,30);
   }
 }
 
