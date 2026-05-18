@@ -238,6 +238,101 @@ tr:hover td{background:var(--row-bg)}
 #geost{font-size:10px;color:var(--muted);padding:8px 18px;background:var(--row-bg);border-top:1px solid var(--line-soft);font-weight:600;text-align:center}
 .ymaps-2-1-79-balloon,.ymaps-2-1-79-balloon__content{border-radius:14px!important;font-family:'Inter',sans-serif!important}
 html[data-theme="dark"] #map{filter:none}
+/* ═══════════════════════════════════════════
+   МОБИЛЬНАЯ ВЕРСИЯ  (≤ 768px)
+   ═══════════════════════════════════════════ */
+@media(max-width:768px){
+  body{overflow-y:auto;height:auto}
+
+  /* HEADER */
+  .hdr{flex-wrap:wrap;min-height:auto;padding:10px 14px;gap:8px;position:sticky;top:0;z-index:50}
+  .hdr-titles{flex:1;min-width:0}
+  .hdr-t1{font-size:12px;white-space:normal;line-height:1.3}
+  .hdr-t2{display:none}
+  .hdr-prog{display:none}
+  .page-tabs{order:10;width:100%;overflow-x:auto;padding:3px;border-radius:10px}
+  .page-tabs::-webkit-scrollbar{display:none}
+  .ptab{padding:7px 12px;font-size:11px;white-space:nowrap;flex-shrink:0}
+  .clock-box{display:none}
+  .theme-btn{width:46px;height:28px;flex-shrink:0}
+  .theme-knob{width:20px;height:20px;font-size:10px}
+  html[data-theme="dark"] .theme-knob{transform:translateX(22px)}
+  .btn-upd{padding:7px 12px;font-size:11px;flex-shrink:0}
+
+  /* FILTER BAR */
+  .fbar{padding:10px 14px;gap:8px}
+  .filt-trigger{padding:7px 12px;font-size:11px;min-width:auto}
+  .filt-menu{min-width:180px}
+  .btn-rst{padding:7px 12px;font-size:11px}
+
+  /* CONTENT */
+  .content{padding:14px;gap:16px}
+
+  /* KPI */
+  .kpi-hero{grid-template-columns:repeat(2,1fr);gap:10px}
+  .kh-val{font-size:28px}
+  .kpi-h{padding:18px 14px}
+
+  /* DECISIONS */
+  .dec-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .dc-val{font-size:26px}
+  .dec-card{padding:18px 14px}
+
+  /* TOP SECTIONS */
+  .top-section{grid-template-columns:1fr;gap:12px}
+
+  /* CHARTS */
+  .charts-row{grid-template-columns:1fr;gap:14px}
+  .cwrap{height:240px}
+  .chart-card,.timeline-card{padding:18px 16px}
+
+  /* TIMELINE */
+  .tl-inner{height:280px !important}
+
+  /* REGISTRY */
+  .registry-card .reg-header{flex-wrap:wrap;gap:8px}
+  .twrap{max-height:360px}
+  table{font-size:10px}
+  th,td{padding:7px 8px}
+
+  /* FINANCE */
+  .fin-kpi-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .fk-val{font-size:20px}
+
+  /* MAP PAGE */
+  .map-content{padding:12px 14px;gap:12px}
+  .map-stats{grid-template-columns:repeat(3,1fr);gap:8px}
+  .mstat{padding:10px 12px;gap:8px}
+  .mstat-val{font-size:18px}
+  .mstat-lbl{font-size:8px}
+  #map{min-height:340px;height:52vmax}
+  .map-legend{flex-wrap:wrap;gap:10px;padding:8px 12px}
+  #map-rows{padding:10px 12px}
+  #map-legend-rounds{max-height:60px;padding:8px 12px}
+
+  /* ГОСПРОГРАММА */
+  .gos-kpi-row,.fin-kpi-row{grid-template-columns:repeat(2,1fr)}
+
+  /* МОДАЛ */
+  .modal{width:96vw;max-height:88vh;border-radius:16px}
+  .modal-header{padding:14px 16px}
+  .modal-body{padding:12px}
+  .mrow{grid-template-columns:18px 1fr auto auto;gap:8px;padding:9px 10px}
+
+  /* КНОПКИ ЭКСПОРТ/ОБНОВИТЬ */
+  .btn-upd+.btn-upd{margin-left:0}
+}
+
+/* Очень маленький экран ≤ 400px */
+@media(max-width:400px){
+  .kpi-hero{grid-template-columns:1fr 1fr}
+  .kh-val{font-size:24px}
+  .dec-row{grid-template-columns:1fr 1fr}
+  .map-stats{grid-template-columns:repeat(2,1fr)}
+  .filt-trigger .filt-lbl{display:none}
+  .filt-trigger{padding:7px 10px}
+  .hdr-t1{font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -1297,6 +1392,21 @@ function renderFinRegistry(){
       var diffStyle=cp>0?(cp>=ev?'color:#3a7d5c':'color:#b05a4f'):'';
       return'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="font-weight:600;white-space:nowrap;color:var(--ink)">'+(r._sheet||'—')+'</td><td style="max-width:160px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td><td style="text-align:center">'+(r[C.apt]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+n(r[C.area]).toFixed(2)+'</td><td style="text-align:center">'+(r[C.citizens]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+(ev>0?new Intl.NumberFormat('ru-RU').format(ev)+' ₽':'—')+'</td><td style="text-align:center">'+(r[C.dkp]||'—')+'</td><td style="text-align:right;font-weight:700;'+diffStyle+'">'+(cp>0?new Intl.NumberFormat('ru-RU').format(cp)+' ₽':'—')+'</td><td style="text-align:center;'+paidStyle+'">'+(paidVal||'—')+'</td><td style="white-space:nowrap">'+(r[18]||'—')+'</td><td style="white-space:nowrap">'+(r[19]||'—')+'</td></tr>';
     }).join('')+'</tbody>';
+}
+
+// ── Инициализация карты на верхнем уровне (как в рабочем коде) ──────────────
+if(typeof ymaps!=='undefined'){
+  ymaps.ready(function(){
+    if(mapInited||!document.getElementById('map'))return;
+    mapInited=true;
+    try{
+      ymap=new ymaps.Map('map',{
+        center:[55.80,38.20],zoom:8,
+        controls:['zoomControl','typeSelector','fullscreenControl']
+      },{suppressMapOpenBlock:true});
+      document.getElementById('geost').textContent='Карта готова · откройте вкладку Карта';
+    }catch(e){mapInited=false;}
+  });
 }
 
 window.addEventListener('load',function(){reloadAll();});
