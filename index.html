@@ -192,7 +192,7 @@ html[data-theme="dark"] .btn-upd{background:linear-gradient(145deg,#d4b87a,#b899
 .tl-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
 .tl-scroll::-webkit-scrollbar{height:7px}
 .tl-scroll::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
-.tl-inner{height:300px;min-width:100%}
+.tl-inner{height:400px;min-width:100%}
 
 /* REGISTRY */
 .registry-card{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
@@ -415,15 +415,8 @@ html[data-theme="dark"] #map{filter:none}
   <div class="fin-kpi-row" id="gos-kpi-row"></div>
   <div class="registry-card">
     <div class="reg-header">
-      <div class="reg-title">Госпрограмма · детализация</div>
+      <div class="reg-title">Госпрограмма · по округам</div>
       <div class="reg-cnt" id="gos-reg-cnt"></div>
-      <select class="reg-sort" id="gos-sort" onchange="renderGos()">
-        <option value="round">По округу</option>
-        <option value="price_desc">По стоимости оценки ↓</option>
-        <option value="contract_desc">По цене договора ↓</option>
-        <option value="subprog">По подпрограмме</option>
-        <option value="paid">Оплата Мин-ва</option>
-      </select>
     </div>
     <div class="twrap"><table id="tbl-gos"></table></div>
   </div>
@@ -633,51 +626,76 @@ function switchPage(name,btn){
   if(name==='overview')setTimeout(function(){renderCharts(filteredData);},60);
 }
 
+// Необходимое финансирование: площадь (мин. 28 м²) × 181 759 ₽
+function needFin(a){return (a<28?28:a)*181759;}
+
+function gosToggle(gi){
+  var hdr=document.getElementById('gos-grp-'+gi);
+  if(!hdr)return;
+  var open=hdr.getAttribute('data-open')==='1';
+  document.querySelectorAll('[data-grp="'+gi+'"]').forEach(function(r){r.style.display=open?'none':'';});
+  hdr.setAttribute('data-open',open?'0':'1');
+  var car=document.getElementById('gos-car-'+gi);
+  if(car)car.textContent=open?'▸':'▾';
+}
+
 function renderGos(){
-  var d=filteredData.slice();
-  var sort=document.getElementById('gos-sort')?document.getElementById('gos-sort').value:'round';
-  if(sort==='round')d.sort(function(a,b){return(a._sheet||'').localeCompare(b._sheet||'','ru');});
-  else if(sort==='price_desc')d.sort(function(a,b){return n(b[C.price])-n(a[C.price]);});
-  else if(sort==='contract_desc')d.sort(function(a,b){return n(b[C.contractPrice])-n(a[C.contractPrice]);});
-  else if(sort==='subprog')d.sort(function(a,b){return String(a[C.subprog]||'').localeCompare(String(b[C.subprog]||''),'ru');});
-  else if(sort==='paid')d=d.filter(function(r){return lo(r[C.minPay])==='да';});
+  var d=filteredData;
+  var groups={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!groups[k])groups[k]=[];groups[k].push(r);});
+  var keys=Object.keys(groups).sort(function(a,b){return a.localeCompare(b,'ru');});
 
-  var tE=0,tC=0,tL=0,finYes=0,paidCnt=0;
-  d.forEach(function(r){
-    tE+=n(r[C.price]);tC+=n(r[C.contractPrice]);tL+=n(r[C.limit]);
-    if(up(r[C.finProvided])==='ДА')finYes++;
-    if(lo(r[C.minPay])==='да')paidCnt++;
-  });
+  var tE=0,tC=0,tL=0,tNF=0,paidCnt=0,qc=0,tA=0;
+  d.forEach(function(r){var a=n(r[C.area]);tA+=a;tNF+=needFin(a);tE+=n(r[C.price]);tC+=n(r[C.contractPrice]);tL+=n(r[C.limit]);if(lo(r[C.minPay])==='да')paidCnt++;qc++;});
+
   document.getElementById('gos-kpi-row').innerHTML=
-    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Цена договоров: '+fmtMln(tC)+' ₽</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Лимиты по Госпрограмме</div><div class="fk-val">'+fmtMln(tL)+' млн ₽</div><div class="fk-sub">'+(tE>0?Math.round(tL/tE*100):0)+'% от стоимости оценки</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Финансирование обеспечено (ГП)</div><div class="fk-val" style="color:#3a7d5c">'+finYes+'</div><div class="fk-sub">'+(d.length>0?Math.round(finYes/d.length*100):0)+'% записей · ДА</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+paidCnt+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех</div></div>';
+    '<div class="fin-kpi"><div class="fk-lbl">Квартир · площадь</div><div class="fk-val">'+qc.toLocaleString('ru')+'</div><div class="fk-sub">'+tA.toFixed(0)+' м² · '+keys.length+' округов</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Необходимое финанс. на сертификаты</div><div class="fk-val" style="color:var(--gold)">'+fmtMln(tNF)+' ₽</div><div class="fk-sub">181 759 ₽/м² · мин. 28 м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке · договоры</div><div class="fk-val">'+fmtMln(tE)+' ₽</div><div class="fk-sub">Договоры: '+fmtMln(tC)+' ₽</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Лимиты по Госпрограмме</div><div class="fk-val">'+fmtMln(tL)+' ₽</div><div class="fk-sub">Оплата Мин-ва: '+paidCnt+'</div></div>';
 
-  document.getElementById('gos-reg-cnt').textContent=d.length.toLocaleString('ru')+' записей';
-  function yn(v){var s=up(String(v||'').trim());if(s==='ДА')return'<span class="b bp">ДА</span>';if(s==='НЕТ')return'<span class="b bn">НЕТ</span>';return v?'<span class="b bnone">'+v+'</span>':'—';}
-  document.getElementById('tbl-gos').innerHTML=
-    '<thead><tr><th>№</th><th>Г.О/М.О</th><th>№ Подпрограммы</th>'+
-    '<th>Финанс. на сертификаты (ГП)</th><th>Адрес</th><th>Кв.</th>'+
+  document.getElementById('gos-reg-cnt').textContent=keys.length+' округов · '+qc+' квартир · нажмите на округ';
+
+  var rub=function(v){return v>0?new Intl.NumberFormat('ru-RU').format(Math.round(v))+' ₽':'—';};
+  var html='<thead><tr><th>№</th><th>Округ / Адрес</th><th>Кв.</th><th>Площадь м²</th>'+
+    '<th>Необходимое финанс. на сертификаты ₽</th><th>№ Подпрограммы</th>'+
     '<th>Стоимость по оценке ₽</th><th>Цена договора ДКП/ДДУ ₽</th>'+
-    '<th>Оплата Министерства</th><th>Лимиты по Госпрограмме ₽</th></tr></thead><tbody>'+
-    d.map(function(r,i){
-      var ev=n(r[C.price]),cp=n(r[C.contractPrice]),lim=n(r[C.limit]);
+    '<th>Оплата Министерства</th><th>Лимиты по Госпрограмме ₽</th></tr></thead><tbody>';
+
+  keys.forEach(function(k,gi){
+    var rows=groups[k];
+    var gA=0,gNF=0,gE=0,gC=0,gL=0;
+    rows.forEach(function(r){var a=n(r[C.area]);gA+=a;gNF+=needFin(a);gE+=n(r[C.price]);gC+=n(r[C.contractPrice]);gL+=n(r[C.limit]);});
+    html+='<tr id="gos-grp-'+gi+'" data-open="0" onclick="gosToggle('+gi+')" style="cursor:pointer;background:var(--th-bg)">'+
+      '<td style="font-weight:800;color:var(--gold)"><span id="gos-car-'+gi+'">▸</span></td>'+
+      '<td style="font-weight:800;color:var(--ink)">'+k+' <span style="color:var(--muted);font-weight:600">· '+rows.length+' кв.</span></td>'+
+      '<td style="text-align:center;font-weight:700">'+rows.length+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--ink)">'+gA.toFixed(1)+'</td>'+
+      '<td style="text-align:right;font-weight:800;color:var(--gold)">'+rub(gNF)+'</td>'+
+      '<td></td>'+
+      '<td style="text-align:right;font-weight:700">'+rub(gE)+'</td>'+
+      '<td style="text-align:right;font-weight:700">'+rub(gC)+'</td>'+
+      '<td></td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--gold)">'+rub(gL)+'</td></tr>';
+    rows.forEach(function(r,i){
+      var a=n(r[C.area]);
       var paid=String(r[C.minPay]||'').trim();
       var paidStyle=lo(paid)==='да'?'color:#3a7d5c;font-weight:700':'color:#aaa';
-      return'<tr>'+
-        '<td style="color:var(--muted);font-weight:700">'+(i+1)+'</td>'+
-        '<td style="font-weight:600;color:var(--ink)">'+(r[C.mo]||r._sheet||'—')+'</td>'+
-        '<td style="text-align:center;font-weight:600">'+(r[C.subprog]||'—')+'</td>'+
-        '<td style="text-align:center">'+yn(r[C.finProvided])+'</td>'+
-        '<td style="max-width:170px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td>'+
+      html+='<tr data-grp="'+gi+'" style="display:none">'+
+        '<td style="color:var(--muted)">'+(i+1)+'</td>'+
+        '<td style="padding-left:28px;max-width:210px;white-space:normal;color:var(--ink-soft);font-weight:600">'+(r[C.addr]||'—')+'</td>'+
         '<td style="text-align:center">'+(r[C.apt]||'—')+'</td>'+
-        '<td style="text-align:right;font-weight:700;color:var(--ink)">'+(ev>0?new Intl.NumberFormat('ru-RU').format(ev)+' ₽':'—')+'</td>'+
-        '<td style="text-align:right;font-weight:700">'+(cp>0?new Intl.NumberFormat('ru-RU').format(cp)+' ₽':'—')+'</td>'+
+        '<td style="text-align:right;font-weight:600;color:var(--ink)">'+a.toFixed(2)+(a<28?' <span style="color:var(--gold);font-size:9px" title="учтено как 28 м²">→28</span>':'')+'</td>'+
+        '<td style="text-align:right;font-weight:700;color:var(--gold)">'+rub(needFin(a))+'</td>'+
+        '<td style="text-align:center">'+(r[C.subprog]||'—')+'</td>'+
+        '<td style="text-align:right">'+rub(n(r[C.price]))+'</td>'+
+        '<td style="text-align:right">'+rub(n(r[C.contractPrice]))+'</td>'+
         '<td style="text-align:center;'+paidStyle+'">'+(paid||'—')+'</td>'+
-        '<td style="text-align:right;font-weight:700;color:var(--gold)">'+(lim>0?new Intl.NumberFormat('ru-RU').format(lim)+' ₽':'—')+'</td>'+
-        '</tr>';
-    }).join('')+'</tbody>';
+        '<td style="text-align:right;color:var(--gold)">'+rub(n(r[C.limit]))+'</td></tr>';
+    });
+  });
+  html+='</tbody>';
+  document.getElementById('tbl-gos').innerHTML=html;
 }
 
 function exportExcel(){
@@ -1115,6 +1133,10 @@ function renderAll(){
   setTimeout(function(){renderCharts(d);},50);
   renderRegistry();
   if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
+  if(document.getElementById('page-gos').classList.contains('active'))renderGos();
+  if(document.getElementById('page-mappage').classList.contains('active')&&ymap){
+    mapMarkersBuilt=false;setTimeout(buildMapMarkers,30);
+  }
 }
 
 function themeTick(){return document.documentElement.getAttribute('data-theme')==='dark'?'#a8b0c2':'#9097a8';}
@@ -1136,6 +1158,7 @@ function renderCharts(d){
   if(c1){if(charts.dec){charts.dec.destroy();charts.dec=null;}
     charts.dec=new Chart(c1,{type:'bar',data:{labels:rl,datasets:ds},
       options:{responsive:true,maintainAspectRatio:false,
+        onClick:function(evt,els){if(els&&els.length){var lbl=charts.dec.data.labels[els[0].index];if(lbl)selRound(lbl);}},
         plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:12}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
         scales:{x:{stacked:true,ticks:{color:tick,font:{size:9,family:F},maxRotation:50},grid:{display:false}},y:{stacked:true,ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}}}}});}
 
@@ -1151,6 +1174,7 @@ function renderCharts(d){
       {label:'Наниматели',data:topO.map(function(e){return e[1].Наниматель;}),backgroundColor:'#5a7088',borderRadius:4,borderSkipped:false}
     ]},
       options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        onClick:function(evt,els){if(els&&els.length){var lbl=charts.own.data.labels[els[0].index];if(lbl)selRound(lbl);}},
         plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
         scales:{x:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:F,weight:'700'}},grid:{display:false}}}}});}
 
@@ -1178,7 +1202,7 @@ function renderCharts(d){
   if(inner)inner.style.width=Math.max(dk.length*step,800)+'px';
   var c3=document.getElementById('c-timeline');
   if(c3){if(charts.tl){charts.tl.destroy();charts.tl=null;}
-    charts.tl=new Chart(c3,{type:'bar',data:{labels:dl,datasets:[{label:'Заявлений',data:dv,backgroundColor:'#b08d4f',borderRadius:5,borderSkipped:false,maxBarThickness:tlMode==='day'?26:50}]},
+    charts.tl=new Chart(c3,{type:'bar',data:{labels:dl,datasets:[{label:'Заявлений',data:dv,backgroundColor:'#b08d4f',borderRadius:6,borderSkipped:false,maxBarThickness:tlMode==='day'?42:84}]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(20,22,30,.95)',titleColor:'#d4b87a',bodyColor:'#fff',padding:14,cornerRadius:10,
           callbacks:{
@@ -1234,8 +1258,7 @@ function renderFinance(){
   document.getElementById('fin-kpi-row').innerHTML=
     '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Средняя: '+fmtMln(avgE)+' ₽</div></div>'+
     '<div class="fin-kpi"><div class="fk-lbl">Цена договора ДКП/ДДУ (сумма)</div><div class="fk-val">'+fmtMln(tC)+' млн ₽</div><div class="fk-sub">Заключено: '+dkpCnt+' договоров</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+paidCnt+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех квартир</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Разница оценка vs договор</div><div class="fk-val" style="color:'+(tC>=tE?'#3a7d5c':'#b05a4f')+'">'+fmtMln(Math.abs(tC-tE))+' млн ₽</div><div class="fk-sub">'+(tC>=tE?'▲ Договор выше':'▼ Договор ниже')+'</div></div>';
+    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+paidCnt+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех квартир</div></div>';
   var bC=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8'];
   var byE=Object.entries(rm).filter(function(e){return e[1].eval>0;}).sort(function(a,b){return b[1].eval-a[1].eval;}).slice(0,10);
   var mxE=byE.length?byE[0][1].eval:1;
