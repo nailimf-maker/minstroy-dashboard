@@ -552,13 +552,7 @@ function switchPage(name,btn){
 }
 
 /* MAP */
-var HOUSES=[
-  {addr:'ул. Евстафьева, д. 11', lat:55.788404, lon:37.937939},
-  {addr:'ул. Ленина, д. 2',      lat:55.796638, lon:37.925102},
-  {addr:'ул. Саввинская, д. 2',  lat:55.729260, lon:38.029055},
-  {addr:'ул. Первомайская, д. 20',lat:55.788727, lon:37.938478},
-  {addr:'ул. Гагарина, д. 3',    lat:55.828399, lon:37.910809}
-];
+
 function aggHouse(h,balData){
   var ha=h.addr.toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
   var haKey=ha.split(' ').filter(Boolean);
@@ -806,6 +800,8 @@ function reloadAll(){
     document.getElementById('page-overview').classList.add('active');
     document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('ru')+' · '+allData.length+' строк';
     startAuto();
+    // Если карта уже открыта и инициализирована — запустить геокодирование сразу
+    if(mapInited&&ymap&&!mapMarkersBuilt){buildMapMarkers();}
   }
 
   nextBatch();
