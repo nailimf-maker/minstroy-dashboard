@@ -1299,6 +1299,21 @@ function renderFinRegistry(){
     }).join('')+'</tbody>';
 }
 
+// ── Инициализация карты на верхнем уровне (как в рабочем коде) ──────────────
+if(typeof ymaps!=='undefined'){
+  ymaps.ready(function(){
+    if(mapInited||!document.getElementById('map'))return;
+    mapInited=true;
+    try{
+      ymap=new ymaps.Map('map',{
+        center:[55.80,38.20],zoom:8,
+        controls:['zoomControl','typeSelector','fullscreenControl']
+      },{suppressMapOpenBlock:true});
+      document.getElementById('geost').textContent='Карта готова · откройте вкладку Карта';
+    }catch(e){mapInited=false;}
+  });
+}
+
 window.addEventListener('load',function(){reloadAll();});
 </script>
 </body>
