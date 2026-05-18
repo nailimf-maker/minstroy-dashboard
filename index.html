@@ -561,7 +561,10 @@ var SHEETS=[
 var C={mo:3,np:4,addr:5,apt:6,area:7,citizens:8,owner:11,certType:12,dateApp:13,
   decision:14,signed:15,buyConsent:17,price:20,dkp:21,newDistrict:22,newAddr:23,newArea:24,
   builder:25,contractType:26,contractPrice:27,minPay:28,lat:29,lon:30,
-  subprog:31, finProvided:32, limit:33};
+  // ⬇ Столбцы Госпрограммы — при необходимости поправьте номера под вашу таблицу ⬇
+  subprog:31,        // № Подпрограммы, в рамках которого проходит расселение
+  finProvided:32,    // Обеспечено финансирование на сертификаты (ГП) ДА/НЕТ
+  limit:33};         // Лимиты по Госпрограмме
 
 function normType(r){var s=String(r||'').trim().toLowerCase();if(!s||s==='-'||s==='—')return'Не указано';if(s.indexOf('сертификат')>=0)return'Сертификат';if(s.indexOf('выкуп')>=0)return'Выкуп';if(s.indexOf('не подавал')>=0)return'Не подавалось';return'Другое';}
 function normOwner(r){var s=String(r||'').trim().toLowerCase();if(!s||s==='-'||s==='—')return'Не указано';if(s.indexOf('собственник')>=0)return'Собственник';if(s.indexOf('наниматель')>=0)return'Наниматель';return'Другое';}
@@ -578,6 +581,62 @@ var allData=[],filteredData=[],loaded=0;
 var ymap=null,mapInited=false,yReady=false;
 var geocodeCache={};
 var mapMarkersBuilt=false;
+
+// Центры городских округов МО — точные координаты
+var ROUND_CENTERS={
+  'Балашиха':     [55.7964,37.9383],
+  'Богородский':  [55.9167,38.7833],
+  'Бронницы':     [55.4258,38.2700],
+  'Волоколамский':[56.0383,35.9500],
+  'Воскресенск':  [55.3200,38.6700],
+  'Дмитровский':  [56.3500,37.5200],
+  'Домодедово':   [55.4408,37.7681],
+  'Дубна':        [56.7333,37.1667],
+  'Егорьевск':    [55.3833,39.0333],
+  'Жуковский':    [55.5958,38.1167],
+  'Зарайск':      [54.7583,38.8750],
+  'Истра':        [55.9167,36.8667],
+  'Кашира':       [54.8417,38.1583],
+  'Клин':         [56.3333,36.7333],
+  'Коломна':      [55.0833,38.7833],
+  'Королев':      [55.9167,37.8167],
+  'Котельники':   [55.6583,37.8667],
+  'Красногорск':  [55.8219,37.3361],
+  'Лобня':        [56.0167,37.4667],
+  'Лосино-Петровский':[55.8667,38.2000],
+  'Луховицы':     [54.9667,39.0333],
+  'Люберцы':      [55.6781,37.8939],
+  'Можайский':    [55.5083,36.0167],
+  'Мытищи':       [55.9128,37.7297],
+  'Наро-Фоминский':[55.3883,36.7297],
+  'Одинцовский':  [55.6761,37.2797],
+  'Орехово-Зуево':[55.8000,38.9833],
+  'Павлово-Посадский':[55.7833,38.6500],
+  'Подольск':     [55.4311,37.5486],
+  'Пушкинский':   [56.0167,37.8500],
+  'Раменский':    [55.5667,38.2333],
+  'Рузский':      [55.7000,36.1833],
+  'Сергиево-Посадский':[56.3000,38.1333],
+  'Серебряные Пруды':[54.4500,38.7167],
+  'Серпухов':     [54.9167,37.4167],
+  'Солнечногорск':[56.1833,36.9833],
+  'Ступино':      [54.9000,38.0667],
+  'Талдомский':   [56.7333,37.5333],
+  'Химки':        [55.8883,37.4297],
+  'Чехов':        [55.1500,37.4667],
+  'Шатура':       [55.5667,39.5333],
+  'Шаховская':    [56.0333,35.5167],
+  'Щелково':      [55.9167,38.0167],
+  'Электросталь': [55.7833,38.4500]
+};
+var charts={dec:null,own:null,tl:null,fin:null};
+var selR=null;
+var fState={round:[],dec:[],type:[]};
+var tlMode='day';
+// ⬇⬇⬇ ВСТАВЬТЕ СЮДА ССЫЛКУ НА GeoJSON С ГРАНИЦАМИ ГОРОДСКИХ ОКРУГОВ МО ⬇⬇⬇
+// Файл должен содержать поля свойств с названием округа (name / NAME / NL_NAME_2 и т.п.)
+var BORDERS_URL='';
+// ⬆⬆⬆ Пока пусто — границы не рисуются, остальная карта Яндекс работает ⬆⬆⬆
 var autoT,cdT,secs=7200;
 
 var decCfg=[
@@ -662,173 +721,245 @@ function switchPage(name,btn){
   if(name==='overview')setTimeout(function(){renderCharts(filteredData);},60);
 }
 
+// Необходимое финансирование: площадь (мин. 28 м²) × 181 759 ₽
 function needFin(a){return (a<28?28:a)*181759;}
 
-/* НОВАЯ ФУНКЦИЯ КАРТЫ — ГЕОКОДИРОВАНИЕ АДРЕСОВ */
-async function renderMapPage() {
-  if (!ymap || !yReady) {
-    document.getElementById('geost').textContent = 'Карта ещё не готова';
-    return;
-  }
+function gosToggle(gi){
+  var hdr=document.getElementById('gos-grp-'+gi);
+  if(!hdr)return;
+  var open=hdr.getAttribute('data-open')==='1';
+  document.querySelectorAll('[data-grp="'+gi+'"]').forEach(function(r){r.style.display=open?'none':'';});
+  hdr.setAttribute('data-open',open?'0':'1');
+  var car=document.getElementById('gos-car-'+gi);
+  if(car)car.textContent=open?'▸':'▾';
+}
 
-  const d = filteredData.length ? filteredData : allData;
-  if (!d.length) {
-    document.getElementById('geost').textContent = 'Нет данных для отображения';
-    return;
-  }
+function renderGos(){
+  var d=filteredData;
+  var groups={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!groups[k])groups[k]=[];groups[k].push(r);});
+  var keys=Object.keys(groups).sort(function(a,b){return a.localeCompare(b,'ru');});
 
-  ymap.geoObjects.removeAll();
+  var tE=0,tC=0,tL=0,tNF=0,paidCnt=0,qc=0,tA=0;
+  d.forEach(function(r){var a=n(r[C.area]);tA+=a;tNF+=needFin(a);tE+=n(r[C.price]);tC+=n(r[C.contractPrice]);tL+=n(r[C.limit]);if(lo(r[C.minPay])==='да')paidCnt++;qc++;});
 
-  // Группируем адреса
-  const addressMap = {};
-  d.forEach(r => {
-    const addr = String(r[C.addr] || '').trim();
-    if (!addr || addr === '—' || addr === '-') return;
-    const round = r._sheet || '';
-    if (!addressMap[addr]) addressMap[addr] = { rows: [], round: round, newLat: 0, newLon: 0, newAddr: '' };
-    addressMap[addr].rows.push(r);
-    if (!addressMap[addr].newLat && r[C.lat]) {
-      const lat = parseFloat(String(r[C.lat]).replace(',', '.'));
-      const lon = parseFloat(String(r[C.lon]).replace(',', '.'));
-      if (!isNaN(lat) && !isNaN(lon) && lat > 50 && lon > 30) {
-        addressMap[addr].newLat = lat;
-        addressMap[addr].newLon = lon;
-        addressMap[addr].newAddr = String(r[C.newAddr] || '').trim();
-      }
-    }
-  });
+  document.getElementById('gos-kpi-row').innerHTML=
+    '<div class="fin-kpi"><div class="fk-lbl">Квартир · площадь</div><div class="fk-val">'+qc.toLocaleString('ru')+'</div><div class="fk-sub">'+tA.toFixed(0)+' м² · '+keys.length+' округов</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Необходимое финанс. на сертификаты</div><div class="fk-val" style="color:var(--gold)">'+fmtMln(tNF)+' ₽</div><div class="fk-sub">181 759 ₽/м² · мин. 28 м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке · договоры</div><div class="fk-val">'+fmtMln(tE)+' ₽</div><div class="fk-sub">Договоры: '+fmtMln(tC)+' ₽</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Лимиты по Госпрограмме</div><div class="fk-val">'+fmtMln(tL)+' ₽</div><div class="fk-sub">Оплата Мин-ва: '+paidCnt+'</div></div>';
 
-  const uniqueAddresses = Object.keys(addressMap);
-  if (!uniqueAddresses.length) {
-    document.getElementById('geost').textContent = 'Нет адресов для геокодирования';
-    return;
-  }
+  document.getElementById('gos-reg-cnt').textContent=keys.length+' округов · '+qc+' квартир · нажмите на округ';
 
-  document.getElementById('geost').textContent = 'Геокодирование адресов...';
+  var rub=function(v){return v>0?new Intl.NumberFormat('ru-RU').format(Math.round(v))+' ₽':'—';};
+  var html='<thead><tr><th>№</th><th>Округ / Адрес</th><th>Кв.</th><th>Площадь м²</th>'+
+    '<th>Необходимое финанс. на сертификаты ₽</th><th>№ Подпрограммы</th>'+
+    '<th>Стоимость по оценке ₽</th><th>Цена договора ДКП/ДДУ ₽</th>'+
+    '<th>Оплата Министерства</th><th>Лимиты по Госпрограмме ₽</th></tr></thead><tbody>';
 
-  async function geocodeAddr(addr) {
-    if (geocodeCache[addr]) return geocodeCache[addr];
-    try {
-      const result = await ymaps.geocode(addr, { results: 1 });
-      const geo = result.geoObjects.get(0);
-      if (geo) {
-        const coords = geo.geometry.getCoordinates();
-        geocodeCache[addr] = coords;
-        return coords;
-      }
-    } catch (e) {
-      console.warn('Ошибка геокодирования:', addr, e);
-    }
-    return null;
-  }
-
-  const geocoded = {};
-  for (let i = 0; i < uniqueAddresses.length; i++) {
-    const addr = uniqueAddresses[i];
-    const coords = await geocodeAddr(addr);
-    if (coords) geocoded[addr] = coords;
-    if (i % 3 === 2) await new Promise(r => setTimeout(r, 300));
-  }
-
-  const geoCount = Object.keys(geocoded).length;
-  document.getElementById('geost').textContent = `Геокодировано: ${geoCount} из ${uniqueAddresses.length} адресов`;
-
-  let coordsArray = [];
-  const mapRowsHtml = [];
-
-  Object.entries(addressMap).forEach(([addr, info]) => {
-    const coords = geocoded[addr];
-    if (!coords) return;
-
-    const rows = info.rows;
-    const aptCnt = rows.length;
-    const citSum = rows.reduce((s, r) => s + n(r[C.citizens]), 0);
-    const areaSum = rows.reduce((s, r) => s + n(r[C.area]), 0);
-    const decision = normDecision(rows[0][C.decision]);
-    const round = info.round;
-
-    const bodyContent = `
-      <div style="font-family:Inter,sans-serif;font-size:12px;min-width:210px">
-        <b style="color:#b05a4f">🏚️ ${addr}</b><br>
-        <span style="color:#9097a8;font-size:10px">${round} · Аварийный дом</span>
-        <hr style="margin:6px 0;border:none;border-top:1px solid #eee">
-        Квартир: <b>${aptCnt}</b><br>
-        Граждан: <b>${citSum}</b><br>
-        Площадь: <b>${areaSum.toFixed(1)} м²</b><br>
-        Решение: <b style="color:${cdec(decision)}">${decision}</b>
-      </div>`;
-
-    const pmFrom = new ymaps.Placemark(coords, {
-      balloonContent: bodyContent,
-      hintContent: `${addr} · ${citSum} чел.`
-    }, {
-      preset: 'islands#redCircleDotIcon',
-      iconColor: '#b05a4f'
+  keys.forEach(function(k,gi){
+    var rows=groups[k];
+    var gA=0,gNF=0,gE=0,gC=0,gL=0;
+    rows.forEach(function(r){var a=n(r[C.area]);gA+=a;gNF+=needFin(a);gE+=n(r[C.price]);gC+=n(r[C.contractPrice]);gL+=n(r[C.limit]);});
+    html+='<tr id="gos-grp-'+gi+'" data-open="0" onclick="gosToggle('+gi+')" style="cursor:pointer;background:var(--th-bg)">'+
+      '<td style="font-weight:800;color:var(--gold)"><span id="gos-car-'+gi+'">▸</span></td>'+
+      '<td style="font-weight:800;color:var(--ink)">'+k+' <span style="color:var(--muted);font-weight:600">· '+rows.length+' кв.</span></td>'+
+      '<td style="text-align:center;font-weight:700">'+rows.length+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--ink)">'+gA.toFixed(1)+'</td>'+
+      '<td style="text-align:right;font-weight:800;color:var(--gold)">'+rub(gNF)+'</td>'+
+      '<td></td>'+
+      '<td style="text-align:right;font-weight:700">'+rub(gE)+'</td>'+
+      '<td style="text-align:right;font-weight:700">'+rub(gC)+'</td>'+
+      '<td></td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--gold)">'+rub(gL)+'</td></tr>';
+    rows.forEach(function(r,i){
+      var a=n(r[C.area]);
+      var paid=String(r[C.minPay]||'').trim();
+      var paidStyle=lo(paid)==='да'?'color:#3a7d5c;font-weight:700':'color:#aaa';
+      html+='<tr data-grp="'+gi+'" style="display:none">'+
+        '<td style="color:var(--muted)">'+(i+1)+'</td>'+
+        '<td style="padding-left:28px;max-width:210px;white-space:normal;color:var(--ink-soft);font-weight:600">'+(r[C.addr]||'—')+'</td>'+
+        '<td style="text-align:center">'+(r[C.apt]||'—')+'</td>'+
+        '<td style="text-align:right;font-weight:600;color:var(--ink)">'+a.toFixed(2)+(a<28?' <span style="color:var(--gold);font-size:9px" title="учтено как 28 м²">→28</span>':'')+'</td>'+
+        '<td style="text-align:right;font-weight:700;color:var(--gold)">'+rub(needFin(a))+'</td>'+
+        '<td style="text-align:center">'+(r[C.subprog]||'—')+'</td>'+
+        '<td style="text-align:right">'+rub(n(r[C.price]))+'</td>'+
+        '<td style="text-align:right">'+rub(n(r[C.contractPrice]))+'</td>'+
+        '<td style="text-align:center;'+paidStyle+'">'+(paid||'—')+'</td>'+
+        '<td style="text-align:right;color:var(--gold)">'+rub(n(r[C.limit]))+'</td></tr>';
     });
-    ymap.geoObjects.add(pmFrom);
-    coordsArray.push(coords);
-
-    let hasRoute = false;
-    if (info.newLat && info.newLon) {
-      hasRoute = true;
-      const newCoords = [info.newLat, info.newLon];
-      const pmTo = new ymaps.Placemark(newCoords, {
-        balloonContent: `<div style="font-family:Inter,sans-serif;font-size:12px">
-          <b style="color:#3a7d5c">🏠 Новое жильё</b><br>
-          ${info.newAddr || info.newLat.toFixed(4) + ', ' + info.newLon.toFixed(4)}<br>
-          <span style="color:#9097a8;font-size:10px">← Из: ${addr}</span></div>`,
-        hintContent: 'Новое жильё'
-      }, {
-        preset: 'islands#greenCircleIcon',
-        iconColor: '#3a7d5c'
-      });
-      ymap.geoObjects.add(pmTo);
-      coordsArray.push(newCoords);
-
-      const line = new ymaps.Polyline([coords, newCoords], {}, {
-        strokeColor: '#b08d4f',
-        strokeWidth: 3,
-        strokeStyle: 'dash',
-        strokeOpacity: 0.9
-      });
-      ymap.geoObjects.add(line);
-    }
-
-    const gmUrl = hasRoute
-      ? `https://yandex.ru/maps/?rtext=${coords[0]},${coords[1]}~${info.newLat},${info.newLon}`
-      : `https://yandex.ru/maps/?pt=${coords[1]},${coords[0]}&z=17`;
-    mapRowsHtml.push(`
-      <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid ${hasRoute ? '#3a7d5c' : '#b05a4f'}">
-        <div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0"></div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:700;color:var(--ink)">
-            ${addr} <span style="color:var(--muted);font-weight:600">· ${aptCnt} кв. · ${citSum} чел. · ${areaSum.toFixed(0)} м²</span>
-          </div>
-          ${hasRoute
-            ? `<div style="font-size:10px;color:#3a7d5c;font-weight:600">→ ${info.newAddr || 'Новый адрес задан'}</div>`
-            : `<div style="font-size:10px;color:var(--muted)">Координаты нового жилья не заданы</div>`
-          }
-        </div>
-        <a href="${gmUrl}" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 14px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
-          ${hasRoute ? '🗺️ Маршрут' : '📍 Карта'}
-        </a>
-      </div>`);
   });
+  html+='</tbody>';
+  document.getElementById('tbl-gos').innerHTML=html;
+}
 
-  const mr = document.getElementById('map-rows');
-  if (mr) mr.innerHTML = mapRowsHtml.join('');
+function exportExcel(){
+  if(typeof XLSX==='undefined'){alert('Библиотека Excel ещё загружается, повторите через секунду');return;}
+  if(!allData.length){alert('Данные не загружены');return;}
+  var wb=XLSX.utils.book_new();
 
-  if (coordsArray.length > 0) {
-    try {
-      ymap.setBounds(ymaps.util.bounds.fromPoints(coordsArray), {
-        checkZoomRange: true,
-        zoomMargin: 50
-      });
-    } catch (e) {}
+  // Лист 1: ПОЛНЫЙ реестр — ВСЕ округа, ВСЕ строки (без фильтра)
+  var reg=[['Округ','Г.О/М.О','Нас. пункт','Адрес','Кв.','Площадь м²','Граждан','ФИО заявителя','Телефон','Тип права','Тип','Дата заявл.','Решение','Подписано','Стоимость по оценке ₽','ДКП/ДДУ','Цена договора ₽','Оплата Мин-ва']];
+  allData.forEach(function(r){
+    reg.push([r._sheet||'',r[C.mo]||'',r[C.np]||'',r[C.addr]||'',r[C.apt]||'',n(r[C.area]),n(r[C.citizens]),r[9]||'',r[10]||'',normOwner(r[C.owner]),normType(r[C.certType]),r[C.dateApp]||'',normDecision(r[C.decision]),r[C.signed]||'',n(r[C.price]),r[C.dkp]||'',n(r[C.contractPrice]),r[C.minPay]||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(reg),'Реестр (все)');
+
+  // Лист 2: Сводка по ВСЕМ округам
+  var rm=roundMap(allData);
+  var sum=[['Округ','Квартир','Площадь всего м²','Граждан','Собственники','Площадь собств. м²','Наниматели','Площадь наним. м²','Сертификаты','Площадь серт. м²','Выкуп','Площадь выкуп м²','Положительных','Площадь полож. м²']];
+  Object.entries(rm).sort(function(a,b){return b[1].t-a[1].t;}).forEach(function(e){var v=e[1];
+    sum.push([e[0],v.t,+v.aT.toFixed(1),v.cit,v.sob,+v.aSob.toFixed(1),v.nan,+v.aNan.toFixed(1),v.cert,+v.aCert.toFixed(1),v.vyk,+v.aVyk.toFixed(1),v.pos,+v.aPos.toFixed(1)]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'Сводка по округам');
+
+  // Лист 3: Финансы по ВСЕМ округам
+  var fin=[['Округ','Стоимость по оценке ₽','Цена договоров ДКП/ДДУ ₽','Разница ₽','Квартир']];
+  var fm={};
+  allData.forEach(function(r){var k=r._sheet||'—';if(!fm[k])fm[k]={ev:0,cp:0,c:0};fm[k].ev+=n(r[C.price]);fm[k].cp+=n(r[C.contractPrice]);fm[k].c++;});
+  Object.entries(fm).sort(function(a,b){return b[1].ev-a[1].ev;}).forEach(function(e){var v=e[1];
+    fin.push([e[0],Math.round(v.ev),Math.round(v.cp),Math.round(v.cp-v.ev),v.c]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fin),'Финансы');
+
+  // Лист 4: Госпрограмма
+  var gp=[['Округ (Г.О/М.О)','№ Подпрограммы','Финансирование на сертификаты (ГП) ДА/НЕТ','Адрес','Кв.','Стоимость по оценке ₽','Цена договора ДКП/ДДУ ₽','Оплата Министерства да/нет','Лимиты по Госпрограмме ₽']];
+  allData.forEach(function(r){
+    gp.push([r._sheet||'',r[C.subprog]||'',r[C.finProvided]||'',r[C.addr]||'',r[C.apt]||'',n(r[C.price]),n(r[C.contractPrice]),r[C.minPay]||'',r[C.limit]||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(gp),'Госпрограмма');
+
+  // Лист 5: Решения (итог по всем)
+  var dc={};allData.forEach(function(r){var nd=normDecision(r[C.decision]);dc[nd]=(dc[nd]||0)+1;});
+  var dec=[['Решение','Количество','% от всех']];
+  Object.entries(dc).forEach(function(e){dec.push([e[0],e[1],Math.round(e[1]/allData.length*100)+'%']);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dec),'Решения');
+
+  // Лист 6: Текущая выборка (по активным фильтрам)
+  if(filteredData.length<allData.length){
+    var cur=[['Округ','Адрес','Кв.','Площадь м²','Граждан','Тип','Решение']];
+    filteredData.forEach(function(r){cur.push([r._sheet||'',r[C.addr]||'',r[C.apt]||'',n(r[C.area]),n(r[C.citizens]),normType(r[C.certType]),normDecision(r[C.decision])]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(cur),'Текущий фильтр');
   }
 
-  document.getElementById('geost').textContent =
-    `Отображено: ${coordsArray.length} точек · ${uniqueAddresses.length} адресов`;
+  var fname='Минстрой_МО_дашборд_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+}
+
+/* MAP */
+
+function aggHouse(h,balData){
+  var ha=h.addr.toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
+  var haKey=ha.split(' ').filter(Boolean);
+  var matches=balData.filter(function(r){
+    var ra=String(r[C.addr]||'').toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
+    return haKey.every(function(part){return ra.indexOf(part)>=0;});
+  });
+  var citSum=0,areaSum=0,apts={},toLat=0,toLon=0,newAddrTxt='',decision='';
+  matches.forEach(function(r){
+    citSum+=n(r[C.citizens]);areaSum+=n(r[C.area]);
+    if(r[C.apt])apts[String(r[C.apt]).trim()]=1;
+    var tla=n(String(r[C.lat]||'').replace(',','.')),tlo=n(String(r[C.lon]||'').replace(',','.'));
+    if(tla>50&&tlo>30&&!toLat){toLat=tla;toLon=tlo;}
+    if(!newAddrTxt){var na=String(r[C.newAddr]||'').trim();if(na&&na!=='—'&&na!=='-')newAddrTxt=na;}
+    if(!decision&&r[C.decision])decision=normDecision(r[C.decision]);
+  });
+  return{aptCnt:matches.length,aptNum:Object.keys(apts).length||matches.length,citSum:citSum,areaSum:areaSum,toLat:toLat,toLon:toLon,newAddrTxt:newAddrTxt,decision:decision,hasRoute:toLat>50&&toLon>30};
+}
+
+function renderMapPage(){
+  if(typeof ymaps==='undefined'){
+    document.getElementById('geost').textContent='Яндекс.Карты не загрузились — проверьте API-ключ и ограничения по домену в кабинете Яндекса';
+    return;
+  }
+  ymaps.ready(function(){
+    yReady=true;
+    if(!mapInited){
+      mapInited=true;
+      ymap=new ymaps.Map('map',{
+        center:[55.55,37.5],zoom:8,
+        controls:['zoomControl','typeSelector','fullscreenControl']
+      },{suppressMapOpenBlock:true});
+      loadBorders();
+    }
+    ymap.geoObjects.removeAll();
+    var balData=allData.filter(function(r){return r._sheet==='Балашиха';});
+    var coords=[],mapRowsHtml=[];
+    HOUSES.forEach(function(h){
+      var a=aggHouse(h,balData);
+      var bodyFrom='<div style="font-family:Inter,sans-serif;font-size:12px;min-width:210px">'+
+        '<b style="color:#b05a4f">🏚️ '+h.addr+'</b><br><span style="color:#9097a8;font-size:10px">Балашиха · Аварийный дом</span>';
+      if(a.aptCnt>0){
+        bodyFrom+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee">'+
+          'Квартир: <b>'+a.aptNum+'</b><br>'+
+          'Граждан (сумма): <b>'+a.citSum+'</b><br>'+
+          'Площадь (сумма): <b>'+a.areaSum.toFixed(1)+' м²</b>'+
+          (a.decision?'<br>Решение: <b style="color:'+cdec(a.decision)+'">'+a.decision+'</b>':'');
+      }else{bodyFrom+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee"><span style="color:#9097a8;font-size:10px">Нет данных в таблице по этому адресу</span>';}
+      bodyFrom+='</div>';
+      var pmFrom=new ymaps.Placemark([h.lat,h.lon],{
+        balloonContent:bodyFrom,hintContent:h.addr+' · '+a.citSum+' чел.'
+      },{preset:'islands#redCircleDotIcon',iconColor:'#b05a4f'});
+      ymap.geoObjects.add(pmFrom);
+      coords.push([h.lat,h.lon]);
+      if(a.hasRoute){
+        var pmTo=new ymaps.Placemark([a.toLat,a.toLon],{
+          balloonContent:'<div style="font-family:Inter,sans-serif;font-size:12px"><b style="color:#3a7d5c">🏠 Новое жильё</b><br>'+(a.newAddrTxt||a.toLat.toFixed(4)+', '+a.toLon.toFixed(4))+'<br><span style="color:#9097a8;font-size:10px">← Из: '+h.addr+'</span></div>',
+          hintContent:'Новое жильё'
+        },{preset:'islands#greenCircleIcon',iconColor:'#3a7d5c'});
+        ymap.geoObjects.add(pmTo);
+        coords.push([a.toLat,a.toLon]);
+        var line=new ymaps.Polyline([[h.lat,h.lon],[a.toLat,a.toLon]],{},{
+          strokeColor:'#b08d4f',strokeWidth:3,strokeStyle:'dash',strokeOpacity:.9
+        });
+        ymap.geoObjects.add(line);
+      }
+      var gmUrl=a.hasRoute?'https://yandex.ru/maps/?rtext='+h.lat+','+h.lon+'~'+a.toLat+','+a.toLon:'https://yandex.ru/maps/?pt='+h.lon+','+h.lat+'&z=17';
+      mapRowsHtml.push('<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid '+(a.hasRoute?'#3a7d5c':'#b05a4f')+'"><div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">'+h.addr+' <span style="color:var(--muted);font-weight:600">· '+a.aptNum+' кв. · '+a.citSum+' чел. · '+a.areaSum.toFixed(0)+' м²</span></div>'+(a.hasRoute?'<div style="font-size:10px;color:#3a7d5c;font-weight:600">→ '+(a.newAddrTxt||'Новый адрес задан')+'</div>':'<div style="font-size:10px;color:var(--muted)">Координаты нового жилья не заданы</div>')+'</div><a href="'+gmUrl+'" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 14px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">'+(a.hasRoute?'🗺️ Маршрут':'📍 Карта')+'</a></div>');
+    });
+    var mr=document.getElementById('map-rows');if(mr)mr.innerHTML=mapRowsHtml.join('');
+    if(coords.length>0){
+      try{ymap.setBounds(ymaps.util.bounds.fromPoints(coords),{checkZoomRange:true,zoomMargin:50});}catch(e){}
+    }
+    document.getElementById('geost').textContent='Балашиха: '+HOUSES.length+' домов · граждане и площадь суммируются по всем квартирам дома';
+  });
+}
+
+/* Границы городских округов — раскраска палитрой дашборда (Яндекс) */
+function loadBorders(){
+  if(!BORDERS_URL){
+    document.getElementById('geost').textContent='Карта Яндекс готова · вставьте ссылку на GeoJSON границ в переменную BORDERS_URL';
+    return;
+  }
+  fetch(BORDERS_URL).then(function(r){return r.json();}).then(function(gj){
+    var palette=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8','#9c8552','#6f8a9c'];
+    var feats=gj.features||[];
+    feats.forEach(function(f,i){
+      var c=palette[i%palette.length];
+      var p=f.properties||{};
+      var nm=p.name||p.NAME||p.NL_NAME_2||p.NAME_2||p.district||p.okrug||'Округ';
+      try{
+        var obj=ymaps.geoQuery?null:null;
+        var geoObj=new ymaps.GeoObject({
+          geometry:f.geometry.type==='Polygon'?{type:'Polygon',coordinates:flipCoords(f.geometry.coordinates,1)}:
+                   {type:'Polygon',coordinates:flipCoords([].concat.apply([],f.geometry.coordinates),1)},
+          properties:{hintContent:String(nm)}
+        },{
+          fillColor:c+'22',strokeColor:c,strokeWidth:1.5,strokeOpacity:.7,fillOpacity:.1
+        });
+        ymap.geoObjects.add(geoObj);
+      }catch(e){}
+    });
+    document.getElementById('geost').textContent='Границы округов загружены · '+feats.length+' полигонов';
+  }).catch(function(){
+    document.getElementById('geost').textContent='Не удалось загрузить границы (проверьте BORDERS_URL и CORS)';
+  });
+}
+// GeoJSON хранит [lon,lat], Яндексу нужно [lat,lon] — переворачиваем
+function flipCoords(rings){
+  return rings.map(function(ring){
+    return ring.map(function(pt){return [pt[1],pt[0]];});
+  });
 }
 
 /* MODALS */
@@ -903,10 +1034,11 @@ function topModal(label,key){
   openModal();
 }
 
+/* DATA */
 function fetchSheet(sh){
   return new Promise(function(resolve){
     var url=PUB+'&gid='+sh.gid+'&cachebust='+Date.now();
-    var timer=setTimeout(function(){resolve([]);},8000);
+    var timer=setTimeout(function(){resolve([]);},8000); // таймаут 8 сек
     Papa.parse(url,{
       download:true,header:false,skipEmptyLines:true,
       complete:function(r){
@@ -929,7 +1061,7 @@ function reloadAll(){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   var ld=document.getElementById('loading');ld.style.display='flex';
   allData=[];loaded=0;mapInited=false;mapMarkersBuilt=false;selR=null;fState={round:[],dec:[],type:[]};
-  geocodeCache={};
+  roundColorMap={};geocodeCache={};
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){if(charts[k]){charts[k].destroy();charts[k]=null;}});
 
@@ -937,6 +1069,7 @@ function reloadAll(){
   document.getElementById('ldtxt').textContent='Загрузка данных...';
   document.getElementById('pgfill').style.width='0%';
 
+  // Параллельная загрузка батчами по 8 листов
   var BATCH=8;
   var batches=[];
   for(var i=0;i<SHEETS.length;i+=BATCH)batches.push(SHEETS.slice(i,i+BATCH));
@@ -967,7 +1100,8 @@ function reloadAll(){
     document.getElementById('page-overview').classList.add('active');
     document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('ru')+' · '+allData.length+' строк';
     startAuto();
-    if(mapInited&&ymap&&!mapMarkersBuilt){renderMapPage();}
+    // Если карта уже открыта и инициализирована — запустить геокодирование сразу
+    if(mapInited&&ymap&&!mapMarkersBuilt){buildMapMarkers();}
   }
 
   nextBatch();
@@ -1008,6 +1142,7 @@ function roundMap(d){
   });
   return rm;
 }
+// какой ключ площади соответствует разделу
 function areaKey(sk){return{t:'aT',sob:'aSob',nan:'aNan',cert:'aCert',vyk:'aVyk',pos:'aPos'}[sk]||'aT';}
 function applyF(){
   selR=fState.round.length===1?fState.round[0]:null;
@@ -1094,20 +1229,187 @@ function renderAll(){
   renderRegistry();
   if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
   if(document.getElementById('page-gos').classList.contains('active'))renderGos();
-  // Вместо drawMapMarkers вызываем нашу новую функцию
-  if(document.getElementById('page-mappage').classList.contains('active') && ymap){
-    setTimeout(renderMapPage, 30);
+  if(document.getElementById('page-mappage').classList.contains('active')&&ymap){
+    setTimeout(drawMapMarkers,30);
   }
 }
 
-/* ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ (кроме renderMapPage уже заменена) */
-// ── Все функции ниже остаются теми же, что были в исходном коде, но дублировать их здесь не будем, 
-// так как лимит на длину ответа. В реальном ответе мы вставили бы их целиком, но здесь уже есть всё необходимое.
-// Убедитесь, что функции renderCharts, setTlMode, tlScroll, renderRegistry, renderFinance, renderFinRegistry,
-// renderGos, gosToggle, exportExcel и т.д. присутствуют.
+function themeTick(){return document.documentElement.getAttribute('data-theme')==='dark'?'#a8b0c2':'#9097a8';}
+function themeGrid(){return document.documentElement.getAttribute('data-theme')==='dark'?'rgba(255,255,255,.06)':'rgba(26,29,41,.05)';}
 
-// ... (здесь в финальном ответе будут все функции, как в исходном коде, без изменений)
+function renderCharts(d){
+  if(!d)return;
+  var tick=themeTick(),grid=themeGrid(),F='Inter';
 
+  /* По округам — стек по решениям (топ-12 округов) */
+  var rmap={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!rmap[k])rmap[k]={Положительное:0,'На рассмотрении':0,Отрицательное:0,Отказ:0,'Не указано':0,total:0};rmap[k][normDecision(r[C.decision])]++;rmap[k].total++;});
+  var topR=Object.entries(rmap).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,12);
+  var rl=topR.map(function(e){return e[0];});
+  var decOrder=['Положительное','На рассмотрении','Отрицательное','Отказ','Не указано'];
+  var decCols={'Положительное':'#3a7d5c','На рассмотрении':'#b08d4f','Отрицательное':'#b05a4f','Отказ':'#7a6a8f','Не указано':'#5a7088'};
+  var ds=decOrder.map(function(k){return{label:k,data:topR.map(function(e){return e[1][k];}),backgroundColor:decCols[k],borderRadius:4,borderSkipped:false};});
+  var c1=document.getElementById('c-dec');
+  if(c1){if(charts.dec){charts.dec.destroy();charts.dec=null;}
+    charts.dec=new Chart(c1,{type:'bar',data:{labels:rl,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,
+        onClick:function(evt,els){if(els&&els.length){var lbl=charts.dec.data.labels[els[0].index];if(lbl)selRound(lbl);}},
+        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:12}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
+        scales:{x:{stacked:true,ticks:{color:tick,font:{size:9,family:F},maxRotation:50},grid:{display:false}},y:{stacked:true,ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}}}}});}
+
+  /* Собственники vs Наниматели — по округам, topowner */
+  var omap={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!omap[k])omap[k]={Собственник:0,Наниматель:0,total:0};var o=normOwner(r[C.owner]);if(o==='Собственник')omap[k].Собственник++;if(o==='Наниматель')omap[k].Наниматель++;omap[k].total++;});
+  var topO=Object.entries(omap).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,12);
+  var ol=topO.map(function(e){return e[0];});
+  var c2=document.getElementById('c-own');
+  if(c2){if(charts.own){charts.own.destroy();charts.own=null;}
+    charts.own=new Chart(c2,{type:'bar',data:{labels:ol,datasets:[
+      {label:'Собственники',data:topO.map(function(e){return e[1].Собственник;}),backgroundColor:'#b08d4f',borderRadius:4,borderSkipped:false},
+      {label:'Наниматели',data:topO.map(function(e){return e[1].Наниматель;}),backgroundColor:'#5a7088',borderRadius:4,borderSkipped:false}
+    ]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        onClick:function(evt,els){if(els&&els.length){var lbl=charts.own.data.labels[els[0].index];if(lbl)selRound(lbl);}},
+        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
+        scales:{x:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:F,weight:'700'}},grid:{display:false}}}}});}
+
+  /* Таймлайн: ДНИ или МЕСЯЦЫ + округа в тултипе */
+  var bucketMap={};
+  d.forEach(function(r){
+    var raw=String(r[C.dateApp]||'').trim();if(!raw||raw==='—'||raw==='-')return;
+    var p=raw.split('.');if(p.length<3)return;
+    var dd=p[0].trim().padStart(2,'0'),mo=p[1].trim().padStart(2,'0'),yr=p[2].trim();if(yr.length===2)yr='20'+yr;
+    if(yr.length!==4)return;
+    var key=tlMode==='day'?(yr+'-'+mo+'-'+dd):(yr+'-'+mo);
+    if(!bucketMap[key])bucketMap[key]={cnt:0,rounds:{}};
+    bucketMap[key].cnt++;
+    var rn=r._sheet||'—';bucketMap[key].rounds[rn]=(bucketMap[key].rounds[rn]||0)+1;
+  });
+  var dk=Object.keys(bucketMap).sort();
+  var dv=dk.map(function(k){return bucketMap[k].cnt;});
+  var roundsByDay=dk.map(function(k){
+    return Object.entries(bucketMap[k].rounds).sort(function(a,b){return b[1]-a[1];}).slice(0,6).map(function(e){return e[0]+': '+e[1];});
+  });
+  var mns=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  var dl=dk.map(function(k){var p=k.split('-');return tlMode==='day'?(parseInt(p[2])+' '+(mns[parseInt(p[1])]||p[1])):((mns[parseInt(p[1])]||p[1])+' '+p[0]);});
+  var step=tlMode==='day'?46:90;
+  var inner=document.getElementById('tl-inner');
+  if(inner)inner.style.width=Math.max(dk.length*step,800)+'px';
+  var c3=document.getElementById('c-timeline');
+  if(c3){if(charts.tl){charts.tl.destroy();charts.tl=null;}
+    charts.tl=new Chart(c3,{type:'bar',data:{labels:dl,datasets:[{label:'Заявлений',data:dv,backgroundColor:'#b08d4f',borderRadius:6,borderSkipped:false,maxBarThickness:tlMode==='day'?42:84}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(20,22,30,.95)',titleColor:'#d4b87a',bodyColor:'#fff',padding:14,cornerRadius:10,
+          callbacks:{
+            title:function(items){return items[0].label;},
+            label:function(i){return ' Всего: '+i.parsed.y+' заявлений';},
+            afterBody:function(items){var idx=items[0].dataIndex;var rb=roundsByDay[idx];return rb&&rb.length?['','По округам:'].concat(rb.map(function(s){return '  '+s;})):[];}
+          }}},
+        scales:{x:{ticks:{color:tick,font:{size:9,family:F},maxRotation:60,minRotation:tlMode==='day'?45:0},grid:{display:false}},y:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid},beginAtZero:true}},
+        animation:{duration:700}}});}
+}
+function setTlMode(m,btn){
+  tlMode=m;
+  document.getElementById('tl-day').classList.remove('active');
+  document.getElementById('tl-mon').classList.remove('active');
+  btn.classList.add('active');
+  renderCharts(filteredData);
+}
+function tlScroll(dir){
+  var el=document.getElementById('tl-scroll');
+  if(el)el.scrollBy({left:dir*360,behavior:'smooth'});
+}
+
+function renderRegistry(){
+  var d=filteredData.slice();
+  var sort=document.getElementById('reg-sort')?document.getElementById('reg-sort').value:'decision';
+  if(sort==='decision')d.sort(function(a,b){var o={Положительное:1,'На рассмотрении':2,Отказ:3,Отрицательное:4,'Не указано':5};return(o[normDecision(a[C.decision])]||5)-(o[normDecision(b[C.decision])]||5);});
+  else if(sort==='area')d.sort(function(a,b){return n(b[C.area])-n(a[C.area]);});
+  else if(sort==='citizens')d.sort(function(a,b){return n(b[C.citizens])-n(a[C.citizens]);});
+  else if(sort==='round')d.sort(function(a,b){return(a._sheet||'').localeCompare(b._sheet||'','ru');});
+  document.getElementById('reg-title').textContent=selR?'Реестр: '+selR:'Реестр домов';
+  document.getElementById('reg-cnt').textContent=d.length.toLocaleString('ru')+' записей';
+  var sr=!selR;
+  document.getElementById('tbl-registry').innerHTML=
+    '<thead><tr><th>№</th>'+(sr?'<th>Округ</th>':'')+'<th>Г.О/М.О</th><th>Нас. пункт</th><th>Адрес</th><th>Кв.</th><th>Площадь м²</th><th>Граждан</th><th>Тип права</th><th>Тип</th><th>Дата заявл.</th><th>Решение</th><th>Подписано</th><th>Стоимость по оценке ₽</th><th>ДКП/ДДУ</th><th>Оплата Мин-ва</th></tr></thead><tbody>'+
+    d.map(function(r,i){
+      var nd=normDecision(r[C.decision]),ls='';
+      if(nd==='Положительное')ls='border-left:3px solid #3a7d5c';
+      else if(nd==='На рассмотрении')ls='border-left:3px solid #b08d4f';
+      else if(nd==='Отрицательное'||nd==='Отказ')ls='border-left:3px solid #b05a4f';
+      return'<tr style="'+ls+'"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td>'+(sr?'<td style="font-weight:600;white-space:nowrap;color:var(--ink)">'+(r._sheet||'—')+'</td>':'')+'<td>'+(r[C.mo]||'—')+'</td><td>'+(r[C.np]||'—')+'</td><td style="max-width:160px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td><td style="text-align:center">'+(r[C.apt]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+n(r[C.area]).toFixed(2)+'</td><td style="text-align:center;font-weight:700;color:var(--ink)">'+(r[C.citizens]||'—')+'</td><td>'+normOwner(r[C.owner])+'</td><td>'+normType(r[C.certType])+'</td><td style="white-space:nowrap">'+(r[C.dateApp]||'—')+'</td><td>'+bdec(r[C.decision])+'</td><td style="text-align:center">'+(r[C.signed]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+fmtRub(n(r[C.price]))+'</td><td style="text-align:center">'+(r[C.dkp]||'—')+'</td><td style="text-align:center;font-weight:700">'+(r[C.minPay]||'—')+'</td></tr>';
+    }).join('')+'</tbody>';
+}
+
+function renderFinance(){
+  var d=filteredData;
+  var tE=0,tC=0,dkpCnt=0,paidCnt=0,cnt=0,rm={};
+  d.forEach(function(r){
+    var ev=n(r[C.price]),cp=n(r[C.contractPrice]);tE+=ev;tC+=cp;
+    if(up(r[C.dkp])==='ДА')dkpCnt++;if(lo(r[C.minPay])==='да')paidCnt++;if(ev>0)cnt++;
+    var k=r._sheet||'—';if(!rm[k])rm[k]={eval:0,dkp:0,cnt:0};rm[k].cnt++;rm[k].eval+=ev;rm[k].dkp+=cp;
+  });
+  var avgE=cnt>0?tE/cnt:0;
+  document.getElementById('fin-kpi-row').innerHTML=
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Средняя: '+fmtMln(avgE)+' ₽</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Цена договора ДКП/ДДУ (сумма)</div><div class="fk-val">'+fmtMln(tC)+' млн ₽</div><div class="fk-sub">Заключено: '+dkpCnt+' договоров</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+paidCnt+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех квартир</div></div>';
+  var bC=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8'];
+  var byE=Object.entries(rm).filter(function(e){return e[1].eval>0;}).sort(function(a,b){return b[1].eval-a[1].eval;}).slice(0,10);
+  var mxE=byE.length?byE[0][1].eval:1;
+  document.getElementById('fin-top-eval').innerHTML=byE.map(function(e,i){var pct=Math.round(e[1].eval/mxE*100);
+    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].eval)+'</span></div>';}).join('');
+  var byD=Object.entries(rm).filter(function(e){return e[1].dkp>0;}).sort(function(a,b){return b[1].dkp-a[1].dkp;}).slice(0,10);
+  var mxD=byD.length?byD[0][1].dkp:1;
+  document.getElementById('fin-top-dkp').innerHTML=byD.length?byD.map(function(e,i){var pct=Math.round(e[1].dkp/mxD*100);
+    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].dkp)+'</span></div>';}).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Нет данных</div>';
+  var top15=Object.entries(rm).sort(function(a,b){return b[1].eval-a[1].eval;}).slice(0,15);
+  var tick=themeTick(),grid=themeGrid();
+  var cFin=document.getElementById('c-fin-compare');
+  if(cFin){if(charts.fin){charts.fin.destroy();charts.fin=null;}
+    charts.fin=new Chart(cFin,{type:'bar',data:{labels:top15.map(function(e){return e[0];}),datasets:[
+      {label:'Стоимость по оценке',data:top15.map(function(e){return+(e[1].eval/1e6).toFixed(2);}),backgroundColor:'rgba(176,141,79,.85)',borderRadius:5,borderSkipped:false},
+      {label:'Цена договора ДКП/ДДУ',data:top15.map(function(e){return+(e[1].dkp/1e6).toFixed(2);}),backgroundColor:'rgba(90,112,136,.8)',borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tick,font:{size:12,family:'Inter',weight:'600'},usePointStyle:true,pointStyle:'circle',padding:16}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10,callbacks:{label:function(i){return' '+i.parsed.y+' млн ₽';}}}},
+      scales:{x:{ticks:{color:tick,font:{size:10,family:'Inter'},maxRotation:35},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:'Inter'},callback:function(v){return v+' млн';}},grid:{color:grid}}}}});}
+  renderFinRegistry();
+}
+function renderFinRegistry(){
+  var d=filteredData.slice();
+  var sort=document.getElementById('fin-sort')?document.getElementById('fin-sort').value:'price_desc';
+  if(sort==='price_desc')d.sort(function(a,b){return n(b[C.price])-n(a[C.price]);});
+  else if(sort==='price_asc')d.sort(function(a,b){return n(a[C.price])-n(b[C.price]);});
+  else if(sort==='contract_desc')d.sort(function(a,b){return n(b[C.contractPrice])-n(a[C.contractPrice]);});
+  else if(sort==='round')d.sort(function(a,b){return(a._sheet||'').localeCompare(b._sheet||'','ru');});
+  else if(sort==='paid')d=d.filter(function(r){return lo(r[C.minPay])==='да';});
+  document.getElementById('fin-reg-cnt').textContent=d.length+' записей';
+  document.getElementById('tbl-fin').innerHTML=
+    '<thead><tr><th>№</th><th>Округ</th><th>Адрес</th><th>Кв.</th><th>Площадь м²</th><th>Граждан</th><th>Стоимость по оценке ₽</th><th>ДКП/ДДУ</th><th>Цена договора ₽</th><th>Оплата Мин-ва</th><th>Дата оценки</th><th>Дата соглашения</th></tr></thead><tbody>'+
+    d.map(function(r,i){
+      var ev=n(r[C.price]),cp=n(r[C.contractPrice]);
+      var paidVal=String(r[C.minPay]||'').trim();
+      var paidStyle=lo(paidVal)==='да'?'color:#3a7d5c;font-weight:700':'color:#aaa';
+      var diffStyle=cp>0?(cp>=ev?'color:#3a7d5c':'color:#b05a4f'):'';
+      return'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="font-weight:600;white-space:nowrap;color:var(--ink)">'+(r._sheet||'—')+'</td><td style="max-width:160px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td><td style="text-align:center">'+(r[C.apt]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+n(r[C.area]).toFixed(2)+'</td><td style="text-align:center">'+(r[C.citizens]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+(ev>0?new Intl.NumberFormat('ru-RU').format(ev)+' ₽':'—')+'</td><td style="text-align:center">'+(r[C.dkp]||'—')+'</td><td style="text-align:right;font-weight:700;'+diffStyle+'">'+(cp>0?new Intl.NumberFormat('ru-RU').format(cp)+' ₽':'—')+'</td><td style="text-align:center;'+paidStyle+'">'+(paidVal||'—')+'</td><td style="white-space:nowrap">'+(r[18]||'—')+'</td><td style="white-space:nowrap">'+(r[19]||'—')+'</td></tr>';
+    }).join('')+'</tbody>';
+}
+
+// ── Инициализация карты на верхнем уровне (как в рабочем коде) ──────────────
+if(typeof ymaps!=='undefined'){
+  ymaps.ready(function(){
+    if(mapInited||!document.getElementById('map'))return;
+    mapInited=true;
+    try{
+      ymap=new ymaps.Map('map',{
+        center:[55.80,38.20],zoom:8,
+        controls:['zoomControl','typeSelector','fullscreenControl']
+      },{suppressMapOpenBlock:true});
+      document.getElementById('geost').textContent='Карта готова · откройте вкладку Карта';
+    }catch(e){mapInited=false;}
+  });
+}
+
+window.addEventListener('load',function(){reloadAll();});
 </script>
 </body>
 </html>
