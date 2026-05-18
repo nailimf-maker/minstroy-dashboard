@@ -417,10 +417,10 @@ html[data-theme="dark"] #map{filter:none}
     <div id="map"></div>
     <div class="map-legend">
       <div class="leg"><div class="ldot" style="background:#b05a4f"></div>Аварийный дом</div>
-      <div class="leg"><div class="ldot" style="background:#3a7d5c"></div>Новое жильё</div>
-      <div class="leg" style="color:var(--gold);font-weight:700">→ Маршрут переселения</div>
+      <div class="leg" style="color:var(--gold);font-weight:700">· Цвет = округ</div>
       <span style="margin-left:auto;font-size:10px;color:var(--gold);font-weight:700" id="geost">Загрузка карты...</span>
     </div>
+    <div id="map-legend-rounds" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px 18px;background:var(--row-bg);border-top:1px solid var(--line-soft);max-height:80px;overflow-y:auto"></div>
     <div id="map-rows" style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;background:var(--row-bg);border-top:1px solid var(--line-soft)"></div>
   </div>
 </div>
@@ -462,6 +462,8 @@ function cdec(d){var v=lo(d||'');if(v.indexOf('положит')>=0)return'#3a7d5
 
 var allData=[],filteredData=[],loaded=0;
 var ymap=null,mapInited=false,yReady=false;
+var geocodeCache={};   // addr -> [lat,lon]
+var mapMarkersBuilt=false;
 var charts={dec:null,own:null,tl:null,fin:null};
 var selR=null;
 var fState={round:'',dec:'',type:''};
@@ -764,7 +766,8 @@ function reloadAll(){
   clearInterval(autoT);clearInterval(cdT);secs=7200;
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   var ld=document.getElementById('loading');ld.style.display='flex';
-  allData=[];loaded=0;mapInited=false;selR=null;fState={round:'',dec:'',type:''};
+  allData=[];loaded=0;mapInited=false;mapMarkersBuilt=false;selR=null;fState={round:'',dec:'',type:''};
+  roundColorMap={};geocodeCache={};
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){if(charts[k]){charts[k].destroy();charts[k]=null;}});
 
