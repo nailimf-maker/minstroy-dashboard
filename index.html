@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://api-maps.yandex.ru/2.1/?apikey=904e9ba6-8848-4b42-a871-82002e05c23a&lang=ru_RU"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -250,6 +251,7 @@ html[data-theme="dark"] #map{filter:none}
   <div class="hdr-prog">Сертификаты · 2026</div>
   <div class="page-tabs">
     <button class="ptab active" onclick="switchPage('overview',this)">Обзор</button>
+    <button class="ptab" onclick="switchPage('gos',this)">Госпрограмма</button>
     <button class="ptab" onclick="switchPage('finance',this)">Финансирование</button>
     <button class="ptab" onclick="switchPage('mappage',this)">Карта</button>
   </div>
@@ -263,6 +265,7 @@ html[data-theme="dark"] #map{filter:none}
       <span id="upd-time">Загрузка...</span>
     </div>
   </div>
+  <button class="btn-upd" onclick="exportExcel()" style="background:linear-gradient(145deg,#3a7d5c,#2e6349)">⤓ Excel</button>
   <button class="btn-upd" onclick="reloadAll()">↺ Обновить</button>
 </div>
 
@@ -405,6 +408,25 @@ html[data-theme="dark"] #map{filter:none}
 </div>
 </div>
 
+<!-- ГОСПРОГРАММА -->
+<div class="page" id="page-gos">
+<div class="content">
+  <div class="sect-lbl">Госпрограмма · сводка по округам</div>
+  <div class="fin-kpi-row" id="gos-kpi-row"></div>
+  <div class="charts-row">
+    <div class="chart-card"><div class="cc-title">Статус решений по округам</div><div class="cwrap"><canvas id="c-gos-dec"></canvas></div></div>
+    <div class="chart-card"><div class="cc-title">Собственники vs Наниматели по округам</div><div class="cwrap"><canvas id="c-gos-own"></canvas></div></div>
+  </div>
+  <div class="registry-card">
+    <div class="reg-header">
+      <div class="reg-title">Госпрограмма · детализация по округам</div>
+      <div class="reg-cnt" id="gos-reg-cnt"></div>
+    </div>
+    <div class="twrap"><table id="tbl-gos"></table></div>
+  </div>
+</div>
+</div>
+
 <!-- КАРТА -->
 <div class="page" id="page-mappage">
 <div class="map-content">
@@ -514,7 +536,7 @@ var ROUND_CENTERS={
 };
 var charts={dec:null,own:null,tl:null,fin:null};
 var selR=null;
-var fState={round:'',dec:'',type:''};
+var fState={round:[],dec:[],type:[]};
 var tlMode='day';
 // ⬇⬇⬇ ВСТАВЬТЕ СЮДА ССЫЛКУ НА GeoJSON С ГРАНИЦАМИ ГОРОДСКИХ ОКРУГОВ МО ⬇⬇⬇
 // Файл должен содержать поля свойств с названием округа (name / NAME / NL_NAME_2 и т.п.)
@@ -542,20 +564,20 @@ function toggleTheme(){
   },120);
 }
 
-/* FILTER TABS */
+/* FILTER TABS — мультивыбор (инклюзивно, с суммированием) */
 function buildFilterMenus(){
   var rounds={};allData.forEach(function(r){if(r._sheet)rounds[r._sheet]=1;});
   var rl=Object.keys(rounds).sort();
-  document.getElementById('fl-round').innerHTML='<div class="filt-opt'+(fState.round===''?' sel':'')+'" onclick="pickFilt(\'round\',\'\')">Все округа</div>'+
-    rl.map(function(x){return'<div class="filt-opt'+(fState.round===x?' sel':'')+'" data-v="'+x.toLowerCase()+'" onclick="pickFilt(\'round\',\''+x.replace(/'/g,"\\'")+'\')">'+x+'</div>';}).join('');
+  document.getElementById('fl-round').innerHTML='<div class="filt-opt'+(fState.round.length===0?' sel':'')+'" onclick="pickFilt(\'round\',\'\')">Все округа</div>'+
+    rl.map(function(x){return'<div class="filt-opt'+(fState.round.indexOf(x)>=0?' sel':'')+'" data-v="'+x.toLowerCase()+'" onclick="pickFilt(\'round\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.round.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
   var decs={};allData.forEach(function(r){decs[normDecision(r[C.decision])]=1;});
   var dl=Object.keys(decs).sort();
-  document.getElementById('fl-dec').innerHTML='<div class="filt-opt'+(fState.dec===''?' sel':'')+'" onclick="pickFilt(\'dec\',\'\')">Все решения</div>'+
-    dl.map(function(x){return'<div class="filt-opt'+(fState.dec===x?' sel':'')+'" onclick="pickFilt(\'dec\',\''+x.replace(/'/g,"\\'")+'\')">'+x+'</div>';}).join('');
+  document.getElementById('fl-dec').innerHTML='<div class="filt-opt'+(fState.dec.length===0?' sel':'')+'" onclick="pickFilt(\'dec\',\'\')">Все решения</div>'+
+    dl.map(function(x){return'<div class="filt-opt'+(fState.dec.indexOf(x)>=0?' sel':'')+'" onclick="pickFilt(\'dec\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.dec.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
   var types={};allData.forEach(function(r){types[normType(r[C.certType])]=1;});
   var tl=Object.keys(types).sort();
-  document.getElementById('fl-type').innerHTML='<div class="filt-opt'+(fState.type===''?' sel':'')+'" onclick="pickFilt(\'type\',\'\')">Все типы</div>'+
-    tl.map(function(x){return'<div class="filt-opt'+(fState.type===x?' sel':'')+'" onclick="pickFilt(\'type\',\''+x.replace(/'/g,"\\'")+'\')">'+x+'</div>';}).join('');
+  document.getElementById('fl-type').innerHTML='<div class="filt-opt'+(fState.type.length===0?' sel':'')+'" onclick="pickFilt(\'type\',\'\')">Все типы</div>'+
+    tl.map(function(x){return'<div class="filt-opt'+(fState.type.indexOf(x)>=0?' sel':'')+'" onclick="pickFilt(\'type\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.type.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
 }
 function toggleFilt(k,e){
   if(e)e.stopPropagation();
@@ -575,13 +597,17 @@ function filtSearch(k){
   });
 }
 function pickFilt(k,v){
-  fState[k]=v;
-  var names={round:'round',dec:'dec',type:'type'};
-  document.getElementById('fv-'+k).textContent=v||'Все';
+  if(v===''){fState[k]=[];}
+  else{
+    var i=fState[k].indexOf(v);
+    if(i>=0)fState[k].splice(i,1);   // повторный клик — убрать
+    else fState[k].push(v);          // добавить (суммирование)
+  }
+  var lbl=fState[k].length===0?'Все':(fState[k].length===1?fState[k][0]:fState[k].length+' выбр.');
+  document.getElementById('fv-'+k).textContent=lbl;
   var trig=document.getElementById('ft-'+k);
-  if(v)trig.classList.add('has-val');else trig.classList.remove('has-val');
-  document.getElementById('fm-'+k).classList.remove('open');
-  trig.classList.remove('open');
+  if(fState[k].length)trig.classList.add('has-val');else trig.classList.remove('has-val');
+  buildFilterMenus();           // перерисовать галочки, меню остаётся открытым
   applyF();
 }
 document.addEventListener('click',function(){
@@ -596,7 +622,101 @@ function switchPage(name,btn){
   document.getElementById('page-'+name).classList.add('active');
   if(name==='mappage')setTimeout(renderMapPage,60);
   if(name==='finance')renderFinance();
+  if(name==='gos')setTimeout(renderGos,60);
   if(name==='overview')setTimeout(function(){renderCharts(filteredData);},60);
+}
+
+function renderGos(){
+  var d=filteredData;
+  var rm=roundMap(d);
+  var entries=Object.entries(rm).sort(function(a,b){return b[1].t-a[1].t;});
+  var totQ=0,totA=0,totSob=0,totNan=0,totPos=0;
+  entries.forEach(function(e){totQ+=e[1].t;totA+=e[1].aT;totSob+=e[1].sob;totNan+=e[1].nan;totPos+=e[1].pos;});
+  document.getElementById('gos-kpi-row').innerHTML=
+    '<div class="fin-kpi"><div class="fk-lbl">Квартир всего</div><div class="fk-val">'+totQ.toLocaleString('ru')+'</div><div class="fk-sub">Площадь: '+totA.toFixed(0)+' м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Положительных решений</div><div class="fk-val" style="color:#3a7d5c">'+totPos+'</div><div class="fk-sub">'+(totQ?Math.round(totPos/totQ*100):0)+'% от всех</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Собственники</div><div class="fk-val">'+totSob+'</div><div class="fk-sub">Наниматели: '+totNan+'</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Округов в выборке</div><div class="fk-val">'+entries.length+'</div><div class="fk-sub">из 44 всего</div></div>';
+
+  var tick=themeTick(),grid=themeGrid(),F='Inter';
+  var top=entries.slice(0,14);
+  var rl=top.map(function(e){return e[0];});
+  var decCols={'Положительное':'#3a7d5c','На рассмотрении':'#b08d4f','Отрицательное':'#b05a4f','Отказ':'#7a6a8f','Не указано':'#5a7088'};
+  var decByR={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!decByR[k])decByR[k]={};var nd=normDecision(r[C.decision]);decByR[k][nd]=(decByR[k][nd]||0)+1;});
+  var decOrder=['Положительное','На рассмотрении','Отрицательное','Отказ','Не указано'];
+  var ds=decOrder.map(function(dk){return{label:dk,data:top.map(function(e){return(decByR[e[0]]||{})[dk]||0;}),backgroundColor:decCols[dk],borderRadius:4,borderSkipped:false};});
+  var cg1=document.getElementById('c-gos-dec');
+  if(cg1){if(charts.gosDec){charts.gosDec.destroy();}
+    charts.gosDec=new Chart(cg1,{type:'bar',data:{labels:rl,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:12}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
+        scales:{x:{stacked:true,ticks:{color:tick,font:{size:9,family:F},maxRotation:50},grid:{display:false}},y:{stacked:true,ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}}}}});}
+
+  var cg2=document.getElementById('c-gos-own');
+  if(cg2){if(charts.gosOwn){charts.gosOwn.destroy();}
+    charts.gosOwn=new Chart(cg2,{type:'bar',data:{labels:rl,datasets:[
+      {label:'Собственники',data:top.map(function(e){return e[1].sob;}),backgroundColor:'#b08d4f',borderRadius:4,borderSkipped:false},
+      {label:'Наниматели',data:top.map(function(e){return e[1].nan;}),backgroundColor:'#5a7088',borderRadius:4,borderSkipped:false}
+    ]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
+        scales:{x:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:F,weight:'700'}},grid:{display:false}}}}});}
+
+  document.getElementById('gos-reg-cnt').textContent=entries.length+' округов';
+  document.getElementById('tbl-gos').innerHTML=
+    '<thead><tr><th>№</th><th>Округ</th><th>Квартир</th><th>Площадь м²</th><th>Граждан</th><th>Собств.</th><th>Наним.</th><th>Сертиф.</th><th>Выкуп</th><th>Положит.</th></tr></thead><tbody>'+
+    entries.map(function(e,i){var v=e[1];
+      return'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td>'+
+        '<td style="font-weight:700;color:var(--ink)">'+e[0]+'</td>'+
+        '<td style="text-align:right;font-weight:700;color:var(--ink)">'+v.t+'</td>'+
+        '<td style="text-align:right">'+v.aT.toFixed(1)+'</td>'+
+        '<td style="text-align:center">'+v.cit+'</td>'+
+        '<td style="text-align:center">'+v.sob+'</td>'+
+        '<td style="text-align:center">'+v.nan+'</td>'+
+        '<td style="text-align:center">'+v.cert+'</td>'+
+        '<td style="text-align:center">'+v.vyk+'</td>'+
+        '<td style="text-align:center;color:#3a7d5c;font-weight:700">'+v.pos+'</td></tr>';
+    }).join('')+'</tbody>';
+}
+
+function exportExcel(){
+  if(typeof XLSX==='undefined'){alert('Библиотека Excel ещё загружается, повторите через секунду');return;}
+  if(!allData.length){alert('Данные не загружены');return;}
+  var wb=XLSX.utils.book_new();
+
+  // Лист 1: Полный реестр (по текущему фильтру)
+  var reg=[['Округ','Г.О/М.О','Нас. пункт','Адрес','Кв.','Площадь м²','Граждан','ФИО заявителя','Телефон','Тип права','Тип','Дата заявл.','Решение','Подписано','Стоимость по оценке ₽','ДКП/ДДУ','Цена договора ₽','Оплата Мин-ва']];
+  filteredData.forEach(function(r){
+    reg.push([r._sheet||'',r[C.mo]||'',r[C.np]||'',r[C.addr]||'',r[C.apt]||'',n(r[C.area]),n(r[C.citizens]),r[9]||'',r[10]||'',normOwner(r[C.owner]),normType(r[C.certType]),r[C.dateApp]||'',normDecision(r[C.decision]),r[C.signed]||'',n(r[C.price]),r[C.dkp]||'',n(r[C.contractPrice]),r[C.minPay]||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(reg),'Реестр');
+
+  // Лист 2: Сводка по округам
+  var rm=roundMap(filteredData);
+  var sum=[['Округ','Квартир','Площадь всего м²','Граждан','Собственники','Площадь собств. м²','Наниматели','Площадь наним. м²','Сертификаты','Площадь серт. м²','Выкуп','Площадь выкуп м²','Положительных','Площадь полож. м²']];
+  Object.entries(rm).sort(function(a,b){return b[1].t-a[1].t;}).forEach(function(e){var v=e[1];
+    sum.push([e[0],v.t,+v.aT.toFixed(1),v.cit,v.sob,+v.aSob.toFixed(1),v.nan,+v.aNan.toFixed(1),v.cert,+v.aCert.toFixed(1),v.vyk,+v.aVyk.toFixed(1),v.pos,+v.aPos.toFixed(1)]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'Сводка по округам');
+
+  // Лист 3: Финансы по округам
+  var fin=[['Округ','Стоимость по оценке ₽','Цена договоров ДКП/ДДУ ₽','Разница ₽','Квартир']];
+  var fm={};
+  filteredData.forEach(function(r){var k=r._sheet||'—';if(!fm[k])fm[k]={ev:0,cp:0,c:0};fm[k].ev+=n(r[C.price]);fm[k].cp+=n(r[C.contractPrice]);fm[k].c++;});
+  Object.entries(fm).sort(function(a,b){return b[1].ev-a[1].ev;}).forEach(function(e){var v=e[1];
+    fin.push([e[0],Math.round(v.ev),Math.round(v.cp),Math.round(v.cp-v.ev),v.c]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fin),'Финансы');
+
+  // Лист 4: Решения (итог)
+  var dc={};filteredData.forEach(function(r){var nd=normDecision(r[C.decision]);dc[nd]=(dc[nd]||0)+1;});
+  var dec=[['Решение','Количество','% от выборки']];
+  Object.entries(dc).forEach(function(e){dec.push([e[0],e[1],Math.round(e[1]/filteredData.length*100)+'%']);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dec),'Решения');
+
+  var fname='Минстрой_МО_дашборд_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
 }
 
 /* MAP */
@@ -722,16 +842,19 @@ function closeModal(e){if(!e||e.target===document.getElementById('modal'))docume
 function kpiModal(type){
   var labels={total:'Квартир по округам',sob:'Собственников по округам',nan:'Нанимателей по округам',cert:'Сертификатов по округам',vyk:'Выкупов по округам'};
   var colors={total:'#b08d4f',sob:'#3a7d5c',nan:'#5a7088',cert:'#b08d4f',vyk:'#7a6a8f'};
-  var rm={};
-  filteredData.forEach(function(r){var k=r._sheet||'—';if(!rm[k])rm[k]={total:0,sob:0,nan:0,cert:0,vyk:0,area:0};rm[k].total++;rm[k].area+=n(r[C.area]);if(normOwner(r[C.owner])==='Собственник')rm[k].sob++;if(normOwner(r[C.owner])==='Наниматель')rm[k].nan++;if(normType(r[C.certType])==='Сертификат')rm[k].cert++;if(normType(r[C.certType])==='Выкуп')rm[k].vyk++;});
-  var sorted=Object.entries(rm).filter(function(e){return e[1][type]>0;}).sort(function(a,b){return b[1][type]-a[1][type];});
-  var total=sorted.reduce(function(s,e){return s+e[1][type];},0);
+  var aMap={total:'aT',sob:'aSob',nan:'aNan',cert:'aCert',vyk:'aVyk'};
+  var cntMap={total:'t',sob:'sob',nan:'nan',cert:'cert',vyk:'vyk'};
+  var rm=roundMap(filteredData);
+  var ck=cntMap[type],ak=aMap[type];
+  var sorted=Object.entries(rm).filter(function(e){return e[1][ck]>0;}).sort(function(a,b){return b[1][ck]-a[1][ck];});
+  var total=sorted.reduce(function(s,e){return s+e[1][ck];},0);
+  var totalArea=sorted.reduce(function(s,e){return s+e[1][ak];},0);
   var color=colors[type];
   document.getElementById('modal-total').textContent=total;
   document.getElementById('modal-total').style.color=color;
-  document.getElementById('modal-title').textContent=labels[type];
+  document.getElementById('modal-title').textContent=labels[type]+' · '+totalArea.toFixed(0)+' м²';
   document.getElementById('modal-body').innerHTML=sorted.map(function(e,i){
-    var v=e[1][type],pct=total>0?Math.round(v/total*100):0,astr=e[1].area>0?e[1].area.toFixed(0)+' м²':'—';
+    var v=e[1][ck],pct=total>0?Math.round(v/total*100):0,astr=e[1][ak]>0?e[1][ak].toFixed(0)+' м²':'—';
     return'<div class="mrow" style="border-left-color:'+color+'" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\');closeModal()">'+
       '<span class="mrow-rank">'+(i+1)+'</span>'+
       '<span class="mrow-name">'+e[0]+'</span>'+
@@ -765,14 +888,16 @@ function decModal(key){
 
 function topModal(label,key){
   var rm=roundMap(filteredData);
+  var ak=areaKey(key);
   var srt=Object.entries(rm).filter(function(e){return e[1][key]>0;}).sort(function(a,b){return b[1][key]-a[1][key];});
   var total=srt.reduce(function(s,e){return s+e[1][key];},0);
+  var totalArea=srt.reduce(function(s,e){return s+e[1][ak];},0);
   var mx=srt.length?srt[0][1][key]:1;
   document.getElementById('modal-total').textContent=srt.length;
   document.getElementById('modal-total').style.color='var(--gold)';
-  document.getElementById('modal-title').textContent=label+' · всего '+total;
+  document.getElementById('modal-title').textContent=label+' · всего '+total+' · '+totalArea.toFixed(0)+' м²';
   document.getElementById('modal-body').innerHTML=srt.map(function(e,i){
-    var v=e[1][key],pct=Math.round(v/mx*100),astr=e[1].area>0?e[1].area.toFixed(0)+' м²':'—';
+    var v=e[1][key],pct=Math.round(v/mx*100),astr=e[1][ak]>0?e[1][ak].toFixed(0)+' м²':'—';
     return'<div class="mrow" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\');closeModal()">'+
       '<span class="mrow-rank">'+(i+1)+'</span>'+
       '<span class="mrow-name">'+e[0]+'</span>'+
@@ -808,7 +933,7 @@ function reloadAll(){
   clearInterval(autoT);clearInterval(cdT);secs=7200;
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   var ld=document.getElementById('loading');ld.style.display='flex';
-  allData=[];loaded=0;mapInited=false;mapMarkersBuilt=false;selR=null;fState={round:'',dec:'',type:''};
+  allData=[];loaded=0;mapInited=false;mapMarkersBuilt=false;selR=null;fState={round:[],dec:[],type:[]};
   roundColorMap={};geocodeCache={};
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){if(charts[k]){charts[k].destroy();charts[k]=null;}});
@@ -866,30 +991,53 @@ function startAuto(){clearInterval(autoT);clearInterval(cdT);secs=7200;autoT=set
 
 function baseFilter(){
   return allData.filter(function(r){
-    return(!fState.round||r._sheet===fState.round)&&
-           (!fState.dec||normDecision(r[C.decision])===fState.dec)&&
-           (!fState.type||normType(r[C.certType])===fState.type);
+    var okR=fState.round.length===0||fState.round.indexOf(r._sheet)>=0;
+    var okD=fState.dec.length===0||fState.dec.indexOf(normDecision(r[C.decision]))>=0;
+    var okT=fState.type.length===0||fState.type.indexOf(normType(r[C.certType]))>=0;
+    return okR&&okD&&okT;
   });
 }
 function roundMap(d){
   var rm={};
-  d.forEach(function(r){var k=r._sheet||'—';if(!rm[k])rm[k]={t:0,sob:0,nan:0,cert:0,vyk:0,pos:0,area:0};rm[k].t++;rm[k].area+=n(r[C.area]);if(normOwner(r[C.owner])==='Собственник')rm[k].sob++;if(normOwner(r[C.owner])==='Наниматель')rm[k].nan++;var nt=normType(r[C.certType]);if(nt==='Сертификат')rm[k].cert++;if(nt==='Выкуп')rm[k].vyk++;if(normDecision(r[C.decision])==='Положительное')rm[k].pos++;});
+  d.forEach(function(r){
+    var k=r._sheet||'—';
+    if(!rm[k])rm[k]={t:0,sob:0,nan:0,cert:0,vyk:0,pos:0,
+      aT:0,aSob:0,aNan:0,aCert:0,aVyk:0,aPos:0,cit:0};
+    var a=n(r[C.area]);
+    rm[k].t++;rm[k].aT+=a;rm[k].cit+=n(r[C.citizens]);
+    var o=normOwner(r[C.owner]);
+    if(o==='Собственник'){rm[k].sob++;rm[k].aSob+=a;}
+    if(o==='Наниматель'){rm[k].nan++;rm[k].aNan+=a;}
+    var nt=normType(r[C.certType]);
+    if(nt==='Сертификат'){rm[k].cert++;rm[k].aCert+=a;}
+    if(nt==='Выкуп'){rm[k].vyk++;rm[k].aVyk+=a;}
+    if(normDecision(r[C.decision])==='Положительное'){rm[k].pos++;rm[k].aPos+=a;}
+  });
   return rm;
 }
+// какой ключ площади соответствует разделу
+function areaKey(sk){return{t:'aT',sob:'aSob',nan:'aNan',cert:'aCert',vyk:'aVyk',pos:'aPos'}[sk]||'aT';}
 function applyF(){
-  selR=fState.round||null;
+  selR=fState.round.length===1?fState.round[0]:null;
   filteredData=baseFilter();
   document.getElementById('fcnt').textContent=filteredData.length<allData.length?'▶ '+filteredData.length+' строк':'';
   renderAll();
 }
 function resetF(){
-  fState={round:'',dec:'',type:''};selR=null;
+  fState={round:[],dec:[],type:[]};selR=null;
   ['round','dec','type'].forEach(function(k){document.getElementById('fv-'+k).textContent='Все';document.getElementById('ft-'+k).classList.remove('has-val');});
+  buildFilterMenus();
   filteredData=allData.slice();document.getElementById('fcnt').textContent='';renderAll();
 }
 function selRound(name){
-  if(selR===name){fState.round='';selR=null;document.getElementById('fv-round').textContent='Все';document.getElementById('ft-round').classList.remove('has-val');}
-  else{fState.round=name;selR=name;document.getElementById('fv-round').textContent=name;document.getElementById('ft-round').classList.add('has-val');}
+  var i=fState.round.indexOf(name);
+  if(i>=0)fState.round.splice(i,1);
+  else fState.round.push(name);
+  var lbl=fState.round.length===0?'Все':(fState.round.length===1?fState.round[0]:fState.round.length+' выбр.');
+  document.getElementById('fv-round').textContent=lbl;
+  if(fState.round.length)document.getElementById('ft-round').classList.add('has-val');
+  else document.getElementById('ft-round').classList.remove('has-val');
+  buildFilterMenus();
   applyF();
 }
 
@@ -926,10 +1074,11 @@ function renderAll(){
   function renderTop(cid,sk,label){
     var srt=Object.entries(rm).sort(function(a,b){return b[1][sk]-a[1][sk];}).filter(function(e){return e[1][sk]>0;});
     var mx=srt.length?srt[0][1][sk]:1;
+    var ak=areaKey(sk);
     var colMap={t:'#b08d4f',sob:'#3a7d5c',nan:'#5a7088',cert:'#b08d4f',vyk:'#7a6a8f',pos:'#3a7d5c'};
     var col=colMap[sk]||'#b08d4f';
     function makeRow(e,i){
-      var astr=e[1].area>0?e[1].area.toFixed(0)+' м²':'';
+      var astr=e[1][ak]>0?e[1][ak].toFixed(0)+' м²':'';
       var pct=Math.round(e[1][sk]/mx*100);
       return'<div class="top-bar-row">'+
         '<span class="tbr-rank">'+(i+1)+'</span>'+
