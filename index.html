@@ -4,10 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Минстрой МО — Программа выдачи сертификатов</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://api-maps.yandex.ru/2.1/?apikey=904e9ba6-8848-4b42-a871-82002e05c23a&lang=ru_RU"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
@@ -236,9 +235,8 @@ tr:hover td{background:var(--row-bg)}
 .leg{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-soft);font-weight:600}
 .ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 #geost{font-size:10px;color:var(--muted);padding:8px 18px;background:var(--row-bg);border-top:1px solid var(--line-soft);font-weight:600;text-align:center}
-.leaflet-popup-content-wrapper{border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
-html[data-theme="dark"] .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9)}
-html[data-theme="dark"] .leaflet-container{background:#1a1d29}
+.ymaps-2-1-79-balloon,.ymaps-2-1-79-balloon__content{border-radius:14px!important;font-family:'Inter',sans-serif!important}
+html[data-theme="dark"] #map{filter:none}
 </style>
 </head>
 <body>
@@ -463,17 +461,15 @@ function bdec(v){var l=lo(v||'');if(l.indexOf('полож')>=0)return'<span clas
 function cdec(d){var v=lo(d||'');if(v.indexOf('положит')>=0)return'#3a7d5c';if(v.indexOf('отриц')>=0)return'#b05a4f';if(v.indexOf('рассм')>=0||v.indexOf('приостановк')>=0)return'#b08d4f';if(v.indexOf('отказ')>=0)return'#7a6a8f';return'#5a7088';}
 
 var allData=[],filteredData=[],loaded=0;
-var mapObj,mkLayer,mapInited=false;
+var ymap=null,mapInited=false,yReady=false;
 var charts={dec:null,own:null,tl:null,fin:null};
 var selR=null;
 var fState={round:'',dec:'',type:''};
 var tlMode='day';
-var bordersLayer=null;
 // ⬇⬇⬇ ВСТАВЬТЕ СЮДА ССЫЛКУ НА GeoJSON С ГРАНИЦАМИ ГОРОДСКИХ ОКРУГОВ МО ⬇⬇⬇
-// Пример: 'https://раздача.example/mo_okruga.geojson'
 // Файл должен содержать поля свойств с названием округа (name / NAME / NL_NAME_2 и т.п.)
 var BORDERS_URL='';
-// ⬆⬆⬆ Пока пусто — границы не рисуются, остальная карта работает ⬆⬆⬆
+// ⬆⬆⬆ Пока пусто — границы не рисуются, остальная карта Яндекс работает ⬆⬆⬆
 var autoT,cdT,secs=7200;
 
 var decCfg=[
@@ -493,7 +489,6 @@ function toggleTheme(){
   setTimeout(function(){
     if(document.getElementById('page-overview').classList.contains('active'))renderCharts(filteredData);
     if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
-    if(mapObj){mapObj.invalidateSize();}
   },120);
 }
 
@@ -562,94 +557,117 @@ var HOUSES=[
   {addr:'ул. Первомайская, д. 20',lat:55.788727, lon:37.938478},
   {addr:'ул. Гагарина, д. 3',    lat:55.828399, lon:37.910809}
 ];
-function renderMapPage(){
-  if(!mapInited){
-    mapInited=true;
-    mapObj=L.map('map',{zoomControl:true,scrollWheelZoom:true}).setView([55.55,37.5],8);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-      attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19
-    }).addTo(mapObj);
-    mkLayer=L.layerGroup().addTo(mapObj);
-    loadBorders();
-  }
-  mapObj.invalidateSize();
-  if(mkLayer)mkLayer.clearLayers();
-  var balData=allData.filter(function(r){return r._sheet==='Балашиха';});
-  var bounds=[],mapRowsHtml=[];
-  HOUSES.forEach(function(h){
-    var fromIcon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;background:#b05a4f;border:3px solid #fff;border-radius:50%;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center"><div style="width:7px;height:7px;background:#fff;border-radius:50%"></div></div>',iconSize:[22,22],iconAnchor:[11,11]});
-    // Агрегируем ВСЕ квартиры этого дома (одна строка = одна квартира)
-    var ha=h.addr.toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
-    var haKey=ha.split(' ').filter(Boolean);
-    var matches=balData.filter(function(r){
-      var ra=String(r[C.addr]||'').toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
-      return haKey.every(function(part){return ra.indexOf(part)>=0;});
-    });
-    var aptCnt=matches.length;
-    var citSum=0,areaSum=0,apts={};
-    var toLat=0,toLon=0,newAddrTxt='',decision='';
-    matches.forEach(function(r){
-      citSum+=n(r[C.citizens]);areaSum+=n(r[C.area]);
-      if(r[C.apt])apts[String(r[C.apt]).trim()]=1;
-      var tla=n(String(r[C.lat]||'').replace(',','.')),tlo=n(String(r[C.lon]||'').replace(',','.'));
-      if(tla>50&&tlo>30&&!toLat){toLat=tla;toLon=tlo;}
-      if(!newAddrTxt){var na=String(r[C.newAddr]||'').trim();if(na&&na!=='—'&&na!=='-')newAddrTxt=na;}
-      if(!decision&&r[C.decision])decision=normDecision(r[C.decision]);
-    });
-    var aptNum=Object.keys(apts).length||aptCnt;
-    var hasRoute=toLat>50&&toLon>30;
-    var popHtml='<div style="font-family:Inter,sans-serif;font-size:12px;min-width:210px"><b style="color:#b05a4f">🏚️ '+h.addr+'</b><br><span style="color:#9097a8;font-size:10px">Балашиха · Аварийный дом</span>';
-    if(aptCnt>0){
-      popHtml+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee">'+
-        'Квартир: <b>'+aptNum+'</b><br>'+
-        'Граждан (сумма): <b>'+citSum+'</b><br>'+
-        'Площадь (сумма): <b>'+areaSum.toFixed(1)+' м²</b>'+
-        (decision?'<br>Решение: <b style="color:'+cdec(decision)+'">'+decision+'</b>':'');
-    }else{popHtml+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee"><span style="color:#9097a8;font-size:10px">Нет данных в таблице по этому адресу</span>';}
-    popHtml+='</div>';
-    L.marker([h.lat,h.lon],{icon:fromIcon}).bindPopup(popHtml).addTo(mkLayer);
-    bounds.push([h.lat,h.lon]);
-    if(hasRoute){
-      var toIcon=L.divIcon({className:'',html:'<div style="width:22px;height:22px;background:#3a7d5c;border:3px solid #fff;border-radius:50%;box-shadow:0 3px 10px rgba(0,0,0,.3)"></div>',iconSize:[22,22],iconAnchor:[11,11]});
-      L.marker([toLat,toLon],{icon:toIcon}).bindPopup('<div style="font-family:Inter,sans-serif;font-size:12px"><b style="color:#3a7d5c">🏠 Новое жильё</b><br>'+(newAddrTxt||toLat.toFixed(4)+', '+toLon.toFixed(4))+'<br><span style="color:#9097a8;font-size:10px">← Из: '+h.addr+'</span></div>').addTo(mkLayer);
-      bounds.push([toLat,toLon]);
-      L.polyline([[h.lat,h.lon],[toLat,toLon]],{color:'#b08d4f',weight:2.5,opacity:.85,dashArray:'8 5'}).addTo(mkLayer);
-    }
-    var gmUrl=hasRoute?'https://maps.google.com/maps/dir/'+h.lat+','+h.lon+'/'+toLat+','+toLon+'?hl=ru':'https://maps.google.com/maps?q='+h.lat+','+h.lon+'&hl=ru&z=17';
-    mapRowsHtml.push('<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid '+(hasRoute?'#3a7d5c':'#b05a4f')+'"><div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">'+h.addr+' <span style="color:var(--muted);font-weight:600">· '+aptNum+' кв. · '+citSum+' чел. · '+areaSum.toFixed(0)+' м²</span></div>'+(hasRoute?'<div style="font-size:10px;color:#3a7d5c;font-weight:600">→ '+(newAddrTxt||'Новый адрес задан')+'</div>':'<div style="font-size:10px;color:var(--muted)">Координаты нового жилья не заданы</div>')+'</div><a href="'+gmUrl+'" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 14px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">'+(hasRoute?'🗺️ Маршрут':'📍 Карта')+'</a></div>');
+function aggHouse(h,balData){
+  var ha=h.addr.toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
+  var haKey=ha.split(' ').filter(Boolean);
+  var matches=balData.filter(function(r){
+    var ra=String(r[C.addr]||'').toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
+    return haKey.every(function(part){return ra.indexOf(part)>=0;});
   });
-  var mr=document.getElementById('map-rows');if(mr)mr.innerHTML=mapRowsHtml.join('');
-  if(bounds.length>0)mapObj.fitBounds(L.latLngBounds(bounds),{padding:[40,40]});
-  document.getElementById('geost').textContent='Балашиха: '+HOUSES.length+' домов · граждане и площадь суммируются по всем квартирам дома';
+  var citSum=0,areaSum=0,apts={},toLat=0,toLon=0,newAddrTxt='',decision='';
+  matches.forEach(function(r){
+    citSum+=n(r[C.citizens]);areaSum+=n(r[C.area]);
+    if(r[C.apt])apts[String(r[C.apt]).trim()]=1;
+    var tla=n(String(r[C.lat]||'').replace(',','.')),tlo=n(String(r[C.lon]||'').replace(',','.'));
+    if(tla>50&&tlo>30&&!toLat){toLat=tla;toLon=tlo;}
+    if(!newAddrTxt){var na=String(r[C.newAddr]||'').trim();if(na&&na!=='—'&&na!=='-')newAddrTxt=na;}
+    if(!decision&&r[C.decision])decision=normDecision(r[C.decision]);
+  });
+  return{aptCnt:matches.length,aptNum:Object.keys(apts).length||matches.length,citSum:citSum,areaSum:areaSum,toLat:toLat,toLon:toLon,newAddrTxt:newAddrTxt,decision:decision,hasRoute:toLat>50&&toLon>30};
 }
 
-/* Границы городских округов — раскраска палитрой дашборда */
+function renderMapPage(){
+  if(typeof ymaps==='undefined'){
+    document.getElementById('geost').textContent='Яндекс.Карты не загрузились — проверьте API-ключ и ограничения по домену в кабинете Яндекса';
+    return;
+  }
+  ymaps.ready(function(){
+    yReady=true;
+    if(!mapInited){
+      mapInited=true;
+      ymap=new ymaps.Map('map',{
+        center:[55.55,37.5],zoom:8,
+        controls:['zoomControl','typeSelector','fullscreenControl']
+      },{suppressMapOpenBlock:true});
+      loadBorders();
+    }
+    ymap.geoObjects.removeAll();
+    var balData=allData.filter(function(r){return r._sheet==='Балашиха';});
+    var coords=[],mapRowsHtml=[];
+    HOUSES.forEach(function(h){
+      var a=aggHouse(h,balData);
+      var bodyFrom='<div style="font-family:Inter,sans-serif;font-size:12px;min-width:210px">'+
+        '<b style="color:#b05a4f">🏚️ '+h.addr+'</b><br><span style="color:#9097a8;font-size:10px">Балашиха · Аварийный дом</span>';
+      if(a.aptCnt>0){
+        bodyFrom+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee">'+
+          'Квартир: <b>'+a.aptNum+'</b><br>'+
+          'Граждан (сумма): <b>'+a.citSum+'</b><br>'+
+          'Площадь (сумма): <b>'+a.areaSum.toFixed(1)+' м²</b>'+
+          (a.decision?'<br>Решение: <b style="color:'+cdec(a.decision)+'">'+a.decision+'</b>':'');
+      }else{bodyFrom+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee"><span style="color:#9097a8;font-size:10px">Нет данных в таблице по этому адресу</span>';}
+      bodyFrom+='</div>';
+      var pmFrom=new ymaps.Placemark([h.lat,h.lon],{
+        balloonContent:bodyFrom,hintContent:h.addr+' · '+a.citSum+' чел.'
+      },{preset:'islands#redCircleDotIcon',iconColor:'#b05a4f'});
+      ymap.geoObjects.add(pmFrom);
+      coords.push([h.lat,h.lon]);
+      if(a.hasRoute){
+        var pmTo=new ymaps.Placemark([a.toLat,a.toLon],{
+          balloonContent:'<div style="font-family:Inter,sans-serif;font-size:12px"><b style="color:#3a7d5c">🏠 Новое жильё</b><br>'+(a.newAddrTxt||a.toLat.toFixed(4)+', '+a.toLon.toFixed(4))+'<br><span style="color:#9097a8;font-size:10px">← Из: '+h.addr+'</span></div>',
+          hintContent:'Новое жильё'
+        },{preset:'islands#greenCircleIcon',iconColor:'#3a7d5c'});
+        ymap.geoObjects.add(pmTo);
+        coords.push([a.toLat,a.toLon]);
+        var line=new ymaps.Polyline([[h.lat,h.lon],[a.toLat,a.toLon]],{},{
+          strokeColor:'#b08d4f',strokeWidth:3,strokeStyle:'dash',strokeOpacity:.9
+        });
+        ymap.geoObjects.add(line);
+      }
+      var gmUrl=a.hasRoute?'https://yandex.ru/maps/?rtext='+h.lat+','+h.lon+'~'+a.toLat+','+a.toLon:'https://yandex.ru/maps/?pt='+h.lon+','+h.lat+'&z=17';
+      mapRowsHtml.push('<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid '+(a.hasRoute?'#3a7d5c':'#b05a4f')+'"><div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">'+h.addr+' <span style="color:var(--muted);font-weight:600">· '+a.aptNum+' кв. · '+a.citSum+' чел. · '+a.areaSum.toFixed(0)+' м²</span></div>'+(a.hasRoute?'<div style="font-size:10px;color:#3a7d5c;font-weight:600">→ '+(a.newAddrTxt||'Новый адрес задан')+'</div>':'<div style="font-size:10px;color:var(--muted)">Координаты нового жилья не заданы</div>')+'</div><a href="'+gmUrl+'" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 14px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">'+(a.hasRoute?'🗺️ Маршрут':'📍 Карта')+'</a></div>');
+    });
+    var mr=document.getElementById('map-rows');if(mr)mr.innerHTML=mapRowsHtml.join('');
+    if(coords.length>0){
+      try{ymap.setBounds(ymaps.util.bounds.fromPoints(coords),{checkZoomRange:true,zoomMargin:50});}catch(e){}
+    }
+    document.getElementById('geost').textContent='Балашиха: '+HOUSES.length+' домов · граждане и площадь суммируются по всем квартирам дома';
+  });
+}
+
+/* Границы городских округов — раскраска палитрой дашборда (Яндекс) */
 function loadBorders(){
   if(!BORDERS_URL){
-    document.getElementById('geost').textContent='Карта готова · вставьте ссылку на GeoJSON границ в переменную BORDERS_URL';
+    document.getElementById('geost').textContent='Карта Яндекс готова · вставьте ссылку на GeoJSON границ в переменную BORDERS_URL';
     return;
   }
   fetch(BORDERS_URL).then(function(r){return r.json();}).then(function(gj){
     var palette=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8','#9c8552','#6f8a9c'];
-    var idx=0;
-    if(bordersLayer)mapObj.removeLayer(bordersLayer);
-    bordersLayer=L.geoJSON(gj,{
-      style:function(f){
-        var c=palette[idx%palette.length];idx++;
-        return{color:c,weight:1.5,opacity:.7,fillColor:c,fillOpacity:.10};
-      },
-      onEachFeature:function(f,layer){
-        var p=f.properties||{};
-        var nm=p.name||p.NAME||p.NL_NAME_2||p.NAME_2||p.district||p.okrug||'Округ';
-        layer.bindTooltip(String(nm),{sticky:true,className:'okrug-tip'});
-        layer.on('mouseover',function(){layer.setStyle({fillOpacity:.24,weight:2.5,opacity:1});});
-        layer.on('mouseout',function(){bordersLayer.resetStyle(layer);});
-      }
-    }).addTo(mapObj);
-    bordersLayer.bringToBack();
-    document.getElementById('geost').textContent='Границы округов загружены · '+(gj.features?gj.features.length:0)+' полигонов';
+    var feats=gj.features||[];
+    feats.forEach(function(f,i){
+      var c=palette[i%palette.length];
+      var p=f.properties||{};
+      var nm=p.name||p.NAME||p.NL_NAME_2||p.NAME_2||p.district||p.okrug||'Округ';
+      try{
+        var obj=ymaps.geoQuery?null:null;
+        var geoObj=new ymaps.GeoObject({
+          geometry:f.geometry.type==='Polygon'?{type:'Polygon',coordinates:flipCoords(f.geometry.coordinates,1)}:
+                   {type:'Polygon',coordinates:flipCoords([].concat.apply([],f.geometry.coordinates),1)},
+          properties:{hintContent:String(nm)}
+        },{
+          fillColor:c+'22',strokeColor:c,strokeWidth:1.5,strokeOpacity:.7,fillOpacity:.1
+        });
+        ymap.geoObjects.add(geoObj);
+      }catch(e){}
+    });
+    document.getElementById('geost').textContent='Границы округов загружены · '+feats.length+' полигонов';
   }).catch(function(){
     document.getElementById('geost').textContent='Не удалось загрузить границы (проверьте BORDERS_URL и CORS)';
+  });
+}
+// GeoJSON хранит [lon,lat], Яндексу нужно [lat,lon] — переворачиваем
+function flipCoords(rings){
+  return rings.map(function(ring){
+    return ring.map(function(pt){return [pt[1],pt[0]];});
   });
 }
 
