@@ -411,16 +411,19 @@ html[data-theme="dark"] #map{filter:none}
 <!-- ГОСПРОГРАММА -->
 <div class="page" id="page-gos">
 <div class="content">
-  <div class="sect-lbl">Госпрограмма · сводка по округам</div>
+  <div class="sect-lbl">Госпрограмма · финансирование расселения</div>
   <div class="fin-kpi-row" id="gos-kpi-row"></div>
-  <div class="charts-row">
-    <div class="chart-card"><div class="cc-title">Статус решений по округам</div><div class="cwrap"><canvas id="c-gos-dec"></canvas></div></div>
-    <div class="chart-card"><div class="cc-title">Собственники vs Наниматели по округам</div><div class="cwrap"><canvas id="c-gos-own"></canvas></div></div>
-  </div>
   <div class="registry-card">
     <div class="reg-header">
-      <div class="reg-title">Госпрограмма · детализация по округам</div>
+      <div class="reg-title">Госпрограмма · детализация</div>
       <div class="reg-cnt" id="gos-reg-cnt"></div>
+      <select class="reg-sort" id="gos-sort" onchange="renderGos()">
+        <option value="round">По округу</option>
+        <option value="price_desc">По стоимости оценки ↓</option>
+        <option value="contract_desc">По цене договора ↓</option>
+        <option value="subprog">По подпрограмме</option>
+        <option value="paid">Оплата Мин-ва</option>
+      </select>
     </div>
     <div class="twrap"><table id="tbl-gos"></table></div>
   </div>
@@ -469,7 +472,11 @@ var SHEETS=[
 ];
 var C={mo:3,np:4,addr:5,apt:6,area:7,citizens:8,owner:11,certType:12,dateApp:13,
   decision:14,signed:15,buyConsent:17,price:20,dkp:21,newDistrict:22,newAddr:23,newArea:24,
-  builder:25,contractType:26,contractPrice:27,minPay:28,lat:29,lon:30};
+  builder:25,contractType:26,contractPrice:27,minPay:28,lat:29,lon:30,
+  // ⬇ Столбцы Госпрограммы — при необходимости поправьте номера под вашу таблицу ⬇
+  subprog:31,        // № Подпрограммы, в рамках которого проходит расселение
+  finProvided:32,    // Обеспечено финансирование на сертификаты (ГП) ДА/НЕТ
+  limit:33};         // Лимиты по Госпрограмме
 
 function normType(r){var s=String(r||'').trim().toLowerCase();if(!s||s==='-'||s==='—')return'Не указано';if(s.indexOf('сертификат')>=0)return'Сертификат';if(s.indexOf('выкуп')>=0)return'Выкуп';if(s.indexOf('не подавал')>=0)return'Не подавалось';return'Другое';}
 function normOwner(r){var s=String(r||'').trim().toLowerCase();if(!s||s==='-'||s==='—')return'Не указано';if(s.indexOf('собственник')>=0)return'Собственник';if(s.indexOf('наниматель')>=0)return'Наниматель';return'Другое';}
@@ -627,56 +634,49 @@ function switchPage(name,btn){
 }
 
 function renderGos(){
-  var d=filteredData;
-  var rm=roundMap(d);
-  var entries=Object.entries(rm).sort(function(a,b){return b[1].t-a[1].t;});
-  var totQ=0,totA=0,totSob=0,totNan=0,totPos=0;
-  entries.forEach(function(e){totQ+=e[1].t;totA+=e[1].aT;totSob+=e[1].sob;totNan+=e[1].nan;totPos+=e[1].pos;});
+  var d=filteredData.slice();
+  var sort=document.getElementById('gos-sort')?document.getElementById('gos-sort').value:'round';
+  if(sort==='round')d.sort(function(a,b){return(a._sheet||'').localeCompare(b._sheet||'','ru');});
+  else if(sort==='price_desc')d.sort(function(a,b){return n(b[C.price])-n(a[C.price]);});
+  else if(sort==='contract_desc')d.sort(function(a,b){return n(b[C.contractPrice])-n(a[C.contractPrice]);});
+  else if(sort==='subprog')d.sort(function(a,b){return String(a[C.subprog]||'').localeCompare(String(b[C.subprog]||''),'ru');});
+  else if(sort==='paid')d=d.filter(function(r){return lo(r[C.minPay])==='да';});
+
+  var tE=0,tC=0,tL=0,finYes=0,paidCnt=0;
+  d.forEach(function(r){
+    tE+=n(r[C.price]);tC+=n(r[C.contractPrice]);tL+=n(r[C.limit]);
+    if(up(r[C.finProvided])==='ДА')finYes++;
+    if(lo(r[C.minPay])==='да')paidCnt++;
+  });
   document.getElementById('gos-kpi-row').innerHTML=
-    '<div class="fin-kpi"><div class="fk-lbl">Квартир всего</div><div class="fk-val">'+totQ.toLocaleString('ru')+'</div><div class="fk-sub">Площадь: '+totA.toFixed(0)+' м²</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Положительных решений</div><div class="fk-val" style="color:#3a7d5c">'+totPos+'</div><div class="fk-sub">'+(totQ?Math.round(totPos/totQ*100):0)+'% от всех</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Собственники</div><div class="fk-val">'+totSob+'</div><div class="fk-sub">Наниматели: '+totNan+'</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Округов в выборке</div><div class="fk-val">'+entries.length+'</div><div class="fk-sub">из 44 всего</div></div>';
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Цена договоров: '+fmtMln(tC)+' ₽</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Лимиты по Госпрограмме</div><div class="fk-val">'+fmtMln(tL)+' млн ₽</div><div class="fk-sub">'+(tE>0?Math.round(tL/tE*100):0)+'% от стоимости оценки</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Финансирование обеспечено (ГП)</div><div class="fk-val" style="color:#3a7d5c">'+finYes+'</div><div class="fk-sub">'+(d.length>0?Math.round(finYes/d.length*100):0)+'% записей · ДА</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+paidCnt+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех</div></div>';
 
-  var tick=themeTick(),grid=themeGrid(),F='Inter';
-  var top=entries.slice(0,14);
-  var rl=top.map(function(e){return e[0];});
-  var decCols={'Положительное':'#3a7d5c','На рассмотрении':'#b08d4f','Отрицательное':'#b05a4f','Отказ':'#7a6a8f','Не указано':'#5a7088'};
-  var decByR={};
-  d.forEach(function(r){var k=r._sheet||'—';if(!decByR[k])decByR[k]={};var nd=normDecision(r[C.decision]);decByR[k][nd]=(decByR[k][nd]||0)+1;});
-  var decOrder=['Положительное','На рассмотрении','Отрицательное','Отказ','Не указано'];
-  var ds=decOrder.map(function(dk){return{label:dk,data:top.map(function(e){return(decByR[e[0]]||{})[dk]||0;}),backgroundColor:decCols[dk],borderRadius:4,borderSkipped:false};});
-  var cg1=document.getElementById('c-gos-dec');
-  if(cg1){if(charts.gosDec){charts.gosDec.destroy();}
-    charts.gosDec=new Chart(cg1,{type:'bar',data:{labels:rl,datasets:ds},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:12}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
-        scales:{x:{stacked:true,ticks:{color:tick,font:{size:9,family:F},maxRotation:50},grid:{display:false}},y:{stacked:true,ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}}}}});}
-
-  var cg2=document.getElementById('c-gos-own');
-  if(cg2){if(charts.gosOwn){charts.gosOwn.destroy();}
-    charts.gosOwn=new Chart(cg2,{type:'bar',data:{labels:rl,datasets:[
-      {label:'Собственники',data:top.map(function(e){return e[1].sob;}),backgroundColor:'#b08d4f',borderRadius:4,borderSkipped:false},
-      {label:'Наниматели',data:top.map(function(e){return e[1].nan;}),backgroundColor:'#5a7088',borderRadius:4,borderSkipped:false}
-    ]},
-      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
-        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
-        scales:{x:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:F,weight:'700'}},grid:{display:false}}}}});}
-
-  document.getElementById('gos-reg-cnt').textContent=entries.length+' округов';
+  document.getElementById('gos-reg-cnt').textContent=d.length.toLocaleString('ru')+' записей';
+  function yn(v){var s=up(String(v||'').trim());if(s==='ДА')return'<span class="b bp">ДА</span>';if(s==='НЕТ')return'<span class="b bn">НЕТ</span>';return v?'<span class="b bnone">'+v+'</span>':'—';}
   document.getElementById('tbl-gos').innerHTML=
-    '<thead><tr><th>№</th><th>Округ</th><th>Квартир</th><th>Площадь м²</th><th>Граждан</th><th>Собств.</th><th>Наним.</th><th>Сертиф.</th><th>Выкуп</th><th>Положит.</th></tr></thead><tbody>'+
-    entries.map(function(e,i){var v=e[1];
-      return'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td>'+
-        '<td style="font-weight:700;color:var(--ink)">'+e[0]+'</td>'+
-        '<td style="text-align:right;font-weight:700;color:var(--ink)">'+v.t+'</td>'+
-        '<td style="text-align:right">'+v.aT.toFixed(1)+'</td>'+
-        '<td style="text-align:center">'+v.cit+'</td>'+
-        '<td style="text-align:center">'+v.sob+'</td>'+
-        '<td style="text-align:center">'+v.nan+'</td>'+
-        '<td style="text-align:center">'+v.cert+'</td>'+
-        '<td style="text-align:center">'+v.vyk+'</td>'+
-        '<td style="text-align:center;color:#3a7d5c;font-weight:700">'+v.pos+'</td></tr>';
+    '<thead><tr><th>№</th><th>Г.О/М.О</th><th>№ Подпрограммы</th>'+
+    '<th>Финанс. на сертификаты (ГП)</th><th>Адрес</th><th>Кв.</th>'+
+    '<th>Стоимость по оценке ₽</th><th>Цена договора ДКП/ДДУ ₽</th>'+
+    '<th>Оплата Министерства</th><th>Лимиты по Госпрограмме ₽</th></tr></thead><tbody>'+
+    d.map(function(r,i){
+      var ev=n(r[C.price]),cp=n(r[C.contractPrice]),lim=n(r[C.limit]);
+      var paid=String(r[C.minPay]||'').trim();
+      var paidStyle=lo(paid)==='да'?'color:#3a7d5c;font-weight:700':'color:#aaa';
+      return'<tr>'+
+        '<td style="color:var(--muted);font-weight:700">'+(i+1)+'</td>'+
+        '<td style="font-weight:600;color:var(--ink)">'+(r[C.mo]||r._sheet||'—')+'</td>'+
+        '<td style="text-align:center;font-weight:600">'+(r[C.subprog]||'—')+'</td>'+
+        '<td style="text-align:center">'+yn(r[C.finProvided])+'</td>'+
+        '<td style="max-width:170px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td>'+
+        '<td style="text-align:center">'+(r[C.apt]||'—')+'</td>'+
+        '<td style="text-align:right;font-weight:700;color:var(--ink)">'+(ev>0?new Intl.NumberFormat('ru-RU').format(ev)+' ₽':'—')+'</td>'+
+        '<td style="text-align:right;font-weight:700">'+(cp>0?new Intl.NumberFormat('ru-RU').format(cp)+' ₽':'—')+'</td>'+
+        '<td style="text-align:center;'+paidStyle+'">'+(paid||'—')+'</td>'+
+        '<td style="text-align:right;font-weight:700;color:var(--gold)">'+(lim>0?new Intl.NumberFormat('ru-RU').format(lim)+' ₽':'—')+'</td>'+
+        '</tr>';
     }).join('')+'</tbody>';
 }
 
@@ -685,35 +685,49 @@ function exportExcel(){
   if(!allData.length){alert('Данные не загружены');return;}
   var wb=XLSX.utils.book_new();
 
-  // Лист 1: Полный реестр (по текущему фильтру)
+  // Лист 1: ПОЛНЫЙ реестр — ВСЕ округа, ВСЕ строки (без фильтра)
   var reg=[['Округ','Г.О/М.О','Нас. пункт','Адрес','Кв.','Площадь м²','Граждан','ФИО заявителя','Телефон','Тип права','Тип','Дата заявл.','Решение','Подписано','Стоимость по оценке ₽','ДКП/ДДУ','Цена договора ₽','Оплата Мин-ва']];
-  filteredData.forEach(function(r){
+  allData.forEach(function(r){
     reg.push([r._sheet||'',r[C.mo]||'',r[C.np]||'',r[C.addr]||'',r[C.apt]||'',n(r[C.area]),n(r[C.citizens]),r[9]||'',r[10]||'',normOwner(r[C.owner]),normType(r[C.certType]),r[C.dateApp]||'',normDecision(r[C.decision]),r[C.signed]||'',n(r[C.price]),r[C.dkp]||'',n(r[C.contractPrice]),r[C.minPay]||'']);
   });
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(reg),'Реестр');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(reg),'Реестр (все)');
 
-  // Лист 2: Сводка по округам
-  var rm=roundMap(filteredData);
+  // Лист 2: Сводка по ВСЕМ округам
+  var rm=roundMap(allData);
   var sum=[['Округ','Квартир','Площадь всего м²','Граждан','Собственники','Площадь собств. м²','Наниматели','Площадь наним. м²','Сертификаты','Площадь серт. м²','Выкуп','Площадь выкуп м²','Положительных','Площадь полож. м²']];
   Object.entries(rm).sort(function(a,b){return b[1].t-a[1].t;}).forEach(function(e){var v=e[1];
     sum.push([e[0],v.t,+v.aT.toFixed(1),v.cit,v.sob,+v.aSob.toFixed(1),v.nan,+v.aNan.toFixed(1),v.cert,+v.aCert.toFixed(1),v.vyk,+v.aVyk.toFixed(1),v.pos,+v.aPos.toFixed(1)]);
   });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'Сводка по округам');
 
-  // Лист 3: Финансы по округам
+  // Лист 3: Финансы по ВСЕМ округам
   var fin=[['Округ','Стоимость по оценке ₽','Цена договоров ДКП/ДДУ ₽','Разница ₽','Квартир']];
   var fm={};
-  filteredData.forEach(function(r){var k=r._sheet||'—';if(!fm[k])fm[k]={ev:0,cp:0,c:0};fm[k].ev+=n(r[C.price]);fm[k].cp+=n(r[C.contractPrice]);fm[k].c++;});
+  allData.forEach(function(r){var k=r._sheet||'—';if(!fm[k])fm[k]={ev:0,cp:0,c:0};fm[k].ev+=n(r[C.price]);fm[k].cp+=n(r[C.contractPrice]);fm[k].c++;});
   Object.entries(fm).sort(function(a,b){return b[1].ev-a[1].ev;}).forEach(function(e){var v=e[1];
     fin.push([e[0],Math.round(v.ev),Math.round(v.cp),Math.round(v.cp-v.ev),v.c]);
   });
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fin),'Финансы');
 
-  // Лист 4: Решения (итог)
-  var dc={};filteredData.forEach(function(r){var nd=normDecision(r[C.decision]);dc[nd]=(dc[nd]||0)+1;});
-  var dec=[['Решение','Количество','% от выборки']];
-  Object.entries(dc).forEach(function(e){dec.push([e[0],e[1],Math.round(e[1]/filteredData.length*100)+'%']);});
+  // Лист 4: Госпрограмма
+  var gp=[['Округ (Г.О/М.О)','№ Подпрограммы','Финансирование на сертификаты (ГП) ДА/НЕТ','Адрес','Кв.','Стоимость по оценке ₽','Цена договора ДКП/ДДУ ₽','Оплата Министерства да/нет','Лимиты по Госпрограмме ₽']];
+  allData.forEach(function(r){
+    gp.push([r._sheet||'',r[C.subprog]||'',r[C.finProvided]||'',r[C.addr]||'',r[C.apt]||'',n(r[C.price]),n(r[C.contractPrice]),r[C.minPay]||'',r[C.limit]||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(gp),'Госпрограмма');
+
+  // Лист 5: Решения (итог по всем)
+  var dc={};allData.forEach(function(r){var nd=normDecision(r[C.decision]);dc[nd]=(dc[nd]||0)+1;});
+  var dec=[['Решение','Количество','% от всех']];
+  Object.entries(dc).forEach(function(e){dec.push([e[0],e[1],Math.round(e[1]/allData.length*100)+'%']);});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dec),'Решения');
+
+  // Лист 6: Текущая выборка (по активным фильтрам)
+  if(filteredData.length<allData.length){
+    var cur=[['Округ','Адрес','Кв.','Площадь м²','Граждан','Тип','Решение']];
+    filteredData.forEach(function(r){cur.push([r._sheet||'',r[C.addr]||'',r[C.apt]||'',n(r[C.area]),n(r[C.citizens]),normType(r[C.certType]),normDecision(r[C.decision])]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(cur),'Текущий фильтр');
+  }
 
   var fname='Минстрой_МО_дашборд_'+new Date().toISOString().slice(0,10)+'.xlsx';
   XLSX.writeFile(wb,fname);
