@@ -106,6 +106,7 @@ html[data-theme="dark"] .btn-upd{background:linear-gradient(145deg,#d4b87a,#b899
 .content{padding:28px 32px;display:flex;flex-direction:column;gap:22px}
 .sect-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;padding-left:2px;display:flex;align-items:center;gap:10px}
 .sect-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.sect-lbl-sm{font-size:10px;letter-spacing:.12em;margin-bottom:-6px}
 
 /* KPI HERO */
 .kpi-hero{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
@@ -122,6 +123,21 @@ html[data-theme="dark"] .btn-upd{background:linear-gradient(145deg,#d4b87a,#b899
 .kh-sub{font-size:11px;color:var(--ink-soft);margin-top:4px;font-weight:600}
 .kh-hint{font-size:9px;color:var(--gold);margin-top:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:0;transition:opacity .25s}
 .kpi-h:hover .kh-hint,.kpi-h.active-kpi .kh-hint{opacity:1}
+
+/* Компактные варианты для вкладки Карта */
+.kpi-hero-sm{gap:10px}
+.kpi-hero-sm .kpi-h{padding:14px 14px;border-radius:14px}
+.kpi-hero-sm .kh-lbl{font-size:9px;margin-bottom:6px;letter-spacing:.1em}
+.kpi-hero-sm .kh-val{font-size:24px}
+.kpi-hero-sm .kh-area{font-size:10px;margin-top:5px}
+.kpi-hero-sm .kh-sub{font-size:9.5px;margin-top:2px}
+.kpi-hero-sm .kh-hint{display:none}
+.dec-row-sm{gap:10px}
+.dec-row-sm .dec-card{padding:14px 14px;border-radius:14px}
+.dec-row-sm .dc-label{font-size:9px;margin-bottom:6px}
+.dec-row-sm .dc-val{font-size:24px}
+.dec-row-sm .dc-sub{font-size:9.5px;margin-top:4px}
+.dec-row-sm .dc-icon{font-size:16px;bottom:10px;right:12px}
 
 /* DECISION CARDS */
 .dec-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
@@ -219,7 +235,12 @@ tr:hover td{background:var(--row-bg)}
 .fk-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
 .fk-val{font-size:28px;font-weight:800;color:var(--ink);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .fk-sub{font-size:11px;color:var(--ink-soft);margin-top:8px;font-weight:600}
+.fk-sub2{margin-top:8px;padding-top:8px;border-top:1px solid var(--line-soft);color:var(--gold);font-weight:700;font-size:11px}
 .fin-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.finrow3{grid-template-columns:repeat(3,1fr)}
+.fin-scroll{max-height:380px;overflow-y:auto;padding-right:6px}
+.fin-scroll::-webkit-scrollbar{width:6px}
+.fin-scroll::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
 
 /* MAP */
 .map-content{padding:24px 32px;display:flex;flex-direction:column;gap:16px;position:relative;z-index:1}
@@ -231,7 +252,7 @@ tr:hover td{background:var(--row-bg)}
 .mstat-val{font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .mstat-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-top:3px;letter-spacing:.08em}
 .map-wrap{background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
-#map{height:calc(100vh - 340px);min-height:460px;background:var(--glass)}
+#map{height:calc(100vh - 480px);min-height:400px;background:var(--glass)}
 .map-legend{display:flex;gap:16px;padding:12px 18px;background:var(--row-bg);border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
 .leg{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-soft);font-weight:600}
 .ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
@@ -272,11 +293,13 @@ html[data-theme="dark"] #map{filter:none}
   .kpi-hero{grid-template-columns:repeat(2,1fr);gap:10px}
   .kh-val{font-size:28px}
   .kpi-h{padding:18px 14px}
+  .kpi-hero-sm .kh-val{font-size:20px}
 
   /* DECISIONS */
   .dec-row{grid-template-columns:repeat(2,1fr);gap:10px}
   .dc-val{font-size:26px}
   .dec-card{padding:18px 14px}
+  .dec-row-sm .dc-val{font-size:20px}
 
   /* TOP SECTIONS */
   .top-section{grid-template-columns:1fr;gap:12px}
@@ -477,10 +500,10 @@ html[data-theme="dark"] #map{filter:none}
 <!-- ФИНАНСИРОВАНИЕ -->
 <div class="page" id="page-finance">
 <div class="content">
-  <div class="fin-kpi-row" id="fin-kpi-row"></div>
+  <div class="fin-kpi-row finrow3" id="fin-kpi-row"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-    <div class="card"><div class="ctitle">Топ по стоимости оценки</div><div id="fin-top-eval"></div></div>
-    <div class="card"><div class="ctitle">Топ по цене договора ДКП/ДДУ</div><div id="fin-top-dkp"></div></div>
+    <div class="card"><div class="ctitle">Топ по стоимости оценки · все округа (прокрутка)</div><div id="fin-top-eval" class="fin-scroll"></div></div>
+    <div class="card"><div class="ctitle">Топ по цене договора ДКП/ДДУ · все округа (прокрутка)</div><div id="fin-top-dkp" class="fin-scroll"></div></div>
   </div>
   <div class="chart-card">
     <div class="cc-title">Стоимость по оценке vs Цена договора — топ-15 округов (млн ₽)</div>
@@ -525,7 +548,19 @@ html[data-theme="dark"] #map{filter:none}
     <div class="map-lbl">Карта переселения · Московская область</div>
     <span style="font-size:11px;color:var(--muted);font-weight:600">🔴 Аварийный дом → 🟢 Новое жильё</span>
   </div>
-  <div class="map-stats" id="map-stats"></div>
+
+  <div class="sect-lbl sect-lbl-sm">Сводка по выборке · нажмите для списка округов</div>
+  <div class="kpi-hero kpi-hero-sm">
+    <div class="kpi-h" onclick="kpiModal('total')"><div class="kh-lbl">Всего квартир</div><div class="kh-val" id="mkv-total">—</div><div class="kh-area" id="mkv-area">—</div></div>
+    <div class="kpi-h" onclick="kpiModal('sob')"><div class="kh-lbl">Собственники</div><div class="kh-val" id="mkv-sob">—</div><div class="kh-area" id="mkv-sob-a">—</div><div class="kh-sub" id="mkv-sob-s">—</div></div>
+    <div class="kpi-h" onclick="kpiModal('nan')"><div class="kh-lbl">Наниматели</div><div class="kh-val" id="mkv-nan">—</div><div class="kh-area" id="mkv-nan-a">—</div><div class="kh-sub" id="mkv-nan-s">—</div></div>
+    <div class="kpi-h" onclick="kpiModal('cert')"><div class="kh-lbl">Сертификаты</div><div class="kh-val" id="mkv-cert">—</div><div class="kh-area" id="mkv-cert-a">—</div><div class="kh-sub" id="mkv-cert-s">—</div></div>
+    <div class="kpi-h" onclick="kpiModal('vyk')"><div class="kh-lbl">Выкуп</div><div class="kh-val" id="mkv-vyk">—</div><div class="kh-area" id="mkv-vyk-a">—</div><div class="kh-sub" id="mkv-vyk-s">—</div></div>
+  </div>
+
+  <div class="sect-lbl sect-lbl-sm">Решения · нажмите для списка домов</div>
+  <div class="dec-row dec-row-sm" id="m-dec-row"></div>
+
   <div class="map-wrap">
     <div id="map"></div>
     <div class="map-legend">
@@ -581,6 +616,13 @@ var allData=[],filteredData=[],loaded=0;
 var ymap=null,mapInited=false,yReady=false;
 var geocodeCache={};
 var mapMarkersBuilt=false;
+var roundColorMap={};
+// HOUSES может задаваться во внешнем файле; если его нет — пустой массив,
+// чтобы карта не падала с ошибкой и остальной дашборд работал стабильно
+var HOUSES=(typeof window!=='undefined'&&window.HOUSES)?window.HOUSES:[];
+// Безопасные обёртки (в исходном коде вызывались, но не были объявлены)
+function buildMapMarkers(){if(mapInited&&ymap){mapMarkersBuilt=true;renderMapPage();}}
+function drawMapMarkers(){if(mapInited&&ymap)renderMapPage();}
 
 // Центры городских округов МО — точные координаты
 var ROUND_CENTERS={
@@ -1035,24 +1077,51 @@ function topModal(label,key){
 }
 
 /* DATA */
-function fetchSheet(sh){
+// Надёжная загрузка одного листа с повторными попытками.
+// Возвращает {sheet,name,rows,ok}. ok=false ТОЛЬКО при сетевой/парс-ошибке
+// (тогда лист уходит в повторную загрузку), а не когда у округа просто нет строк.
+function fetchSheet(sh,longMode){
+  var timeoutMs=longMode?45000:24000;
+  var maxAttempts=longMode?6:4;
+  return fetchSheetTry(sh,1,timeoutMs,maxAttempts);
+}
+function fetchSheetTry(sh,attempt,timeoutMs,maxAttempts){
   return new Promise(function(resolve){
-    var url=PUB+'&gid='+sh.gid+'&cachebust='+Date.now();
-    var timer=setTimeout(function(){resolve([]);},8000); // таймаут 8 сек
-    Papa.parse(url,{
-      download:true,header:false,skipEmptyLines:true,
-      complete:function(r){
-        clearTimeout(timer);
-        var rows=[];
-        if(r.data&&r.data.length>1){
+    var url=PUB+'&gid='+sh.gid+'&cachebust='+Date.now()+'_'+attempt;
+    var done=false;
+    function retryOrFail(){
+      if(attempt<maxAttempts){
+        setTimeout(function(){
+          fetchSheetTry(sh,attempt+1,timeoutMs,maxAttempts).then(resolve);
+        },500*attempt);
+      }else{
+        resolve({sheet:sh,name:sh.name,rows:[],ok:false});
+      }
+    }
+    var timer=setTimeout(function(){
+      if(done)return;done=true;retryOrFail();
+    },timeoutMs);
+    try{
+      Papa.parse(url,{
+        download:true,header:false,skipEmptyLines:true,
+        complete:function(r){
+          if(done)return;done=true;clearTimeout(timer);
+          // Нет массива данных вообще — это сбой запроса, пробуем ещё раз
+          if(!r||!r.data||!r.data.length){retryOrFail();return;}
+          var rows=[];
           r.data.slice(1).forEach(function(row){
-            if(row[0]&&String(row[0]).match(/^\d+$/)){row._sheet=sh.name;rows.push(row);}
+            if(row&&row[0]&&String(row[0]).match(/^\d+$/)){row._sheet=sh.name;rows.push(row);}
           });
+          // Лист получен (даже если у округа 0 записей) — это корректный результат
+          resolve({sheet:sh,name:sh.name,rows:rows,ok:true});
+        },
+        error:function(){
+          if(done)return;done=true;clearTimeout(timer);retryOrFail();
         }
-        resolve(rows);
-      },
-      error:function(){clearTimeout(timer);resolve([]);}
-    });
+      });
+    }catch(e){
+      if(done)return;done=true;clearTimeout(timer);retryOrFail();
+    }
   });
 }
 
@@ -1064,31 +1133,59 @@ function reloadAll(){
   roundColorMap={};geocodeCache={};
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){if(charts[k]){charts[k].destroy();charts[k]=null;}});
+  var fc0=document.getElementById('fcnt');if(fc0)fc0.textContent='';
 
   var total=SHEETS.length;
+  var okCount=0,failed=[];
   document.getElementById('ldtxt').textContent='Загрузка данных...';
   document.getElementById('pgfill').style.width='0%';
+  document.getElementById('pgfill').style.background='linear-gradient(90deg,var(--gold-soft),var(--gold))';
 
-  // Параллельная загрузка батчами по 8 листов
-  var BATCH=8;
+  // Меньший батч, чтобы Google Sheets не отбрасывал часть запросов (это и было
+  // причиной «разных цифр» — часть листов молча не догружалась)
+  var BATCH=6;
   var batches=[];
   for(var i=0;i<SHEETS.length;i+=BATCH)batches.push(SHEETS.slice(i,i+BATCH));
 
+  function applyResult(res){
+    if(res.ok){okCount++;res.rows.forEach(function(r){allData.push(r);});}
+    else failed.push(res.sheet);
+    loaded++;
+    document.getElementById('ldtxt').textContent='Листов: '+loaded+'/'+total+' · округов с данными: '+okCount+' · строк: '+allData.length;
+    document.getElementById('pgfill').style.width=Math.round(loaded/total*100)+'%';
+  }
+
   var batchIdx=0;
   function nextBatch(){
-    if(batchIdx>=batches.length){finish();return;}
+    if(batchIdx>=batches.length){retryPass();return;}
     var b=batches[batchIdx++];
-    Promise.all(b.map(fetchSheet)).then(function(results){
-      results.forEach(function(rows){rows.forEach(function(r){allData.push(r);});});
-      loaded+=b.length;
-      document.getElementById('ldtxt').textContent='Загружено: '+loaded+'/'+total+' · '+allData.length+' строк';
-      document.getElementById('pgfill').style.width=Math.round(loaded/total*100)+'%';
+    Promise.all(b.map(function(sh){return fetchSheet(sh,false);})).then(function(results){
+      results.forEach(applyResult);
       nextBatch();
     });
   }
 
+  // Финальный последовательный проход по не загрузившимся листам —
+  // гарантирует одинаковый полный набор данных при каждом обновлении
+  function retryPass(){
+    if(!failed.length){finish();return;}
+    var toRetry=failed.slice();failed=[];
+    var idx=0;
+    function nextR(){
+      if(idx>=toRetry.length){finish();return;}
+      var sh=toRetry[idx++];
+      document.getElementById('ldtxt').textContent='Повторная загрузка: '+idx+'/'+toRetry.length+' ('+sh.name+') · округов с данными: '+okCount;
+      fetchSheet(sh,true).then(function(res){
+        if(res.ok){okCount++;res.rows.forEach(function(r){allData.push(r);});}
+        else failed.push(res.sheet);
+        nextR();
+      });
+    }
+    nextR();
+  }
+
   function finish(){
-    if(!allData.length){
+    if(!allData.length&&!okCount){
       document.getElementById('ldtxt').innerHTML=
         'Данные не загрузились.<br><span style="font-size:11px;color:var(--muted)">Возможная причина: блокировка CORS в браузере или нет доступа к Google Sheets.<br>Откройте этот файл локально или на сервере с разрешёнными внешними запросами.</span>';
       document.getElementById('pgfill').style.background='#b05a4f';
@@ -1098,9 +1195,19 @@ function reloadAll(){
     buildFilterMenus();renderAll();
     ld.style.display='none';
     document.getElementById('page-overview').classList.add('active');
-    document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('ru')+' · '+allData.length+' строк';
+    document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('ru')+' · округов '+okCount+'/'+total+' · '+allData.length+' строк';
+    var fc=document.getElementById('fcnt');
+    if(fc){
+      if(failed.length){
+        fc.textContent='⚠ Не загрузились '+failed.length+' округов: '+failed.map(function(s){return s.name;}).join(', ')+' — нажмите «Обновить»';
+        fc.style.color='#b05a4f';
+      }else{
+        fc.textContent='✓ Все '+total+' округов загружены';
+        fc.style.color='var(--pos)';
+        setTimeout(function(){if(fc&&fc.textContent.indexOf('✓')===0){fc.textContent='';fc.style.color='var(--gold)';}},6000);
+      }
+    }
     startAuto();
-    // Если карта уже открыта и инициализирована — запустить геокодирование сразу
     if(mapInited&&ymap&&!mapMarkersBuilt){buildMapMarkers();}
   }
 
@@ -1179,14 +1286,22 @@ function renderAll(){
     if(nd==='Положительное')pos++;else if(nd==='На рассмотрении')proc++;
     else if(nd==='Отказ')rej++;else if(nd==='Отрицательное')neg++;else none++;
   });
-  function setT(id,v){document.getElementById(id).textContent=v;}
+  function setT(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
   setT('kv-total',d.length.toLocaleString('ru'));setT('kv-area','Площадь: '+area.toFixed(0)+' м²');
   setT('kv-sob',sob.toLocaleString('ru'));setT('kv-sob-a','Площадь: '+sobA.toFixed(0)+' м²');setT('kv-sob-s',(d.length>0?Math.round(sob/d.length*100):0)+'% от всех');
   setT('kv-nan',nan.toLocaleString('ru'));setT('kv-nan-a','Площадь: '+nanA.toFixed(0)+' м²');setT('kv-nan-s',(d.length>0?Math.round(nan/d.length*100):0)+'% от всех');
   setT('kv-cert',cert.toLocaleString('ru'));setT('kv-cert-a','Площадь: '+certA.toFixed(0)+' м²');setT('kv-cert-s',(d.length>0?Math.round(cert/d.length*100):0)+'% от всех');
   setT('kv-vyk',vyk.toLocaleString('ru'));setT('kv-vyk-a','Площадь: '+vykA.toFixed(0)+' м²');setT('kv-vyk-s',(d.length>0?Math.round(vyk/d.length*100):0)+'% от всех');
 
-  document.getElementById('map-stats').innerHTML=
+  // Компактные KPI на вкладке «Карта»
+  setT('mkv-total',d.length.toLocaleString('ru'));setT('mkv-area','Площадь: '+area.toFixed(0)+' м²');
+  setT('mkv-sob',sob.toLocaleString('ru'));setT('mkv-sob-a','Площадь: '+sobA.toFixed(0)+' м²');setT('mkv-sob-s',(d.length>0?Math.round(sob/d.length*100):0)+'% от всех');
+  setT('mkv-nan',nan.toLocaleString('ru'));setT('mkv-nan-a','Площадь: '+nanA.toFixed(0)+' м²');setT('mkv-nan-s',(d.length>0?Math.round(nan/d.length*100):0)+'% от всех');
+  setT('mkv-cert',cert.toLocaleString('ru'));setT('mkv-cert-a','Площадь: '+certA.toFixed(0)+' м²');setT('mkv-cert-s',(d.length>0?Math.round(cert/d.length*100):0)+'% от всех');
+  setT('mkv-vyk',vyk.toLocaleString('ru'));setT('mkv-vyk-a','Площадь: '+vykA.toFixed(0)+' м²');setT('mkv-vyk-s',(d.length>0?Math.round(vyk/d.length*100):0)+'% от всех');
+
+  var msEl=document.getElementById('map-stats');
+  if(msEl)msEl.innerHTML=
     '<div class="mstat"><div class="mstat-dot" style="background:#3a7d5c"></div><div><div class="mstat-val">'+pos+'</div><div class="mstat-lbl">Положит.</div></div></div>'+
     '<div class="mstat"><div class="mstat-dot" style="background:#b08d4f"></div><div><div class="mstat-val">'+proc+'</div><div class="mstat-lbl">На рассм.</div></div></div>'+
     '<div class="mstat"><div class="mstat-dot" style="background:#b05a4f"></div><div><div class="mstat-val">'+neg+'</div><div class="mstat-lbl">Отриц.</div></div></div>'+
@@ -1197,9 +1312,13 @@ function renderAll(){
   document.getElementById('dec-row').innerHTML=decCfg.map(function(c){var v=decVals[c.key],pct=d.length>0?Math.round(v/d.length*100):0;
     return'<div class="dec-card '+c.cls+'" onclick="decModal(\''+c.key+'\')"><div class="dc-label">'+c.label+'</div><div class="dc-val">'+v+'</div><div class="dc-sub">'+pct+'% · нажмите для списка</div><div class="dc-icon">'+c.icon+'</div></div>';}).join('');
 
+  var mdr=document.getElementById('m-dec-row');
+  if(mdr)mdr.innerHTML=decCfg.map(function(c){var v=decVals[c.key],pct=d.length>0?Math.round(v/d.length*100):0;
+    return'<div class="dec-card '+c.cls+'" onclick="decModal(\''+c.key+'\')"><div class="dc-label">'+c.label+'</div><div class="dc-val">'+v+'</div><div class="dc-sub">'+pct+'% · список</div><div class="dc-icon">'+c.icon+'</div></div>';}).join('');
+
   var rm=roundMap(d);
   function renderTop(cid,sk,label){
-    var srt=Object.entries(rm).sort(function(a,b){return b[1][sk]-a[1][sk];}).filter(function(e){return e[1][sk]>0;});
+    var srt=Object.entries(rm).sort(function(a,b){return (b[1][sk]-a[1][sk])||a[0].localeCompare(b[0],'ru');}).filter(function(e){return e[1][sk]>0;});
     var mx=srt.length?srt[0][1][sk]:1;
     var ak=areaKey(sk);
     var colMap={t:'#b08d4f',sob:'#3a7d5c',nan:'#5a7088',cert:'#b08d4f',vyk:'#7a6a8f',pos:'#3a7d5c'};
@@ -1244,7 +1363,7 @@ function renderCharts(d){
   /* По округам — стек по решениям (топ-12 округов) */
   var rmap={};
   d.forEach(function(r){var k=r._sheet||'—';if(!rmap[k])rmap[k]={Положительное:0,'На рассмотрении':0,Отрицательное:0,Отказ:0,'Не указано':0,total:0};rmap[k][normDecision(r[C.decision])]++;rmap[k].total++;});
-  var topR=Object.entries(rmap).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,12);
+  var topR=Object.entries(rmap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');}).slice(0,12);
   var rl=topR.map(function(e){return e[0];});
   var decOrder=['Положительное','На рассмотрении','Отрицательное','Отказ','Не указано'];
   var decCols={'Положительное':'#3a7d5c','На рассмотрении':'#b08d4f','Отрицательное':'#b05a4f','Отказ':'#7a6a8f','Не указано':'#5a7088'};
@@ -1260,7 +1379,7 @@ function renderCharts(d){
   /* Собственники vs Наниматели — по округам, topowner */
   var omap={};
   d.forEach(function(r){var k=r._sheet||'—';if(!omap[k])omap[k]={Собственник:0,Наниматель:0,total:0};var o=normOwner(r[C.owner]);if(o==='Собственник')omap[k].Собственник++;if(o==='Наниматель')omap[k].Наниматель++;omap[k].total++;});
-  var topO=Object.entries(omap).sort(function(a,b){return b[1].total-a[1].total;}).slice(0,12);
+  var topO=Object.entries(omap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');}).slice(0,12);
   var ol=topO.map(function(e){return e[0];});
   var c2=document.getElementById('c-own');
   if(c2){if(charts.own){charts.own.destroy();charts.own=null;}
@@ -1344,26 +1463,32 @@ function renderRegistry(){
 function renderFinance(){
   var d=filteredData;
   var tE=0,tC=0,dkpCnt=0,paidCnt=0,cnt=0,rm={};
+  var totArea=0,evArea=0,cpCnt=0,cpArea=0,paidArea=0;
   d.forEach(function(r){
-    var ev=n(r[C.price]),cp=n(r[C.contractPrice]);tE+=ev;tC+=cp;
-    if(up(r[C.dkp])==='ДА')dkpCnt++;if(lo(r[C.minPay])==='да')paidCnt++;if(ev>0)cnt++;
+    var ev=n(r[C.price]),cp=n(r[C.contractPrice]),a=n(r[C.area]);tE+=ev;tC+=cp;totArea+=a;
+    if(up(r[C.dkp])==='ДА')dkpCnt++;
+    if(lo(r[C.minPay])==='да'){paidCnt++;paidArea+=a;}
+    if(ev>0){cnt++;evArea+=a;}
+    if(cp>0){cpCnt++;cpArea+=a;}
     var k=r._sheet||'—';if(!rm[k])rm[k]={eval:0,dkp:0,cnt:0};rm[k].cnt++;rm[k].eval+=ev;rm[k].dkp+=cp;
   });
-  var avgE=cnt>0?tE/cnt:0;
+  var nf=function(x){return x.toLocaleString('ru');};
   document.getElementById('fin-kpi-row').innerHTML=
-    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Средняя: '+fmtMln(avgE)+' ₽</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Цена договора ДКП/ДДУ (сумма)</div><div class="fk-val">'+fmtMln(tC)+' млн ₽</div><div class="fk-sub">Заключено: '+dkpCnt+' договоров</div></div>'+
-    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+paidCnt+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех квартир</div></div>';
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Всего квартир в выборке: '+nf(d.length)+'</div><div class="fk-sub fk-sub2">С оценкой: '+nf(cnt)+' кв. · площадь: '+evArea.toFixed(0)+' м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Цена договора ДКП/ДДУ (сумма)</div><div class="fk-val">'+fmtMln(tC)+' млн ₽</div><div class="fk-sub">Заключено: '+nf(dkpCnt)+' договоров</div><div class="fk-sub fk-sub2">С договором: '+nf(cpCnt)+' кв. · площадь: '+cpArea.toFixed(0)+' м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+nf(paidCnt)+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех · всего площадь '+totArea.toFixed(0)+' м²</div><div class="fk-sub fk-sub2">Оплачено: '+nf(paidCnt)+' кв. · площадь: '+paidArea.toFixed(0)+' м²</div></div>';
   var bC=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8'];
-  var byE=Object.entries(rm).filter(function(e){return e[1].eval>0;}).sort(function(a,b){return b[1].eval-a[1].eval;}).slice(0,10);
+  // Сортировка с детерминированным «довеском» по имени округа —
+  // чтобы при равных суммах порядок не «прыгал» между обновлениями
+  var byE=Object.entries(rm).filter(function(e){return e[1].eval>0;}).sort(function(a,b){return (b[1].eval-a[1].eval)||a[0].localeCompare(b[0],'ru');});
   var mxE=byE.length?byE[0][1].eval:1;
-  document.getElementById('fin-top-eval').innerHTML=byE.map(function(e,i){var pct=Math.round(e[1].eval/mxE*100);
-    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].eval)+'</span></div>';}).join('');
-  var byD=Object.entries(rm).filter(function(e){return e[1].dkp>0;}).sort(function(a,b){return b[1].dkp-a[1].dkp;}).slice(0,10);
+  document.getElementById('fin-top-eval').innerHTML=byE.length?byE.map(function(e,i){var pct=Math.round(e[1].eval/mxE*100);
+    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i%bC.length]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].eval)+'</span></div>';}).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Нет данных</div>';
+  var byD=Object.entries(rm).filter(function(e){return e[1].dkp>0;}).sort(function(a,b){return (b[1].dkp-a[1].dkp)||a[0].localeCompare(b[0],'ru');});
   var mxD=byD.length?byD[0][1].dkp:1;
   document.getElementById('fin-top-dkp').innerHTML=byD.length?byD.map(function(e,i){var pct=Math.round(e[1].dkp/mxD*100);
-    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].dkp)+'</span></div>';}).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Нет данных</div>';
-  var top15=Object.entries(rm).sort(function(a,b){return b[1].eval-a[1].eval;}).slice(0,15);
+    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i%bC.length]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].dkp)+'</span></div>';}).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Нет данных</div>';
+  var top15=Object.entries(rm).sort(function(a,b){return (b[1].eval-a[1].eval)||a[0].localeCompare(b[0],'ru');}).slice(0,15);
   var tick=themeTick(),grid=themeGrid();
   var cFin=document.getElementById('c-fin-compare');
   if(cFin){if(charts.fin){charts.fin.destroy();charts.fin=null;}
