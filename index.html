@@ -613,6 +613,11 @@ function bdec(v){var l=lo(v||'');if(l.indexOf('полож')>=0)return'<span clas
 function cdec(d){var v=lo(d||'');if(v.indexOf('положит')>=0)return'#3a7d5c';if(v.indexOf('отриц')>=0)return'#b05a4f';if(v.indexOf('рассм')>=0||v.indexOf('приостановк')>=0)return'#b08d4f';if(v.indexOf('отказ')>=0)return'#7a6a8f';return'#5a7088';}
 
 var allData=[],filteredData=[],loaded=0;
+// Счётчик поколений загрузки. Каждый вызов reloadAll() увеличивает его.
+// Все асинхронные коллбэки сравнивают свой myGen с _loadGen и молча
+// прекращают работу, если была запущена более новая загрузка.
+// Это единственный правильный способ остановить «гонку» при двойном нажатии «Обновить».
+var _loadGen=0;
 var ymap=null,mapInited=false,yReady=false;
 var geocodeCache={};
 var mapMarkersBuilt=false;
@@ -1143,14 +1148,30 @@ function fetchSheetTry(sh,attempt,timeoutMs,maxAttempts){
 }
 
 function reloadAll(){
+  // ── Защита от гонки ─────────────────────────────────────────────────────
+  // Каждый вызов получает уникальный номер поколения.
+  // Все асинхронные коллбэки проверяют: если к моменту их срабатывания
+  // была запущена более новая загрузка — молча выходят, ничего не трогая.
+  _loadGen++;
+  var myGen=_loadGen;
+  function stale(){return _loadGen!==myGen;}
+  // ────────────────────────────────────────────────────────────────────────
+
   clearInterval(autoT);clearInterval(cdT);secs=7200;
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   var ld=document.getElementById('loading');ld.style.display='flex';
-  allData=[];loaded=0;mapInited=false;mapMarkersBuilt=false;selR=null;fState={round:[],dec:[],type:[]};
+
+  // Синхронно чистим глобальное состояние до старта любых запросов
+  allData=[];loaded=0;
+  mapInited=false;mapMarkersBuilt=false;
+  selR=null;fState={round:[],dec:[],type:[]};
   roundColorMap={};geocodeCache={};
+
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
-  Object.keys(charts).forEach(function(k){if(charts[k]){charts[k].destroy();charts[k]=null;}});
-  var fc0=document.getElementById('fcnt');if(fc0)fc0.textContent='';
+  Object.keys(charts).forEach(function(k){
+    if(charts[k]){try{charts[k].destroy();}catch(e){}charts[k]=null;}
+  });
+  var fc0=document.getElementById('fcnt');if(fc0){fc0.textContent='';fc0.style.color='var(--gold)';}
 
   var total=SHEETS.length;
   var okCount=0,failed=[];
@@ -1158,41 +1179,46 @@ function reloadAll(){
   document.getElementById('pgfill').style.width='0%';
   document.getElementById('pgfill').style.background='linear-gradient(90deg,var(--gold-soft),var(--gold))';
 
-  // Меньший батч, чтобы Google Sheets не отбрасывал часть запросов (это и было
-  // причиной «разных цифр» — часть листов молча не догружалась)
   var BATCH=6;
   var batches=[];
   for(var i=0;i<SHEETS.length;i+=BATCH)batches.push(SHEETS.slice(i,i+BATCH));
 
   function applyResult(res){
+    if(stale())return; // ← эта загрузка уже отменена
     if(res.ok){okCount++;res.rows.forEach(function(r){allData.push(r);});}
     else failed.push(res.sheet);
     loaded++;
-    document.getElementById('ldtxt').textContent='Листов: '+loaded+'/'+total+' · округов с данными: '+okCount+' · строк: '+allData.length;
+    document.getElementById('ldtxt').textContent=
+      'Листов: '+loaded+'/'+total+' · округов с данными: '+okCount+' · строк: '+allData.length;
     document.getElementById('pgfill').style.width=Math.round(loaded/total*100)+'%';
   }
 
   var batchIdx=0;
   function nextBatch(){
+    if(stale())return; // ← отменяем, если успела запуститься новая загрузка
     if(batchIdx>=batches.length){retryPass();return;}
     var b=batches[batchIdx++];
     Promise.all(b.map(function(sh){return fetchSheet(sh,false);})).then(function(results){
+      if(stale())return;
       results.forEach(applyResult);
       nextBatch();
     });
   }
 
-  // Финальный последовательный проход по не загрузившимся листам —
-  // гарантирует одинаковый полный набор данных при каждом обновлении
+  // Финальный последовательный проход по не загрузившимся листам
   function retryPass(){
+    if(stale())return;
     if(!failed.length){finish();return;}
     var toRetry=failed.slice();failed=[];
     var idx=0;
     function nextR(){
+      if(stale())return;
       if(idx>=toRetry.length){finish();return;}
       var sh=toRetry[idx++];
-      document.getElementById('ldtxt').textContent='Повторная загрузка: '+idx+'/'+toRetry.length+' ('+sh.name+') · округов с данными: '+okCount;
+      document.getElementById('ldtxt').textContent=
+        'Повтор: '+idx+'/'+toRetry.length+' ('+sh.name+') · округов: '+okCount;
       fetchSheet(sh,true).then(function(res){
+        if(stale())return;
         if(res.ok){okCount++;res.rows.forEach(function(r){allData.push(r);});}
         else failed.push(res.sheet);
         nextR();
@@ -1202,31 +1228,38 @@ function reloadAll(){
   }
 
   function finish(){
+    if(stale())return; // ← если успели нажать «Обновить» ещё раз — не рендерим
     if(!allData.length&&!okCount){
       document.getElementById('ldtxt').innerHTML=
-        '<b>Данные не загрузились.</b><br><span style="font-size:11px;color:var(--muted);display:block;margin-top:8px;line-height:1.6;max-width:520px">'+
+        '<b>Данные не загрузились.</b>'+
+        '<span style="font-size:11px;color:var(--muted);display:block;margin-top:8px;line-height:1.6;max-width:520px">'+
         'Проверьте по пунктам:<br>'+
-        '1. Файл должен быть открыт через <b>GitHub&nbsp;Pages</b> (адрес вида <i>username.github.io/...</i>), а не со страницы <i>github.com/.../blob/...</i> и не с <i>raw.githubusercontent.com</i> — там код не исполняется.<br>'+
-        '2. Таблица Google должна быть <b>опубликована в интернете</b> (Файл → Доступ → Опубликовать в интернете).<br>'+
-        '3. Прямой доступ и резервные CORS-прокси сейчас недоступны — нажмите «Обновить» ещё раз через минуту.</span>'+
+        '1. Файл открыт через <b>GitHub&nbsp;Pages</b> (адрес вида <i>username.github.io/…</i>), а не со страницы <i>github.com/…/blob/…</i> и не с <i>raw.githubusercontent.com</i> — там код не исполняется.<br>'+
+        '2. Таблица Google <b>опубликована в интернете</b> (Файл → Доступ → Опубликовать в интернете).<br>'+
+        '3. Прямой доступ и резервные CORS-прокси сейчас недоступны — подождите минуту и нажмите «Обновить».</span>'+
         '<br><button class="btn-upd" style="margin-top:14px" onclick="reloadAll()">↺ Повторить загрузку</button>';
       document.getElementById('pgfill').style.background='#b05a4f';
       return;
     }
     filteredData=allData.slice();
-    buildFilterMenus();renderAll();
+    buildFilterMenus();
+    renderAll();
     ld.style.display='none';
     document.getElementById('page-overview').classList.add('active');
-    document.getElementById('upd-time').textContent=new Date().toLocaleTimeString('ru')+' · округов '+okCount+'/'+total+' · '+allData.length+' строк';
+    document.getElementById('upd-time').textContent=
+      new Date().toLocaleTimeString('ru')+' · округов '+okCount+'/'+total+' · '+allData.length+' строк';
     var fc=document.getElementById('fcnt');
     if(fc){
       if(failed.length){
-        fc.textContent='⚠ Не загрузились '+failed.length+' округов: '+failed.map(function(s){return s.name;}).join(', ')+' — нажмите «Обновить»';
+        fc.textContent='⚠ Не загрузились '+failed.length+' округов: '+
+          failed.map(function(s){return s.name;}).join(', ')+' — нажмите «Обновить»';
         fc.style.color='#b05a4f';
       }else{
         fc.textContent='✓ Все '+total+' округов загружены';
         fc.style.color='var(--pos)';
-        setTimeout(function(){if(fc&&fc.textContent.indexOf('✓')===0){fc.textContent='';fc.style.color='var(--gold)';}},6000);
+        setTimeout(function(){
+          if(!stale()&&fc&&fc.textContent.indexOf('✓')===0){fc.textContent='';fc.style.color='var(--gold)';}
+        },6000);
       }
     }
     startAuto();
