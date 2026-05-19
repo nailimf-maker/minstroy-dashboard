@@ -1077,23 +1077,36 @@ function topModal(label,key){
 }
 
 /* DATA */
-// Надёжная загрузка одного листа с повторными попытками.
+// Список способов доступа к CSV. Первый — прямой запрос к Google.
+// Остальные — публичные CORS-прокси: нужны, когда страница открыта
+// на GitHub Pages / другом хостинге и браузер блокирует кросс-домен.
+var ENDPOINTS=[
+  function(u){return u;},
+  function(u){return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u);},
+  function(u){return 'https://corsproxy.io/?url='+encodeURIComponent(u);},
+  function(u){return 'https://thingproxy.freeboard.io/fetch/'+u;},
+  function(u){return 'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u);}
+];
+
+// Надёжная загрузка одного листа с повторными попытками и сменой прокси.
 // Возвращает {sheet,name,rows,ok}. ok=false ТОЛЬКО при сетевой/парс-ошибке
 // (тогда лист уходит в повторную загрузку), а не когда у округа просто нет строк.
 function fetchSheet(sh,longMode){
-  var timeoutMs=longMode?45000:24000;
-  var maxAttempts=longMode?6:4;
+  var timeoutMs=longMode?45000:26000;
+  var maxAttempts=longMode?10:ENDPOINTS.length+2;
   return fetchSheetTry(sh,1,timeoutMs,maxAttempts);
 }
 function fetchSheetTry(sh,attempt,timeoutMs,maxAttempts){
   return new Promise(function(resolve){
-    var url=PUB+'&gid='+sh.gid+'&cachebust='+Date.now()+'_'+attempt;
+    var base=PUB+'&gid='+sh.gid+'&cachebust='+Date.now()+'_'+attempt;
+    var endpoint=ENDPOINTS[(attempt-1)%ENDPOINTS.length];
+    var url=endpoint(base);
     var done=false;
     function retryOrFail(){
       if(attempt<maxAttempts){
         setTimeout(function(){
           fetchSheetTry(sh,attempt+1,timeoutMs,maxAttempts).then(resolve);
-        },500*attempt);
+        },400*attempt);
       }else{
         resolve({sheet:sh,name:sh.name,rows:[],ok:false});
       }
@@ -1106,8 +1119,12 @@ function fetchSheetTry(sh,attempt,timeoutMs,maxAttempts){
         download:true,header:false,skipEmptyLines:true,
         complete:function(r){
           if(done)return;done=true;clearTimeout(timer);
-          // Нет массива данных вообще — это сбой запроса, пробуем ещё раз
+          // Нет данных или прокси вернул страницу-ошибку (мало колонок,
+          // похоже на HTML) — пробуем следующий способ доступа
           if(!r||!r.data||!r.data.length){retryOrFail();return;}
+          var head=r.data[0]||[];
+          var looksHtml=head.length<5||String(head[0]||'').toLowerCase().indexOf('<!doctype')>=0||String(head[0]||'').toLowerCase().indexOf('<html')>=0;
+          if(looksHtml){retryOrFail();return;}
           var rows=[];
           r.data.slice(1).forEach(function(row){
             if(row&&row[0]&&String(row[0]).match(/^\d+$/)){row._sheet=sh.name;rows.push(row);}
@@ -1187,7 +1204,12 @@ function reloadAll(){
   function finish(){
     if(!allData.length&&!okCount){
       document.getElementById('ldtxt').innerHTML=
-        'Данные не загрузились.<br><span style="font-size:11px;color:var(--muted)">Возможная причина: блокировка CORS в браузере или нет доступа к Google Sheets.<br>Откройте этот файл локально или на сервере с разрешёнными внешними запросами.</span>';
+        '<b>Данные не загрузились.</b><br><span style="font-size:11px;color:var(--muted);display:block;margin-top:8px;line-height:1.6;max-width:520px">'+
+        'Проверьте по пунктам:<br>'+
+        '1. Файл должен быть открыт через <b>GitHub&nbsp;Pages</b> (адрес вида <i>username.github.io/...</i>), а не со страницы <i>github.com/.../blob/...</i> и не с <i>raw.githubusercontent.com</i> — там код не исполняется.<br>'+
+        '2. Таблица Google должна быть <b>опубликована в интернете</b> (Файл → Доступ → Опубликовать в интернете).<br>'+
+        '3. Прямой доступ и резервные CORS-прокси сейчас недоступны — нажмите «Обновить» ещё раз через минуту.</span>'+
+        '<br><button class="btn-upd" style="margin-top:14px" onclick="reloadAll()">↺ Повторить загрузку</button>';
       document.getElementById('pgfill').style.background='#b05a4f';
       return;
     }
