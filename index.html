@@ -6,7 +6,7 @@
 <title>Минстрой МО — Программа выдачи сертификатов</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://api-maps.yandex.ru/2.1/?apikey=904e9ba6-8848-4b42-a871-82002e05c23a&lang=ru_RU"></script>
+<script async src="https://api-maps.yandex.ru/2.1/?apikey=904e9ba6-8848-4b42-a871-82002e05c23a&lang=ru_RU"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -1579,6 +1579,32 @@ var ymapsApiReady=false;
 if(typeof ymaps!=='undefined'){
   ymaps.ready(function(){ymapsApiReady=true;});
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// АВТОЗАПУСК. Без этого блока дашборд после открытия/перезагрузки страницы
+// бесконечно висит на «Подключение к данным…», т.к. reloadAll() раньше
+// вызывался ТОЛЬКО по кнопке «Обновить». Запускаем загрузку один раз сами.
+// ─────────────────────────────────────────────────────────────────────────
+var _booted=false;
+function _bootstrap(){
+  if(_booted)return;
+  _booted=true;
+  try{
+    reloadAll();
+  }catch(e){
+    var lt=document.getElementById('ldtxt');
+    if(lt)lt.innerHTML='Ошибка запуска: '+(e&&e.message?e.message:e)+
+      '<br><button class="btn-upd" style="margin-top:14px" onclick="location.reload()">↺ Перезагрузить страницу</button>';
+  }
+}
+if(document.readyState==='interactive'||document.readyState==='complete'){
+  setTimeout(_bootstrap,30);
+}else{
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(_bootstrap,30);});
+}
+// Подстраховки на случай, если DOMContentLoaded по какой-то причине не сработал
+window.addEventListener('load',function(){setTimeout(_bootstrap,50);});
+setTimeout(_bootstrap,3000);
 </script>
 </body>
 </html>
