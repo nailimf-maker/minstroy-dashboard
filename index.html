@@ -317,7 +317,16 @@ tr:hover td{background:var(--row-bg)}
 .mm-apts-table td{padding:8px 10px;border-bottom:1px solid var(--line-soft);color:var(--ink-soft);font-weight:500}
 .mm-apts-table tr:last-child td{border-bottom:none}
 .ymaps-2-1-79-balloon,.ymaps-2-1-79-balloon__content{border-radius:14px!important;font-family:'Inter',sans-serif!important}
-html[data-theme="dark"] #map{filter:none}
+html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%) brightness(0.88)}
+/* Возвращаем нормальные цвета маркерам и балунам внутри тёмной карты */
+html[data-theme="dark"] .ymaps-2-1-79-svg-icon,
+html[data-theme="dark"] .ymaps-2-1-79-svg-icon-content,
+html[data-theme="dark"] .ymaps-2-1-79-image,
+html[data-theme="dark"] .ymaps-2-1-79-balloon,
+html[data-theme="dark"] .ymaps-2-1-79-float-button,
+html[data-theme="dark"] .ymaps-2-1-79-controls__control{
+  filter:invert(94%) hue-rotate(180deg) saturate(55%) brightness(0.88)
+}
 .map-legend{display:flex;gap:14px;padding:9px 18px;background:var(--glass-strong);backdrop-filter:blur(16px);border-top:1px solid var(--line);flex-wrap:wrap;align-items:center;flex-shrink:0}
 .leg{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-soft);font-weight:600}
 .ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
@@ -371,10 +380,7 @@ html[data-theme="dark"] #map{filter:none}
 .mm-apts-table td{padding:8px 10px;border-bottom:1px solid var(--line-soft);color:var(--ink-soft);font-weight:500}
 .mm-apts-table tr:last-child td{border-bottom:none}
 .ymaps-2-1-79-balloon,.ymaps-2-1-79-balloon__content{border-radius:14px!important;font-family:'Inter',sans-serif!important}
-html[data-theme="dark"] #map{filter:none}
-/* ═══════════════════════════════════════════
-   МОБИЛЬНАЯ ВЕРСИЯ  (≤ 768px)
-   ═══════════════════════════════════════════ */
+html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%) brightness(0.88)}
 @media(max-width:768px){
   body{overflow-y:auto;height:auto}
 
@@ -863,6 +869,8 @@ function toggleTheme(){
   setTimeout(function(){
     if(document.getElementById('page-overview').classList.contains('active'))renderCharts(filteredData);
     if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
+    // Обновляем карту: пересчитываем размер контейнера после смены фильтра тайлов
+    if(ymap){try{ymap.container.fitToViewport();}catch(e){}}
   },120);
 }
 
@@ -1275,18 +1283,14 @@ function resetMapRound(){
   _highlightDistricts([]);
 }
 function _applyMapFilter(){
-  if(!ymap)return;
+  if(!ymap||!_markersLayer)return;
   var vis=[];
-  ymap.geoObjects.each(function(col){
-    if(col&&col.each){
-      col.each(function(obj){
-        var sheet=obj.properties&&obj.properties.get('sheet');
-        if(!sheet)return;
-        var visible=!_mapRoundFilter.length||_mapRoundFilter.indexOf(sheet)>=0;
-        obj.options.set('visible',visible);
-        if(visible){try{var c=obj.geometry.getCoordinates();if(c&&c[0])vis.push(c);}catch(e){}}
-      });
-    }
+  _markersLayer.each(function(pm){
+    var sheet=pm.properties&&pm.properties.get('sheet');
+    if(!sheet)return;
+    var visible=!_mapRoundFilter.length||_mapRoundFilter.indexOf(sheet)>=0;
+    pm.options.set('visible',visible);
+    if(visible){try{var c=pm.geometry.getCoordinates();if(c&&c[0])vis.push(c);}catch(e){}}
   });
   _fitMap(vis);
   _geoSetStatus(_mapRoundFilter.length?'Фильтр: '+_mapRoundFilter.join(', '):'Все округа');
@@ -1396,6 +1400,7 @@ document.addEventListener('click',function(e){
 
 // ── Границы и подсветка округов (convex hull + ymaps.borders fallback) ─────
 var _hlLayer=null;          // ymaps.GeoObjectCollection — слой подсветки (ниже маркеров)
+var _markersLayer=null;     // ymaps.GeoObjectCollection — слой маркеров домов
 var _bordersCache={};       // sheet → [[lat,lon],...] готовые координаты полигонов
 var _bordersReady=false;    // флаг: реальные границы загружены
 var _bordersAttempted=false;
@@ -1466,17 +1471,14 @@ function _matchBorder(sheet){
 
 // Строим полигон из позиций маркеров (convex hull + buffer)
 function _buildHullFromMarkers(sheet){
+  if(!_markersLayer)return null;
   var pts=[];
-  if(!ymap)return null;
-  ymap.geoObjects.each(function(col){
-    if(col&&col.each){col.each(function(obj){
-      if(obj.properties&&obj.properties.get('sheet')===sheet){
-        try{var c=obj.geometry.getCoordinates();if(c&&c[0]>50)pts.push(c);}catch(e){}
-      }
-    });}
+  _markersLayer.each(function(pm){
+    if(pm.properties&&pm.properties.get('sheet')===sheet){
+      try{var c=pm.geometry.getCoordinates();if(c&&c[0]>50)pts.push(c);}catch(e){}
+    }
   });
-  if(!pts.length)return null;
-  if(pts.length===1)return null; // для одной точки используем Circle
+  if(pts.length<2)return null;
   var hull=_convexHull(pts);
   return _bufferHull(hull,0.025);
 }
@@ -1573,14 +1575,15 @@ function renderMapPage(){
       // Слой подсветки округов — добавляем ПЕРВЫМ, маркеры будут поверх
       _hlLayer=new ymaps.GeoObjectCollection();
       ymap.geoObjects.add(_hlLayer);
+      // Слой маркеров — добавляем ВТОРЫМ
+      _markersLayer=new ymaps.GeoObjectCollection();
+      ymap.geoObjects.add(_markersLayer);
       // Попытка загрузить реальные границы Яндекса
       _tryLoadRealBorders();
       loadBorders();
     }
-    // Сбрасываем только маркеры (не _hlLayer — он управляется отдельно)
-    var toRemove=[];
-    ymap.geoObjects.each(function(obj){if(obj!==_hlLayer)toRemove.push(obj);});
-    toRemove.forEach(function(o){ymap.geoObjects.remove(o);});
+    // Сбрасываем маркеры через removeAll (не затрагивает _hlLayer)
+    if(_markersLayer)_markersLayer.removeAll();
     // Сбрасываем поиск
     clearMapSearch();
     _searchGroups=[];
@@ -1608,21 +1611,25 @@ function renderMapPage(){
     function showAll(){
       if(_geoGen!==myGen)return;
       _setOverlay(false);
-      var collection=new ymaps.GeoObjectCollection();
+      if(!_markersLayer)return;
+      _markersLayer.removeAll();
       var allCoords=[];
       groups.forEach(function(g){
         if(!g.lat||!g.lon)return;
         var visible=!_mapRoundFilter.length||_mapRoundFilter.indexOf(g.sheet)>=0;
         var pm=new ymaps.Placemark([g.lat,g.lon],{sheet:g.sheet,
           hintContent:g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.'
-        },{preset:'islands#circleDotIcon',iconColor:'#b05a4f',visible:visible});
+        },{preset:'islands#circleDotIcon',iconColor:'#b05a4f'});
+        // visible ставим через options отдельно — надёжнее чем в конструкторе
+        if(!visible)pm.options.set('visible',false);
         pm.events.add('click',function(e){e.stopPropagation();openMapModal(g);});
-        collection.add(pm);
+        _markersLayer.add(pm);
         if(visible)allCoords.push([g.lat,g.lon]);
       });
-      ymap.geoObjects.add(collection);
       _fitMap(allCoords);
       _buildColorLegend();
+      // После добавления маркеров — рисуем подсветку если фильтр активен
+      if(_mapRoundFilter.length)_highlightDistricts(_mapRoundFilter);
       var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
       var notFound=needGeo.length-geocoded;
       _geoSetStatus('✓ '+groups.length+' домов · '+withCoords.length+' из таблицы · '+geocoded+' геокодировано'+(notFound?' · ⚠ '+notFound+' не найдено':''));
@@ -1835,7 +1842,7 @@ function reloadAll(){
   // Сбрасываем геокодер: все ожидающие промисы дропаются через проверку _geoGen
   _geoGen++;_geoQ=[];_geoBusy=false;_geoTotal=0;_geoDone=0;
   // Сбрасываем слой подсветки, кеш границ и поиск
-  _hlLayer=null;_bordersCache={};_bordersReady=false;_bordersAttempted=false;
+  _hlLayer=null;_markersLayer=null;_bordersCache={};_bordersReady=false;_bordersAttempted=false;
   _searchGroups=[];_mapRoundFilter=[];
 
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
