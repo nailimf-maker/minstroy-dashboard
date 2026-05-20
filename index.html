@@ -546,7 +546,7 @@ html[data-theme="dark"] #map{filter:none}
 <div class="map-content">
   <div class="map-toolbar">
     <div class="map-lbl">Карта переселения · Московская область</div>
-    <span style="font-size:11px;color:var(--muted);font-weight:600">🔴 Аварийный дом → 🟢 Новое жильё</span>
+    <span style="font-size:11px;color:var(--muted);font-weight:600">🔴 Аварийный дом · адреса из таблицы · цвет = округ</span>
   </div>
 
   <div class="sect-lbl sect-lbl-sm">Сводка по выборке · нажмите для списка округов</div>
@@ -893,30 +893,168 @@ function exportExcel(){
   XLSX.writeFile(wb,fname);
 }
 
-/* MAP */
+/* MAP — геокодирование адресов из таблицы */
 
-function aggHouse(h,balData){
-  var ha=h.addr.toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
-  var haKey=ha.split(' ').filter(Boolean);
-  var matches=balData.filter(function(r){
-    var ra=String(r[C.addr]||'').toLowerCase().replace(/ул\.|д\.|дом|,/g,'').replace(/\s+/g,' ').trim();
-    return haKey.every(function(part){return ra.indexOf(part)>=0;});
-  });
-  var citSum=0,areaSum=0,apts={},toLat=0,toLon=0,newAddrTxt='',decision='';
-  matches.forEach(function(r){
-    citSum+=n(r[C.citizens]);areaSum+=n(r[C.area]);
-    if(r[C.apt])apts[String(r[C.apt]).trim()]=1;
-    var tla=n(String(r[C.lat]||'').replace(',','.')),tlo=n(String(r[C.lon]||'').replace(',','.'));
-    if(tla>50&&tlo>30&&!toLat){toLat=tla;toLon=tlo;}
-    if(!newAddrTxt){var na=String(r[C.newAddr]||'').trim();if(na&&na!=='—'&&na!=='-')newAddrTxt=na;}
-    if(!decision&&r[C.decision])decision=normDecision(r[C.decision]);
-  });
-  return{aptCnt:matches.length,aptNum:Object.keys(apts).length||matches.length,citSum:citSum,areaSum:areaSum,toLat:toLat,toLon:toLon,newAddrTxt:newAddrTxt,decision:decision,hasRoute:toLat>50&&toLon>30};
+// ── Очередь геокодирования ────────────────────────────────────────────────
+// Яндекс.Геокодер: бесплатный лимит ~25 000 req/сутки, ~10 req/s.
+// Используем очередь + задержку 120 мс между запросами (≈8 req/s).
+// Приоритет: координаты из столбцов C.lat / C.lon таблицы → геокодер как fallback.
+var _geoQ=[];         // очередь запросов
+var _geoBusy=false;   // семафор
+var _geoTotal=0;      // сколько адресов нужно геокодировать за текущий рендер
+var _geoDone=0;       // сколько уже обработано
+var _geoGen=0;        // поколение (сбрасывается при reloadAll / повторном рендере)
+
+function _geoSetStatus(txt){
+  var el=document.getElementById('geost');
+  if(el)el.textContent=txt;
 }
 
+function _geoFlush(){
+  if(_geoBusy||!_geoQ.length)return;
+  _geoBusy=true;
+  var item=_geoQ.shift();
+  var myGen=item.gen;
+  // Если пришло новое поколение — дропаем весь хвост очереди
+  if(myGen!==_geoGen){_geoBusy=false;_geoQ=[];return;}
+  // Координаты уже в кеше?
+  if(geocodeCache[item.key]){
+    item.resolve(geocodeCache[item.key]);
+    _geoBusy=false;
+    setTimeout(_geoFlush,0);
+    return;
+  }
+  // Запрос к геокодеру: добавляем «Московская область» для точности
+  var query='Московская область, '+item.sheet+', '+item.addr;
+  ymaps.geocode(query,{results:1,boundedBy:[[54.0,35.0],[57.0,40.5]],strictBounds:false})
+    .then(function(res){
+      if(myGen!==_geoGen){_geoBusy=false;return;}
+      var obj=res.geoObjects.get(0);
+      var coords=null;
+      if(obj){
+        var c=obj.geometry.getCoordinates();
+        // Грубая валидация: точка должна быть в пределах МО
+        if(c&&c[0]>53.5&&c[0]<57.5&&c[1]>34.5&&c[1]<41.0)coords=c;
+      }
+      if(coords)geocodeCache[item.key]=coords;
+      _geoDone++;
+      _geoSetStatus('Геокодирование: '+_geoDone+' / '+_geoTotal+' адресов...');
+      item.resolve(coords);
+      _geoBusy=false;
+      setTimeout(_geoFlush,120);
+    })
+    .catch(function(){
+      if(myGen!==_geoGen){_geoBusy=false;return;}
+      item.resolve(null);
+      _geoBusy=false;
+      setTimeout(_geoFlush,300);
+    });
+}
+
+function _geocode(addr,sheet){
+  return new Promise(function(resolve){
+    var key=sheet+'|'+addr;
+    if(geocodeCache[key]){resolve(geocodeCache[key]);return;}
+    _geoQ.push({addr:addr,sheet:sheet,key:key,gen:_geoGen,resolve:resolve});
+    _geoFlush();
+  });
+}
+
+// ── Группировка строк таблицы по уникальному зданию ──────────────────────
+// Один маркер = одно здание (все квартиры дома объединены).
+function buildAddressGroups(data){
+  var groups={};
+  data.forEach(function(r){
+    var addr=String(r[C.addr]||'').trim();
+    if(!addr||addr==='—'||addr==='-')return;
+    var sheet=r._sheet||'—';
+    var key=sheet+'||'+addr;
+    if(!groups[key])groups[key]={addr:addr,sheet:sheet,key:key,rows:[],lat:0,lon:0};
+    groups[key].rows.push(r);
+    // Приоритет: координаты прямо из таблицы (столбцы C.lat / C.lon)
+    if(!groups[key].lat){
+      var la=n(String(r[C.lat]||'').replace(',','.'));
+      var lo=n(String(r[C.lon]||'').replace(',','.'));
+      if(la>50&&lo>30){groups[key].lat=la;groups[key].lon=lo;}
+    }
+  });
+  return Object.values(groups);
+}
+
+// ── Balloon для маркера ───────────────────────────────────────────────────
+function _buildBalloon(g){
+  var decMap={},certCnt=0,vykCnt=0,totCit=0,totArea=0;
+  g.rows.forEach(function(r){
+    var d=normDecision(r[C.decision]);
+    decMap[d]=(decMap[d]||0)+1;
+    totCit+=n(r[C.citizens]);
+    totArea+=n(r[C.area]);
+    if(normType(r[C.certType])==='Сертификат')certCnt++;
+    if(normType(r[C.certType])==='Выкуп')vykCnt++;
+  });
+  var decHtml=Object.entries(decMap).map(function(e){
+    return'<span style="color:'+cdec(e[0])+';font-weight:700">'+e[0]+': '+e[1]+'</span>';
+  }).join(' &nbsp;·&nbsp; ');
+  return'<div style="font-family:Inter,sans-serif;font-size:12px;min-width:230px;max-width:310px;line-height:1.7">'+
+    '<div style="font-size:13px;font-weight:700;color:#b05a4f;margin-bottom:2px">🏚️ '+g.addr+'</div>'+
+    '<div style="font-size:10px;color:#9097a8;font-weight:600;margin-bottom:8px">'+g.sheet+' · Аварийный дом</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:11px">'+
+      '<span style="color:#9097a8">Квартир</span><b>'+g.rows.length+'</b>'+
+      '<span style="color:#9097a8">Граждан</span><b>'+totCit+'</b>'+
+      '<span style="color:#9097a8">Площадь</span><b>'+totArea.toFixed(1)+' м²</b>'+
+      (certCnt?'<span style="color:#9097a8">Сертификат</span><b>'+certCnt+'</b>':'')+
+      (vykCnt?'<span style="color:#9097a8">Выкуп</span><b>'+vykCnt+'</b>':'')+
+    '</div>'+
+    '<div style="margin-top:8px;padding-top:6px;border-top:1px solid #eee;font-size:10px">'+decHtml+'</div>'+
+    '</div>';
+}
+
+// ── Строка в списке под картой ────────────────────────────────────────────
+function _buildMapRow(g,col){
+  var totCit=0,totArea=0;
+  g.rows.forEach(function(r){totCit+=n(r[C.citizens]);totArea+=n(r[C.area]);});
+  var url='https://yandex.ru/maps/?pt='+g.lon+','+g.lat+'&z=17';
+  var decCounts={};
+  g.rows.forEach(function(r){var d=normDecision(r[C.decision]);decCounts[d]=(decCounts[d]||0)+1;});
+  var decStr=Object.entries(decCounts).map(function(e){
+    return'<span style="color:'+cdec(e[0])+';font-weight:700">'+e[0]+':'+e[1]+'</span>';
+  }).join(' · ');
+  return'<div style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid '+col+'">'+
+    '<div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0;margin-top:3px"></div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div style="font-size:12px;font-weight:700;color:var(--ink)">'+g.addr+
+        ' <span style="color:var(--muted);font-weight:600">· '+g.sheet+'</span></div>'+
+      '<div style="font-size:10.5px;color:var(--ink-soft);font-weight:600;margin-top:2px">'+
+        g.rows.length+' кв. · '+totCit+' чел. · '+totArea.toFixed(0)+' м²</div>'+
+      '<div style="font-size:10px;margin-top:3px">'+decStr+'</div>'+
+    '</div>'+
+    '<a href="'+url+'" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 13px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">📍 Карта</a>'+
+    '</div>';
+}
+
+// ── Легенда округов ───────────────────────────────────────────────────────
+function _buildLegend(colorMap){
+  var el=document.getElementById('map-legend-rounds');
+  if(!el)return;
+  el.innerHTML=Object.entries(colorMap).sort(function(a,b){return a[0].localeCompare(b[0],'ru');}).map(function(e){
+    return'<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ink-soft);font-weight:600">'+
+      '<div style="width:10px;height:10px;border-radius:3px;background:'+e[1]+';flex-shrink:0"></div>'+e[0]+'</div>';
+  }).join('');
+}
+
+// ── fitBounds ─────────────────────────────────────────────────────────────
+function _fitMap(coordsArr){
+  if(!ymap||!coordsArr.length)return;
+  try{
+    if(coordsArr.length===1){ymap.setCenter(coordsArr[0],15);}
+    else{ymap.setBounds(ymaps.util.bounds.fromPoints(coordsArr),{checkZoomRange:true,zoomMargin:60});}
+  }catch(e){}
+}
+
+// ── Главная функция рендера карты ─────────────────────────────────────────
 function renderMapPage(){
   if(typeof ymaps==='undefined'){
-    document.getElementById('geost').textContent='Яндекс.Карты не загрузились — проверьте API-ключ и ограничения по домену в кабинете Яндекса';
+    _geoSetStatus('Яндекс.Карты не загрузились — проверьте API-ключ и домен в кабинете Яндекса');
     return;
   }
   ymaps.ready(function(){
@@ -930,45 +1068,96 @@ function renderMapPage(){
       loadBorders();
     }
     ymap.geoObjects.removeAll();
-    var balData=allData.filter(function(r){return r._sheet==='Балашиха';});
-    var coords=[],mapRowsHtml=[];
-    HOUSES.forEach(function(h){
-      var a=aggHouse(h,balData);
-      var bodyFrom='<div style="font-family:Inter,sans-serif;font-size:12px;min-width:210px">'+
-        '<b style="color:#b05a4f">🏚️ '+h.addr+'</b><br><span style="color:#9097a8;font-size:10px">Балашиха · Аварийный дом</span>';
-      if(a.aptCnt>0){
-        bodyFrom+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee">'+
-          'Квартир: <b>'+a.aptNum+'</b><br>'+
-          'Граждан (сумма): <b>'+a.citSum+'</b><br>'+
-          'Площадь (сумма): <b>'+a.areaSum.toFixed(1)+' м²</b>'+
-          (a.decision?'<br>Решение: <b style="color:'+cdec(a.decision)+'">'+a.decision+'</b>':'');
-      }else{bodyFrom+='<hr style="margin:6px 0;border:none;border-top:1px solid #eee"><span style="color:#9097a8;font-size:10px">Нет данных в таблице по этому адресу</span>';}
-      bodyFrom+='</div>';
-      var pmFrom=new ymaps.Placemark([h.lat,h.lon],{
-        balloonContent:bodyFrom,hintContent:h.addr+' · '+a.citSum+' чел.'
-      },{preset:'islands#redCircleDotIcon',iconColor:'#b05a4f'});
-      ymap.geoObjects.add(pmFrom);
-      coords.push([h.lat,h.lon]);
-      if(a.hasRoute){
-        var pmTo=new ymaps.Placemark([a.toLat,a.toLon],{
-          balloonContent:'<div style="font-family:Inter,sans-serif;font-size:12px"><b style="color:#3a7d5c">🏠 Новое жильё</b><br>'+(a.newAddrTxt||a.toLat.toFixed(4)+', '+a.toLon.toFixed(4))+'<br><span style="color:#9097a8;font-size:10px">← Из: '+h.addr+'</span></div>',
-          hintContent:'Новое жильё'
-        },{preset:'islands#greenCircleIcon',iconColor:'#3a7d5c'});
-        ymap.geoObjects.add(pmTo);
-        coords.push([a.toLat,a.toLon]);
-        var line=new ymaps.Polyline([[h.lat,h.lon],[a.toLat,a.toLon]],{},{
-          strokeColor:'#b08d4f',strokeWidth:3,strokeStyle:'dash',strokeOpacity:.9
-        });
-        ymap.geoObjects.add(line);
-      }
-      var gmUrl=a.hasRoute?'https://yandex.ru/maps/?rtext='+h.lat+','+h.lon+'~'+a.toLat+','+a.toLon:'https://yandex.ru/maps/?pt='+h.lon+','+h.lat+'&z=17';
-      mapRowsHtml.push('<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border-radius:12px;border-left:3px solid '+(a.hasRoute?'#3a7d5c':'#b05a4f')+'"><div style="width:9px;height:9px;border-radius:50%;background:#b05a4f;flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--ink)">'+h.addr+' <span style="color:var(--muted);font-weight:600">· '+a.aptNum+' кв. · '+a.citSum+' чел. · '+a.areaSum.toFixed(0)+' м²</span></div>'+(a.hasRoute?'<div style="font-size:10px;color:#3a7d5c;font-weight:600">→ '+(a.newAddrTxt||'Новый адрес задан')+'</div>':'<div style="font-size:10px;color:var(--muted)">Координаты нового жилья не заданы</div>')+'</div><a href="'+gmUrl+'" target="_blank" style="background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border-radius:9px;padding:7px 14px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">'+(a.hasRoute?'🗺️ Маршрут':'📍 Карта')+'</a></div>');
-    });
-    var mr=document.getElementById('map-rows');if(mr)mr.innerHTML=mapRowsHtml.join('');
-    if(coords.length>0){
-      try{ymap.setBounds(ymaps.util.bounds.fromPoints(coords),{checkZoomRange:true,zoomMargin:50});}catch(e){}
+
+    var groups=buildAddressGroups(filteredData);
+    if(!groups.length){
+      _geoSetStatus('Нет адресов для отображения в текущей выборке');
+      var mr=document.getElementById('map-rows');
+      if(mr)mr.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;font-weight:600">Нет данных для отображения</div>';
+      return;
     }
-    document.getElementById('geost').textContent='Балашиха: '+HOUSES.length+' домов · граждане и площадь суммируются по всем квартирам дома';
+
+    // Палитра: один цвет на округ (стабильная, по алфавиту)
+    var palette=['#b08d4f','#3a7d5c','#5a7088','#7a6a8f','#b05a4f','#c9aa70','#6c7689','#9097a8','#a88a5a','#8a9bb0','#9c8552','#6f8a9c','#5f8a72','#a07860'];
+    var roundColors={};
+    var roundIdx=0;
+    function getRoundColor(sheet){
+      if(!roundColors[sheet])roundColors[sheet]=palette[(roundIdx++)%palette.length];
+      return roundColors[sheet];
+    }
+    // Прогреваем палитру заранее (алфавитный порядок → стабильные цвета)
+    groups.map(function(g){return g.sheet;}).filter(function(s,i,a){return a.indexOf(s)===i;}).sort(function(a,b){return a.localeCompare(b,'ru');}).forEach(getRoundColor);
+
+    var withCoords=groups.filter(function(g){return g.lat&&g.lon;});
+    var needGeo   =groups.filter(function(g){return !g.lat||!g.lon;});
+
+    // Сбрасываем очередь геокодера и устанавливаем новое поколение
+    _geoGen++;
+    _geoQ=[];_geoBusy=false;_geoTotal=needGeo.length;_geoDone=0;
+
+    var allCoords=[];
+    var rowsMap={};   // key → html строки
+
+    function placeMarker(g){
+      if(!g.lat||!g.lon)return;
+      var col=getRoundColor(g.sheet);
+      var pm=new ymaps.Placemark([g.lat,g.lon],{
+        balloonContent:_buildBalloon(g),
+        hintContent:g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.'
+      },{
+        preset:'islands#circleDotIcon',
+        iconColor:'#b05a4f'
+      });
+      ymap.geoObjects.add(pm);
+      allCoords.push([g.lat,g.lon]);
+      rowsMap[g.key]=_buildMapRow(g,col);
+      _refreshMapRows();
+    }
+
+    function _refreshMapRows(){
+      var mr=document.getElementById('map-rows');
+      if(!mr)return;
+      // Сортируем строки по округу + адресу для стабильного порядка
+      var sorted=groups.filter(function(g){return rowsMap[g.key];});
+      mr.innerHTML=sorted.map(function(g){return rowsMap[g.key];}).join('');
+    }
+
+    // Сразу ставим маркеры для строк с координатами из таблицы
+    withCoords.forEach(placeMarker);
+    _fitMap(allCoords);
+    _buildLegend(roundColors);
+
+    if(!needGeo.length){
+      _geoSetStatus(
+        'Готово · '+groups.length+' домов · '+withCoords.length+' с координатами из таблицы'
+        +(groups.length-withCoords.length>0?' · '+( groups.length-withCoords.length)+' без координат (нет в столбцах Lat/Lon)':'')
+      );
+      return;
+    }
+
+    _geoSetStatus('Геокодирование: 0 / '+_geoTotal+' адресов...');
+
+    // Геокодируем остальные и добавляем маркеры по мере получения ответов
+    var myGen=_geoGen;
+    Promise.all(needGeo.map(function(g){
+      return _geocode(g.addr,g.sheet).then(function(coords){
+        if(myGen!==_geoGen)return;   // reloadAll был вызван — прекращаем
+        if(coords){g.lat=coords[0];g.lon=coords[1];placeMarker(g);}
+        // Периодически обновляем fitBounds по мере появления новых точек
+        if(allCoords.length>0&&allCoords.length%10===0)_fitMap(allCoords);
+      });
+    })).then(function(){
+      if(myGen!==_geoGen)return;
+      _fitMap(allCoords);
+      _buildLegend(roundColors);
+      var fromTable=withCoords.length;
+      var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
+      var notFound=needGeo.length-geocoded;
+      _geoSetStatus(
+        '✓ '+groups.length+' домов · '+fromTable+' из таблицы · '+geocoded+' геокодировано'+
+        (notFound?' · ⚠ '+notFound+' не найдено (проверьте написание адресов)':'')
+      );
+    });
   });
 }
 
@@ -1166,6 +1355,8 @@ function reloadAll(){
   mapInited=false;mapMarkersBuilt=false;
   selR=null;fState={round:[],dec:[],type:[]};
   roundColorMap={};geocodeCache={};
+  // Сбрасываем геокодер: все ожидающие промисы дропаются через проверку _geoGen
+  _geoGen++;_geoQ=[];_geoBusy=false;_geoTotal=0;_geoDone=0;
 
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){
