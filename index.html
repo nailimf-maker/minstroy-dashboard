@@ -246,8 +246,78 @@ tr:hover td{background:var(--row-bg)}
 .map-content{padding:0;display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
 .map-toolbar{background:var(--glass-strong);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .map-lbl{font-size:13px;font-weight:700;color:var(--ink);flex:1}
+/* Строка поиска адреса */
+.map-searchbar{background:var(--glass-strong);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border-bottom:1px solid var(--line);padding:8px 20px 10px;flex-shrink:0;position:relative;z-index:45}
+.map-sw{display:flex;align-items:center;gap:9px;background:var(--tab-bg);border:1.5px solid var(--glass-border);border-radius:12px;padding:0 14px;transition:border-color .2s,background .2s}
+.map-sw:focus-within{border-color:rgba(176,141,79,.5);background:var(--glass)}
+.map-si-icon{font-size:13px;flex-shrink:0;opacity:.55}
+.map-si{flex:1;border:none;background:transparent;padding:10px 0;font-size:12.5px;font-family:'Inter',sans-serif;color:var(--ink);outline:none;font-weight:500;min-width:0}
+.map-si::placeholder{color:var(--muted)}
+.map-sx{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:4px;border-radius:6px;transition:color .15s;display:none;line-height:1;font-family:'Inter',sans-serif}
+.map-sx:hover{color:var(--ink)}
+.map-sd{display:none;position:absolute;left:20px;right:20px;top:calc(100% + 2px);z-index:100;background:var(--glass-strong);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);border:1px solid var(--glass-border);border-radius:14px;box-shadow:var(--shadow-lift);overflow:hidden;animation:fadeUp .2s ease}
+.map-sd.open{display:block}
+.map-sd-item{padding:10px 16px;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px}
+.map-sd-item:last-child{border-bottom:none}
+.map-sd-item:hover,.map-sd-item.msd-active{background:var(--gold-tint)}
+.map-sd-dot{width:8px;height:8px;border-radius:3px;flex-shrink:0}
+.map-sd-addr{font-size:12px;font-weight:700;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-sd-meta{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap}
+.map-sd-empty{padding:14px 16px;font-size:12px;color:var(--muted);font-weight:600;text-align:center}
 .map-wrap{position:relative;flex:1}
-#map{height:calc(100vh - 172px);min-height:420px;background:var(--glass)}
+#map{height:calc(100vh - 207px);min-height:380px;background:var(--glass)}
+.map-legend{display:flex;gap:14px;padding:9px 18px;background:var(--glass-strong);backdrop-filter:blur(16px);border-top:1px solid var(--line);flex-wrap:wrap;align-items:center;flex-shrink:0}
+.leg{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-soft);font-weight:600}
+.ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+#geost{font-size:10px;color:var(--gold);font-weight:700;margin-left:auto;white-space:nowrap}
+/* Overlay геокодирования */
+#map-overlay{display:none;position:absolute;inset:0;z-index:10;background:rgba(10,12,20,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#map-overlay.active{display:flex}
+.map-ov-box{background:var(--glass-strong);border:1px solid var(--glass-border);border-radius:18px;padding:28px 36px;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:var(--shadow-lift)}
+.map-ov-title{font-size:13px;font-weight:700;color:var(--ink)}
+.map-ov-sub{font-size:11px;color:var(--muted);font-weight:600}
+/* Панель фильтра округов */
+#map-round-panel{display:none;max-height:52vh;overflow-y:auto;background:var(--glass-strong);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);border-bottom:1px solid var(--line);animation:fadeUp .22s ease}
+#map-round-panel.open{display:block}
+#map-round-panel::-webkit-scrollbar{width:6px}
+#map-round-panel::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.mrp-search{width:100%;border:none;border-bottom:1px solid var(--line);background:transparent;padding:11px 20px;font-size:12px;font-family:'Inter',sans-serif;color:var(--ink);outline:none}
+.mrp-search::placeholder{color:var(--muted)}
+.mrp-table{width:100%;border-collapse:collapse;font-size:11px}
+.mrp-table th{background:var(--th-bg);color:var(--muted);padding:8px 12px;text-align:right;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9px;white-space:nowrap}
+.mrp-table th:first-child{text-align:left}
+.mrp-table td{padding:9px 12px;border-bottom:1px solid var(--line-soft);text-align:right;color:var(--ink-soft);font-weight:500;white-space:nowrap}
+.mrp-table td:first-child{text-align:left}
+.mrp-table tr{cursor:pointer;transition:background .15s}
+.mrp-table tr:hover td{background:var(--gold-tint)}
+.mrp-table tr.mrp-sel td{background:var(--gold-tint);font-weight:700;color:var(--gold)}
+/* Модал карты */
+.map-modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,12,18,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:1200;align-items:center;justify-content:center;padding:20px}
+.map-modal-overlay.open{display:flex;animation:fadeUp .25s ease}
+.map-modal{background:var(--glass-strong);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-border);border-radius:22px;width:580px;max-width:96vw;max-height:82vh;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column}
+.mm-hdr{background:var(--th-bg);padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:14px;flex-shrink:0}
+.mm-addr{font-size:14px;font-weight:800;color:var(--ink);letter-spacing:-.02em;flex:1}
+.mm-sheet{font-size:11px;color:var(--gold);font-weight:700;margin-top:3px}
+.mm-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;font-family:'Inter',sans-serif;transition:color .2s;flex-shrink:0;line-height:1}
+.mm-close:hover{color:var(--ink)}
+.mm-body{overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.mm-body::-webkit-scrollbar{width:6px}
+.mm-body::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.mm-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.mm-kpi{background:var(--row-bg);border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px}
+.mm-kpi-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.mm-kpi-val{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.03em;line-height:1}
+.mm-kpi-sub{font-size:10px;color:var(--ink-soft);font-weight:600;margin-top:3px}
+.mm-sect{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.mm-sect::after{content:'';flex:1;height:1px;background:var(--line)}
+.mm-dec-chips{display:flex;flex-wrap:wrap;gap:6px}
+.mm-chip{padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700}
+.mm-apts-table{width:100%;border-collapse:collapse;font-size:11px}
+.mm-apts-table th{background:var(--th-bg);color:var(--muted);padding:8px 10px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9px;border-bottom:1px solid var(--line)}
+.mm-apts-table td{padding:8px 10px;border-bottom:1px solid var(--line-soft);color:var(--ink-soft);font-weight:500}
+.mm-apts-table tr:last-child td{border-bottom:none}
+.ymaps-2-1-79-balloon,.ymaps-2-1-79-balloon__content{border-radius:14px!important;font-family:'Inter',sans-serif!important}
+html[data-theme="dark"] #map{filter:none}
 .map-legend{display:flex;gap:14px;padding:9px 18px;background:var(--glass-strong);backdrop-filter:blur(16px);border-top:1px solid var(--line);flex-wrap:wrap;align-items:center;flex-shrink:0}
 .leg{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-soft);font-weight:600}
 .ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
@@ -368,7 +438,8 @@ html[data-theme="dark"] #map{filter:none}
   /* MAP PAGE */
   .map-content{padding:0;gap:0}
   .map-toolbar{padding:10px 14px;gap:8px;border-radius:0}
-  #map{min-height:320px;height:calc(100vh - 160px)}
+  .map-searchbar{padding:6px 14px 8px}
+  #map{min-height:300px;height:calc(100vh - 185px)}
   .map-legend{gap:8px;padding:7px 12px}
   #map-round-panel{max-height:55vh}
   .mm-kpi-row{grid-template-columns:repeat(2,1fr)}
@@ -595,6 +666,18 @@ html[data-theme="dark"] #map{filter:none}
     </button>
     <button class="btn-rst" onclick="resetMapRound()" style="padding:9px 14px;font-size:11px">↺ Сброс</button>
     <span id="geost" style="font-size:10.5px;color:var(--gold);font-weight:700">Загрузка карты...</span>
+  </div>
+
+  <!-- Строка поиска адреса -->
+  <div class="map-searchbar" id="map-searchbar">
+    <div class="map-sw">
+      <span class="map-si-icon">🔍</span>
+      <input class="map-si" id="map-si" placeholder="Поиск дома по адресу или населённому пункту..."
+             oninput="onMapSearch(this.value)" onkeydown="onMapSearchKey(event)"
+             onclick="event.stopPropagation()" autocomplete="off">
+      <button class="map-sx" id="map-sx" onclick="clearMapSearch()" title="Очистить">✕</button>
+    </div>
+    <div class="map-sd" id="map-sd" onclick="event.stopPropagation()"></div>
   </div>
 
   <!-- Панель выбора округа -->
@@ -1181,6 +1264,7 @@ function toggleMrpRound(sheet){
   if(btn){if(_mapRoundFilter.length)btn.classList.add('has-val');else btn.classList.remove('has-val');}
   buildMrpTable((document.getElementById('mrp-search')||{}).value||'');
   _applyMapFilter();
+  _highlightDistricts(_mapRoundFilter);
 }
 function resetMapRound(){
   _mapRoundFilter=[];
@@ -1188,6 +1272,7 @@ function resetMapRound(){
   var btn=document.getElementById('mrp-btn');if(btn)btn.classList.remove('has-val');
   buildMrpTable('');
   _applyMapFilter();
+  _highlightDistricts([]);
 }
 function _applyMapFilter(){
   if(!ymap)return;
@@ -1205,6 +1290,240 @@ function _applyMapFilter(){
   });
   _fitMap(vis);
   _geoSetStatus(_mapRoundFilter.length?'Фильтр: '+_mapRoundFilter.join(', '):'Все округа');
+}
+
+// ── Поиск адреса ───────────────────────────────────────────────────────────
+var _searchTimer=null;
+var _searchGroups=[];   // кешируем buildAddressGroups для скорости
+var _searchActiveIdx=-1;
+
+function onMapSearch(q){
+  var sx=document.getElementById('map-sx');
+  if(sx)sx.style.display=q?'block':'none';
+  clearTimeout(_searchTimer);
+  if(!q||q.length<2){closeSearchDropdown();return;}
+  _searchTimer=setTimeout(function(){_runSearch(q);},180);
+}
+
+function _runSearch(q){
+  var lq=q.toLowerCase().replace(/ул\.|д\.|дом|кв\./gi,'').trim();
+  if(!_searchGroups.length)_searchGroups=buildAddressGroups(filteredData);
+  var res=_searchGroups.filter(function(g){
+    return(g.addr.toLowerCase().indexOf(lq)>=0||g.sheet.toLowerCase().indexOf(lq)>=0)&&g.lat&&g.lon;
+  }).slice(0,10);
+  _renderSearchDropdown(res,q);
+}
+
+function _renderSearchDropdown(results,q){
+  var sd=document.getElementById('map-sd');if(!sd)return;
+  _searchActiveIdx=-1;
+  if(!results.length){
+    sd.innerHTML='<div class="map-sd-empty">Ничего не найдено по запросу «'+q+'»</div>';
+    sd.classList.add('open');return;
+  }
+  sd.innerHTML=results.map(function(g,i){
+    var col=_mapColor(g.sheet);
+    var s=_groupStats(g);
+    var hi=_highlightMatch(g.addr,q);
+    return'<div class="map-sd-item" data-idx="'+i+'" onclick="selectSearchResult('+i+')" onmouseenter="_setSearchActive('+i+')">'+
+      '<div class="map-sd-dot" style="background:'+col+'"></div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="map-sd-addr">'+hi+'</div>'+
+        '<div class="map-sd-meta">'+g.sheet+' · '+g.rows.length+' кв. · '+s.totCit+' чел. · '+s.totArea.toFixed(0)+' м²</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  sd._results=results;
+  sd.classList.add('open');
+}
+
+function _highlightMatch(text,q){
+  var lq=q.toLowerCase();var lt=text.toLowerCase();
+  var idx=lt.indexOf(lq);
+  if(idx<0)return text;
+  return text.substring(0,idx)+'<mark style="background:rgba(176,141,79,.3);border-radius:3px;padding:0 1px">'+text.substring(idx,idx+q.length)+'</mark>'+text.substring(idx+q.length);
+}
+
+function _setSearchActive(i){
+  _searchActiveIdx=i;
+  document.querySelectorAll('.map-sd-item').forEach(function(el,j){
+    el.classList.toggle('msd-active',j===i);
+  });
+}
+
+function onMapSearchKey(e){
+  var sd=document.getElementById('map-sd');
+  var items=sd?sd.querySelectorAll('.map-sd-item'):[];
+  if(e.key==='ArrowDown'){e.preventDefault();_setSearchActive(Math.min(_searchActiveIdx+1,items.length-1));}
+  else if(e.key==='ArrowUp'){e.preventDefault();_setSearchActive(Math.max(_searchActiveIdx-1,0));}
+  else if(e.key==='Enter'){e.preventDefault();if(_searchActiveIdx>=0)selectSearchResult(_searchActiveIdx);else if(sd&&sd._results&&sd._results.length)selectSearchResult(0);}
+  else if(e.key==='Escape'){clearMapSearch();}
+}
+
+function selectSearchResult(i){
+  var sd=document.getElementById('map-sd');
+  if(!sd||!sd._results)return;
+  var g=sd._results[i];if(!g)return;
+  closeSearchDropdown();
+  var inp=document.getElementById('map-si');
+  if(inp)inp.value=g.addr;
+  var sx=document.getElementById('map-sx');if(sx)sx.style.display='block';
+  // Центрируем карту и открываем модал
+  if(ymap&&g.lat&&g.lon){
+    ymap.setCenter([g.lat,g.lon],16,{duration:500});
+    setTimeout(function(){openMapModal(g);},520);
+  }
+  // Подсвечиваем округ адреса
+  _highlightDistricts([g.sheet]);
+}
+
+function clearMapSearch(){
+  var inp=document.getElementById('map-si');if(inp)inp.value='';
+  var sx=document.getElementById('map-sx');if(sx)sx.style.display='none';
+  closeSearchDropdown();
+  _searchGroups=[];  // сбросить кеш при следующем поиске
+}
+
+function closeSearchDropdown(){
+  var sd=document.getElementById('map-sd');
+  if(sd){sd.classList.remove('open');sd._results=null;}
+}
+
+// Закрываем дропдаун при клике вне
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#map-searchbar'))closeSearchDropdown();
+});
+
+// ── Границы и подсветка округов (convex hull + ymaps.borders fallback) ─────
+var _hlLayer=null;          // ymaps.GeoObjectCollection — слой подсветки (ниже маркеров)
+var _bordersCache={};       // sheet → [[lat,lon],...] готовые координаты полигонов
+var _bordersReady=false;    // флаг: реальные границы загружены
+var _bordersAttempted=false;
+
+// Алгоритм выпуклой оболочки (Andrew's monotone chain)
+function _convexHull(pts){
+  if(!pts||pts.length<2)return pts||[];
+  var p=pts.slice().sort(function(a,b){return a[0]-b[0]||a[1]-b[1];});
+  function cross(o,a,b){return(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);}
+  var lo=[],hi=[];
+  for(var i=0;i<p.length;i++){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p[i])<=0)lo.pop();lo.push(p[i]);}
+  for(var i=p.length-1;i>=0;i--){while(hi.length>=2&&cross(hi[hi.length-2],hi[hi.length-1],p[i])<=0)hi.pop();hi.push(p[i]);}
+  hi.pop();lo.pop();
+  return lo.concat(hi);
+}
+
+// Расширяем выпуклую оболочку от центроида на deg градусов (~2 км)
+function _bufferHull(hull,deg){
+  if(!hull||hull.length<2)return hull;
+  var cx=hull.reduce(function(s,p){return s+p[0];},0)/hull.length;
+  var cy=hull.reduce(function(s,p){return s+p[1];},0)/hull.length;
+  return hull.map(function(p){
+    var dx=p[0]-cx,dy=p[1]-cy;
+    var len=Math.sqrt(dx*dx+dy*dy)||0.0001;
+    return[p[0]+dx/len*deg,p[1]+dy/len*deg];
+  });
+}
+
+// Попытка загрузить реальные границы через ymaps.borders (Yandex Maps 2.1)
+// Вызывается один раз при инициализации карты
+function _tryLoadRealBorders(){
+  if(_bordersAttempted)return;
+  _bordersAttempted=true;
+  if(typeof ymaps==='undefined'||!ymaps.borders){return;}
+  ymaps.borders.load('RU-MOS',{lang:'ru',quality:2})
+    .then(function(res){
+      var feats=(res&&res.features)||[];
+      if(!feats.length)return;
+      feats.forEach(function(f){
+        var p=f.properties||{};
+        var nm=(p.name||p.NAME||p.NL_NAME_2||p.NAME_2||'').replace(/городской округ|муниципальный район|г\.\s*/gi,'').trim();
+        if(!nm||!f.geometry)return;
+        var geom=f.geometry;
+        var rings=null;
+        if(geom.type==='Polygon')rings=geom.coordinates;
+        else if(geom.type==='MultiPolygon'){
+          // Берём крупнейший контур
+          var biggest=geom.coordinates.reduce(function(mx,c){return c[0].length>mx[0].length?c:mx;},geom.coordinates[0]);
+          rings=biggest;
+        }
+        if(rings){_bordersCache[nm]=flipCoords(rings);}
+      });
+      _bordersReady=true;
+    })
+    .catch(function(){_bordersReady=false;});
+}
+
+// Нормализация имени для сопоставления с кешем границ
+function _matchBorder(sheet){
+  if(_bordersCache[sheet])return _bordersCache[sheet];
+  var norm=sheet.replace(/городской округ|муниципальный|район|г\.\s*/gi,'').trim().toLowerCase();
+  for(var k in _bordersCache){
+    var kn=k.toLowerCase();
+    if(kn===norm||kn.indexOf(norm)>=0||norm.indexOf(kn)>=0)return _bordersCache[k];
+  }
+  return null;
+}
+
+// Строим полигон из позиций маркеров (convex hull + buffer)
+function _buildHullFromMarkers(sheet){
+  var pts=[];
+  if(!ymap)return null;
+  ymap.geoObjects.each(function(col){
+    if(col&&col.each){col.each(function(obj){
+      if(obj.properties&&obj.properties.get('sheet')===sheet){
+        try{var c=obj.geometry.getCoordinates();if(c&&c[0]>50)pts.push(c);}catch(e){}
+      }
+    });}
+  });
+  if(!pts.length)return null;
+  if(pts.length===1)return null; // для одной точки используем Circle
+  var hull=_convexHull(pts);
+  return _bufferHull(hull,0.025);
+}
+
+// Главная функция: подсвечивает выбранные округа
+function _highlightDistricts(sheets){
+  if(!ymap||!_hlLayer)return;
+  _hlLayer.removeAll();
+  if(!sheets||!sheets.length)return;
+  sheets.forEach(function(sheet){
+    var col=_mapColor(sheet);
+    var coords=null;
+
+    // Приоритет 1: реальные границы из ymaps.borders
+    if(_bordersReady){coords=_matchBorder(sheet);}
+
+    // Приоритет 2: convex hull из позиций маркеров
+    if(!coords){
+      var hull=_buildHullFromMarkers(sheet);
+      if(hull&&hull.length>=3){coords=[hull];}
+    }
+
+    if(coords){
+      // Полигон границы
+      var poly=new ymaps.Polygon(coords,{hintContent:sheet},{
+        fillColor:col+'28',          // ~16% прозрачности
+        strokeColor:col,
+        strokeWidth:2.5,
+        strokeOpacity:0.72,
+        fillOpacity:1,
+        strokeStyle:{dash:[8,5]},    // пунктирная граница
+        interactivityModel:'default#transparent'
+      });
+      _hlLayer.add(poly);
+    } else {
+      // Для одиночной точки — Circle
+      var center=ROUND_CENTERS[sheet];
+      if(center){
+        var circ=new ymaps.Circle([center,18000],{hintContent:sheet},{
+          fillColor:col+'22',strokeColor:col,strokeWidth:2,strokeOpacity:0.6,
+          strokeStyle:{dash:[8,5]},fillOpacity:1,
+          interactivityModel:'default#transparent'
+        });
+        _hlLayer.add(circ);
+      }
+    }
+  });
 }
 
 // ── fitBounds ─────────────────────────────────────────────────────────────
@@ -1251,9 +1570,20 @@ function renderMapPage(){
         center:[55.55,37.5],zoom:8,
         controls:['zoomControl','typeSelector','fullscreenControl']
       },{suppressMapOpenBlock:true});
+      // Слой подсветки округов — добавляем ПЕРВЫМ, маркеры будут поверх
+      _hlLayer=new ymaps.GeoObjectCollection();
+      ymap.geoObjects.add(_hlLayer);
+      // Попытка загрузить реальные границы Яндекса
+      _tryLoadRealBorders();
       loadBorders();
     }
-    ymap.geoObjects.removeAll();
+    // Сбрасываем только маркеры (не _hlLayer — он управляется отдельно)
+    var toRemove=[];
+    ymap.geoObjects.each(function(obj){if(obj!==_hlLayer)toRemove.push(obj);});
+    toRemove.forEach(function(o){ymap.geoObjects.remove(o);});
+    // Сбрасываем поиск
+    clearMapSearch();
+    _searchGroups=[];
     _mapRoundColors={};_mapRoundIdx=0;
 
     var groups=buildAddressGroups(filteredData);
@@ -1313,32 +1643,29 @@ function renderMapPage(){
 
 /* Границы городских округов — раскраска палитрой дашборда (Яндекс) */
 function loadBorders(){
-  if(!BORDERS_URL){
-    document.getElementById('geost').textContent='Карта Яндекс готова · вставьте ссылку на GeoJSON границ в переменную BORDERS_URL';
-    return;
-  }
+  // Попытка загрузить GeoJSON границ из внешнего источника (если задан BORDERS_URL)
+  if(!BORDERS_URL){return;}
   fetch(BORDERS_URL).then(function(r){return r.json();}).then(function(gj){
-    var palette=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8','#9c8552','#6f8a9c'];
     var feats=gj.features||[];
-    feats.forEach(function(f,i){
-      var c=palette[i%palette.length];
+    feats.forEach(function(f){
       var p=f.properties||{};
-      var nm=p.name||p.NAME||p.NL_NAME_2||p.NAME_2||p.district||p.okrug||'Округ';
-      try{
-        var obj=ymaps.geoQuery?null:null;
-        var geoObj=new ymaps.GeoObject({
-          geometry:f.geometry.type==='Polygon'?{type:'Polygon',coordinates:flipCoords(f.geometry.coordinates,1)}:
-                   {type:'Polygon',coordinates:flipCoords([].concat.apply([],f.geometry.coordinates),1)},
-          properties:{hintContent:String(nm)}
-        },{
-          fillColor:c+'22',strokeColor:c,strokeWidth:1.5,strokeOpacity:.7,fillOpacity:.1
-        });
-        ymap.geoObjects.add(geoObj);
-      }catch(e){}
+      var nm=p.name||p.NAME||p.NL_NAME_2||p.NAME_2||p.district||p.okrug||'';
+      if(!nm||!f.geometry)return;
+      var key=nm.replace(/городской округ|муниципальный район|г\.\s*/gi,'').trim();
+      var geom=f.geometry;
+      var rings=null;
+      if(geom.type==='Polygon')rings=geom.coordinates;
+      else if(geom.type==='MultiPolygon'){
+        var biggest=geom.coordinates.reduce(function(mx,c){return c[0].length>mx[0].length?c:mx;},geom.coordinates[0]);
+        rings=biggest;
+      }
+      if(rings){_bordersCache[key]=flipCoords(rings);_bordersReady=true;}
     });
-    document.getElementById('geost').textContent='Границы округов загружены · '+feats.length+' полигонов';
+    // Перерисовываем подсветку если уже есть активный фильтр
+    if(_mapRoundFilter.length)_highlightDistricts(_mapRoundFilter);
+    _geoSetStatus('Границы загружены · '+feats.length+' полигонов');
   }).catch(function(){
-    document.getElementById('geost').textContent='Не удалось загрузить границы (проверьте BORDERS_URL и CORS)';
+    _geoSetStatus('Не удалось загрузить границы из BORDERS_URL');
   });
 }
 // GeoJSON хранит [lon,lat], Яндексу нужно [lat,lon] — переворачиваем
@@ -1507,6 +1834,9 @@ function reloadAll(){
   roundColorMap={};geocodeCache={};
   // Сбрасываем геокодер: все ожидающие промисы дропаются через проверку _geoGen
   _geoGen++;_geoQ=[];_geoBusy=false;_geoTotal=0;_geoDone=0;
+  // Сбрасываем слой подсветки, кеш границ и поиск
+  _hlLayer=null;_bordersCache={};_bordersReady=false;_bordersAttempted=false;
+  _searchGroups=[];_mapRoundFilter=[];
 
   if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){
