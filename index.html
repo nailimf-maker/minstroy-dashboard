@@ -1294,6 +1294,9 @@ function _applyMapFilter(){
   });
   _fitMap(vis);
   _geoSetStatus(_mapRoundFilter.length?'Фильтр: '+_mapRoundFilter.join(', '):'Все округа');
+  // Перестраиваем hull после изменения видимости маркеров
+  var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+  _highlightDistricts(sheetsToHL);
 }
 
 // ── Поиск адреса ───────────────────────────────────────────────────────────
@@ -1492,34 +1495,41 @@ function _highlightDistricts(sheets){
     var col=_mapColor(sheet);
     var coords=null;
 
-    // Приоритет 1: реальные границы из ymaps.borders
+    // Приоритет 1: реальные границы из ymaps.borders или BORDERS_URL
     if(_bordersReady){coords=_matchBorder(sheet);}
 
-    // Приоритет 2: convex hull из позиций маркеров
+    // Приоритет 2: convex hull из позиций маркеров (работает для 2+ точек)
     if(!coords){
       var hull=_buildHullFromMarkers(sheet);
       if(hull&&hull.length>=3){coords=[hull];}
     }
 
     if(coords){
-      // Полигон границы
       var poly=new ymaps.Polygon(coords,{hintContent:sheet},{
-        fillColor:col+'28',          // ~16% прозрачности
+        fillColor:col+'26',
         strokeColor:col,
         strokeWidth:2.5,
-        strokeOpacity:0.72,
+        strokeOpacity:0.75,
         fillOpacity:1,
-        strokeStyle:{dash:[8,5]},    // пунктирная граница
+        strokeStyle:{dash:[10,6]},
         interactivityModel:'default#transparent'
       });
       _hlLayer.add(poly);
     } else {
-      // Для одиночной точки — Circle
-      var center=ROUND_CENTERS[sheet];
+      // Одиночная точка — ищем позицию маркера, затем ROUND_CENTERS
+      var center=null;
+      if(_markersLayer){
+        _markersLayer.each(function(pm){
+          if(!center&&pm.properties&&pm.properties.get('sheet')===sheet){
+            try{center=pm.geometry.getCoordinates();}catch(e){}
+          }
+        });
+      }
+      if(!center)center=ROUND_CENTERS[sheet]||null;
       if(center){
-        var circ=new ymaps.Circle([center,18000],{hintContent:sheet},{
-          fillColor:col+'22',strokeColor:col,strokeWidth:2,strokeOpacity:0.6,
-          strokeStyle:{dash:[8,5]},fillOpacity:1,
+        var circ=new ymaps.Circle([center,9000],{hintContent:sheet},{
+          fillColor:col+'26',strokeColor:col,strokeWidth:2.5,strokeOpacity:0.75,
+          strokeStyle:{dash:[10,6]},fillOpacity:1,
           interactivityModel:'default#transparent'
         });
         _hlLayer.add(circ);
@@ -1584,6 +1594,8 @@ function renderMapPage(){
     }
     // Сбрасываем маркеры через removeAll (не затрагивает _hlLayer)
     if(_markersLayer)_markersLayer.removeAll();
+    // Сбрасываем старые highlights при каждом рендере
+    if(_hlLayer)_hlLayer.removeAll();
     // Сбрасываем поиск
     clearMapSearch();
     _searchGroups=[];
@@ -1628,8 +1640,9 @@ function renderMapPage(){
       });
       _fitMap(allCoords);
       _buildColorLegend();
-      // После добавления маркеров — рисуем подсветку если фильтр активен
-      if(_mapRoundFilter.length)_highlightDistricts(_mapRoundFilter);
+      // Подсвечиваем: приоритет — локальный фильтр карты, затем глобальный фильтр верхней панели
+      var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+      _highlightDistricts(sheetsToHL);
       var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
       var notFound=needGeo.length-geocoded;
       _geoSetStatus('✓ '+groups.length+' домов · '+withCoords.length+' из таблицы · '+geocoded+' геокодировано'+(notFound?' · ⚠ '+notFound+' не найдено':''));
@@ -1669,7 +1682,8 @@ function loadBorders(){
       if(rings){_bordersCache[key]=flipCoords(rings);_bordersReady=true;}
     });
     // Перерисовываем подсветку если уже есть активный фильтр
-    if(_mapRoundFilter.length)_highlightDistricts(_mapRoundFilter);
+    var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+    if(sheetsToHL.length)_highlightDistricts(sheetsToHL);
     _geoSetStatus('Границы загружены · '+feats.length+' полигонов');
   }).catch(function(){
     _geoSetStatus('Не удалось загрузить границы из BORDERS_URL');
