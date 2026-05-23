@@ -279,6 +279,12 @@ tr:hover td{background:var(--row-bg)}
 .prio-neg{color:var(--neg)}
 .btn-top{background:var(--gold-tint)!important;color:var(--gold)!important;border:1px solid rgba(176,141,79,.3)!important;font-weight:700}
 .btn-top:hover{background:rgba(176,141,79,.18)!important}
+/* Кнопка миграции на карте */
+.mig-toggle{display:flex;align-items:center;gap:7px;padding:9px 14px;font-size:11px;font-weight:700;background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink);border-radius:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap}
+.mig-toggle:hover{background:var(--tab-active)}
+.mig-toggle.active{background:rgba(58,125,92,.16);color:var(--pos);border-color:rgba(58,125,92,.35);box-shadow:0 2px 8px rgba(58,125,92,.15)}
+.mig-toggle .mig-arr{font-size:12px;opacity:.9}
+.mig-cnt{font-size:9px;background:var(--pos);color:#fff;padding:1px 7px;border-radius:999px;font-weight:800;margin-left:2px}
 /* Scrollable charts */
 .chart-scroll-h{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
 .chart-scroll-h::-webkit-scrollbar{height:7px}
@@ -833,6 +839,11 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
       <span id="mrp-caret" style="font-size:9px;opacity:.6;transition:transform .25s">▼</span>
     </button>
     <button class="btn-rst" onclick="resetMapRound()" style="padding:9px 14px;font-size:11px">↺ Сброс</button>
+    <button class="mig-toggle" id="mig-btn" onclick="toggleMigration()" title="Показать стрелки миграции в новое жильё">
+      <span class="mig-arr">🏠→🏘</span>
+      <span>Миграция</span>
+      <span class="mig-cnt" id="mig-cnt" style="display:none">0</span>
+    </button>
     <span id="geost" style="font-size:10.5px;color:var(--gold);font-weight:700">Загрузка карты...</span>
   </div>
 
@@ -1457,6 +1468,8 @@ function _applyMapFilter(){
   // Перестраиваем подсветку под обновлённый набор
   var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
   _highlightDistricts(sheetsToHL);
+  // Если миграция активна — пересобираем стрелки под текущий фильтр
+  _refreshMigrationsIfActive();
 }
 
 // ── Поиск адреса ───────────────────────────────────────────────────────────
@@ -1633,6 +1646,223 @@ function _matchBorder(sheet){
   return null;
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// MIGRATION — стрелки от аварийного дома → новое жильё
+// ════════════════════════════════════════════════════════════════════════
+var _migrationActive=false;
+var _migrationLayer=null;     // ymaps.GeoObjectCollection — слой стрелок и зелёных маркеров
+var _migrationGen=0;          // защита от гонок при повторном переключении
+
+// Собираем уникальные пары (источник → назначение) с количеством квартир
+function _buildMigrationData(){
+  var pairs={};
+  filteredData.forEach(function(r){
+    var srcAddr=String(r[C.addr]||'').trim();
+    var dstAddr=String(r[C.newAddr]||'').trim();
+    if(!srcAddr||!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+    var srcSheet=r._sheet||'—';
+    var dstDistrict=String(r[C.newDistrict]||'').trim()||srcSheet;
+    var srcKey=srcSheet+'||'+srcAddr;
+    var dstKey=dstDistrict+'||'+dstAddr;
+    var pairKey=srcKey+'→'+dstKey;
+    if(!pairs[pairKey]){
+      // Координаты источника берём из _markerData (там уже геокодированные)
+      var src=null;
+      for(var i=0;i<_markerData.length;i++){
+        if(_markerData[i].sheet===srcSheet&&_markerData[i].addr===srcAddr){src=_markerData[i];break;}
+      }
+      if(!src||!src.lat)return;   // не можем рисовать без координат источника
+      pairs[pairKey]={
+        srcSheet:srcSheet,srcAddr:srcAddr,srcLat:src.lat,srcLon:src.lon,
+        dstDistrict:dstDistrict,dstAddr:dstAddr,dstLat:0,dstLon:0,
+        count:0,apts:[]
+      };
+    }
+    pairs[pairKey].count++;
+    pairs[pairKey].apts.push(r);
+  });
+  return Object.values(pairs);
+}
+
+// Геокодирование назначений (параллельно пачками)
+function _geocodeMigrations(items,myGen){
+  return new Promise(function(resolve){
+    if(!items.length){resolve();return;}
+    var BATCH=12,DELAY=80;
+    var idx=0,done=0,total=items.length;
+    function next(){
+      if(_migrationGen!==myGen){resolve();return;}
+      if(idx>=items.length){resolve();return;}
+      var end=Math.min(idx+BATCH,items.length);
+      var slice=items.slice(idx,end);
+      idx=end;
+      Promise.all(slice.map(function(it){
+        var cacheKey='mig|'+it.dstDistrict+'|'+it.dstAddr;
+        if(geocodeCache[cacheKey]){
+          it.dstLat=geocodeCache[cacheKey][0];
+          it.dstLon=geocodeCache[cacheKey][1];
+          done++;_setOverlay(true,'Поиск новых адресов '+done+'/'+total,Math.round(done/total*100));
+          return Promise.resolve();
+        }
+        var q='Московская область, '+it.dstDistrict+', '+it.dstAddr;
+        return ymaps.geocode(q,{results:1,boundedBy:[[53.5,34.5],[57.5,41.0]]})
+          .then(function(res){
+            var obj=res.geoObjects.get(0);
+            if(obj){
+              var c=obj.geometry.getCoordinates();
+              if(c&&c[0]>53&&c[0]<58&&c[1]>34&&c[1]<42){
+                it.dstLat=c[0];it.dstLon=c[1];
+                geocodeCache[cacheKey]=c;
+              }
+            }
+          })
+          .catch(function(){})
+          .then(function(){
+            done++;_setOverlay(true,'Поиск новых адресов '+done+'/'+total,Math.round(done/total*100));
+          });
+      })).then(function(){
+        if(idx<items.length)setTimeout(next,DELAY);
+        else resolve();
+      });
+    }
+    next();
+  });
+}
+
+// Отрисовка линий и зелёных маркеров
+function _drawMigrations(items){
+  if(!_migrationLayer)return;
+  _migrationLayer.removeAll();
+  var drawn=0;
+  items.forEach(function(it){
+    if(!it.dstLat||!it.dstLon)return;
+    var label=it.srcAddr+' ('+it.srcSheet+') → '+it.dstAddr+' ('+it.dstDistrict+')';
+    var hint=label+' · '+it.count+' кв.';
+    // Линия миграции — зелёная пунктирная
+    var line=new ymaps.Polyline([[it.srcLat,it.srcLon],[it.dstLat,it.dstLon]],{
+      hintContent:hint
+    },{
+      strokeColor:'#3a7d5c',
+      strokeWidth:3,
+      strokeOpacity:0.78,
+      strokeStyle:'shortdash'
+    });
+    _migrationLayer.add(line);
+    // Маркер назначения — зелёный круг
+    var dstPm=new ymaps.Placemark([it.dstLat,it.dstLon],{
+      hintContent:'🏘 '+it.dstAddr+' ← '+it.srcAddr+' · '+it.count+' кв.'
+    },{
+      preset:'islands#greenDotIcon',
+      iconColor:'#3a7d5c'
+    });
+    // Клик по зелёному маркеру — открываем модал с подробностями
+    dstPm.events.add('click',function(e){
+      e.stopPropagation();
+      _openMigrationModal(it);
+    });
+    _migrationLayer.add(dstPm);
+    drawn++;
+  });
+  // Счётчик
+  var cnt=document.getElementById('mig-cnt');
+  if(cnt){
+    if(drawn>0){cnt.textContent=drawn;cnt.style.display='inline-block';}
+    else cnt.style.display='none';
+  }
+  return drawn;
+}
+
+// Модал с подробностями миграции
+function _openMigrationModal(it){
+  document.getElementById('modal-total').textContent=it.count;
+  document.getElementById('modal-total').style.color='#3a7d5c';
+  document.getElementById('modal-title').textContent='Миграция · '+it.count+' квартир';
+  var totalArea=0,totalCit=0;
+  it.apts.forEach(function(r){totalArea+=n(r[C.area]);totalCit+=n(r[C.citizens]);});
+  var html='<div style="background:var(--row-bg);border-radius:12px;padding:14px 16px;margin-bottom:14px;border-left:3px solid #3a7d5c">'+
+    '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Маршрут переселения</div>'+
+    '<div style="font-size:13px;font-weight:700;color:#b05a4f;margin-bottom:4px">🏚 '+it.srcAddr+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:8px">'+it.srcSheet+'</div>'+
+    '<div style="text-align:center;color:#3a7d5c;font-size:14px;font-weight:700;margin:4px 0">↓</div>'+
+    '<div style="font-size:13px;font-weight:700;color:#3a7d5c;margin-bottom:4px">🏘 '+it.dstAddr+'</div>'+
+    '<div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:10px">'+it.dstDistrict+'</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:11px;font-weight:700">'+
+      '<div><span style="color:var(--muted)">Квартир:</span> '+it.count+'</div>'+
+      '<div><span style="color:var(--muted)">Граждан:</span> '+totalCit+'</div>'+
+      '<div><span style="color:var(--muted)">Площадь:</span> '+totalArea.toFixed(1)+' м²</div>'+
+    '</div></div>';
+  html+='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Квартиры</div>';
+  html+=it.apts.map(function(r,i){
+    var nd=normDecision(r[C.decision]);
+    return'<div class="mrow" style="border-left-color:#3a7d5c">'+
+      '<span class="mrow-rank">'+(i+1)+'</span>'+
+      '<span class="mrow-name">кв. '+(r[C.apt]||'—')+'<small>'+normOwner(r[C.owner])+' · '+normType(r[C.certType])+'</small></span>'+
+      '<span class="mrow-meta" style="color:'+cdec(nd)+';font-weight:700">'+nd+'</span>'+
+      '<span class="mrow-val" style="color:#3a7d5c">'+n(r[C.area]).toFixed(1)+' м²</span></div>';
+  }).join('');
+  document.getElementById('modal-body').innerHTML=html;
+  openModal();
+}
+
+// Главное переключение режима
+function toggleMigration(){
+  _migrationActive=!_migrationActive;
+  var btn=document.getElementById('mig-btn');
+  if(btn){if(_migrationActive)btn.classList.add('active');else btn.classList.remove('active');}
+  if(!_migrationActive){
+    if(_migrationLayer)_migrationLayer.removeAll();
+    var cnt=document.getElementById('mig-cnt');
+    if(cnt)cnt.style.display='none';
+    _setOverlay(false);
+    return;
+  }
+  // Активируем
+  if(!ymap){_geoSetStatus('Карта не готова');_migrationActive=false;if(btn)btn.classList.remove('active');return;}
+  if(!_migrationLayer){
+    _migrationLayer=new ymaps.GeoObjectCollection();
+    ymap.geoObjects.add(_migrationLayer);
+  }
+  _migrationGen++;
+  var myGen=_migrationGen;
+  var items=_buildMigrationData();
+  if(!items.length){
+    _geoSetStatus('Нет адресов нового жилья в текущей выборке');
+    _migrationActive=false;
+    if(btn)btn.classList.remove('active');
+    return;
+  }
+  _setOverlay(true,'Поиск новых адресов 0/'+items.length,0);
+  _geocodeMigrations(items,myGen).then(function(){
+    if(_migrationGen!==myGen||!_migrationActive)return;
+    _setOverlay(false);
+    var drawn=_drawMigrations(items);
+    var failed=items.length-drawn;
+    _geoSetStatus('Миграция: '+drawn+' маршрутов'+(failed?' · ⚠ '+failed+' не найдено':''));
+  });
+}
+
+// Обновление миграций при смене фильтра (если режим активен)
+function _refreshMigrationsIfActive(){
+  if(!_migrationActive)return;
+  if(!_migrationLayer)return;
+  _migrationLayer.removeAll();
+  _migrationGen++;
+  var myGen=_migrationGen;
+  var items=_buildMigrationData();
+  if(!items.length){
+    var cnt=document.getElementById('mig-cnt');
+    if(cnt)cnt.style.display='none';
+    _setOverlay(false);
+    return;
+  }
+  _setOverlay(true,'Поиск новых адресов 0/'+items.length,0);
+  _geocodeMigrations(items,myGen).then(function(){
+    if(_migrationGen!==myGen||!_migrationActive)return;
+    _setOverlay(false);
+    _drawMigrations(items);
+  });
+}
+
 // Вычисляем центр и радиус для подсветки округа из _markerData (плоский массив, надёжно)
 function _districtGeoFromMarkers(sheet){
   var pts=_markerData.filter(function(m){return m.sheet===sheet&&m.lat&&m.lon;}).map(function(m){return[m.lat,m.lon];});
@@ -1759,6 +1989,7 @@ function renderMapPage(){
     _markersLayer.removeAll();
     _hlLayer.removeAll();
     _markerData=[];
+    if(_migrationLayer)_migrationLayer.removeAll();
     // Принудительный пересчёт размера контейнера (на случай если карта была скрыта)
     try{ymap.container.fitToViewport();}catch(e){}
     // Сбрасываем поиск
@@ -1814,6 +2045,8 @@ function renderMapPage(){
       // Подсвечиваем: приоритет — локальный фильтр карты, затем глобальный
       var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
       _highlightDistricts(sheetsToHL);
+      // Перерисовываем миграцию если режим активен (источники могли обновиться)
+      _refreshMigrationsIfActive();
       var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
       var notFound=needGeo.length-geocoded;
       _geoSetStatus('✓ '+_markerData.length+' домов · '+withCoords.length+' из таблицы · '+geocoded+' геокодировано'+(notFound?' · ⚠ '+notFound+' не найдено':''));
@@ -2096,6 +2329,11 @@ function reloadAll(){
   // НЕ уничтожаем карту — просто чистим слои; ymap, _hlLayer, _markersLayer остаются живы
   _bordersCache={};_bordersReady=false;_bordersAttempted=false;
   _searchGroups=[];_mapRoundFilter=[];_markerData=[];
+  // Сбрасываем миграцию
+  _migrationActive=false;_migrationGen++;
+  if(_migrationLayer){try{_migrationLayer.removeAll();}catch(e){}}
+  var migBtn=document.getElementById('mig-btn');if(migBtn)migBtn.classList.remove('active');
+  var migCnt=document.getElementById('mig-cnt');if(migCnt)migCnt.style.display='none';
   if(ymap){
     try{if(_markersLayer)_markersLayer.removeAll();}catch(e){}
     try{if(_hlLayer)_hlLayer.removeAll();}catch(e){}
