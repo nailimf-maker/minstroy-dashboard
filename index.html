@@ -244,6 +244,62 @@ tr:hover td{background:var(--row-bg)}
 
 /* MAP */
 .map-content{padding:0;display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
+/* PRIORITY HERO — 4 главные карточки с полной структурой */
+.priority-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.prio{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:18px;padding:18px 18px 14px;cursor:pointer;transition:all .35s cubic-bezier(.4,0,.2,1);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3);position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px;min-height:280px}
+.prio::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:currentColor;opacity:.85}
+.prio:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift)}
+.prio-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.prio-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);line-height:1.35;flex:1}
+.prio-badge{font-size:14px;font-weight:800;width:28px;height:28px;border-radius:8px;background:currentColor;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.85}
+.prio-pos .prio-badge{color:#fff;background:var(--pos)}
+.prio-proc .prio-badge{color:#fff;background:var(--proc)}
+.prio-vyk .prio-badge{color:#fff;background:var(--gold)}
+.prio-neg .prio-badge{color:#fff;background:var(--neg)}
+.prio-val{font-size:42px;font-weight:800;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.prio-cap{font-size:11px;color:var(--ink-soft);font-weight:600;margin-top:-4px}
+.prio-cap span{color:var(--ink);font-weight:700}
+.prio-split{background:var(--row-bg);border-radius:11px;padding:9px 11px;display:flex;flex-direction:column;gap:5px;border:1px solid var(--line-soft)}
+.prio-split-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;font-weight:600;gap:6px}
+.prio-split-lbl{color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prio-split-val{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.prio-top{margin-top:auto;padding-top:8px;border-top:1px dashed var(--line)}
+.prio-top-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.prio-top-list{font-size:11px;font-weight:600;color:var(--ink-soft);line-height:1.55}
+.prio-top-list .pt-row{display:flex;justify-content:space-between;gap:8px}
+.prio-top-list .pt-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.prio-top-list .pt-cnt{color:currentColor;font-weight:800;flex-shrink:0;font-variant-numeric:tabular-nums}
+.prio-pos .prio-top-list .pt-cnt{color:var(--pos)}
+.prio-proc .prio-top-list .pt-cnt{color:var(--proc)}
+.prio-vyk .prio-top-list .pt-cnt{color:var(--gold)}
+.prio-neg .prio-top-list .pt-cnt{color:var(--neg)}
+.prio-pos{color:var(--pos)}
+.prio-proc{color:var(--proc)}
+.prio-vyk{color:var(--gold)}
+.prio-neg{color:var(--neg)}
+.btn-top{background:var(--gold-tint)!important;color:var(--gold)!important;border:1px solid rgba(176,141,79,.3)!important;font-weight:700}
+.btn-top:hover{background:rgba(176,141,79,.18)!important}
+/* Scrollable charts */
+.chart-scroll-h{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+.chart-scroll-h::-webkit-scrollbar{height:7px}
+.chart-scroll-h::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.chart-inner-h{height:360px;min-width:100%}
+.chart-scroll-v{overflow-y:auto;overflow-x:hidden;height:360px;padding-right:6px}
+.chart-scroll-v::-webkit-scrollbar{width:7px}
+.chart-scroll-v::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.chart-inner-v{width:100%;min-height:360px}
+/* TOP modal sections */
+.tcm-section{margin-bottom:20px}
+.tcm-section:last-child{margin-bottom:0}
+.tcm-section-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 14px;background:var(--row-bg);border-radius:11px;border-left:3px solid currentColor}
+.tcm-section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;flex:1}
+.tcm-section-total{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.tcm-row{display:grid;grid-template-columns:24px 1fr auto auto;align-items:center;gap:10px;padding:7px 12px;font-size:11.5px}
+.tcm-row:nth-child(odd){background:rgba(128,128,128,.04)}
+.tcm-rank{font-size:10px;color:var(--muted);font-weight:700;text-align:right}
+.tcm-name{font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcm-area{color:var(--ink-soft);font-weight:600;font-size:10px;white-space:nowrap}
+.tcm-cnt{font-weight:800;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .map-toolbar{background:var(--glass-strong);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .map-lbl{font-size:13px;font-weight:700;color:var(--ink);flex:1}
 /* Строка поиска адреса */
@@ -409,6 +465,10 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
   .content{padding:14px;gap:16px}
 
   /* KPI */
+  .priority-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .prio{padding:14px 13px;min-height:auto}
+  .prio-val{font-size:30px}
+  .prio-lbl{font-size:10px}
   .kpi-hero{grid-template-columns:repeat(2,1fr);gap:10px}
   .kh-val{font-size:28px}
   .kpi-h{padding:18px 14px}
@@ -531,6 +591,7 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
     </div>
   </div>
   <button class="btn-rst" onclick="resetF()">↺ Сброс</button>
+  <button class="btn-rst btn-top" onclick="topByCategoryModal()" title="Топ округов по всем категориям">📊 Топ по округам</button>
   <span id="fcnt"></span>
 </div>
 
@@ -555,6 +616,101 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
 <!-- ОБЗОР -->
 <div class="page active" id="page-overview">
 <div class="content">
+  <div class="sect-lbl">Главные показатели · сертификаты и выкупы · клик по карточке — детали</div>
+  <div class="priority-row">
+    <div class="prio prio-pos" onclick="prioModal('certPos')">
+      <div class="prio-hdr">
+        <div class="prio-lbl">Сертификаты<br>(Положительные)</div>
+        <div class="prio-badge">✓</div>
+      </div>
+      <div class="prio-val" id="pv-certPos">—</div>
+      <div class="prio-cap">заявок · <span id="pv-certPos-area">—</span></div>
+      <div class="prio-split">
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">Собственники</span>
+          <span class="prio-split-val" id="pv-certPos-sob">—</span>
+        </div>
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">Наниматели</span>
+          <span class="prio-split-val" id="pv-certPos-nan">—</span>
+        </div>
+      </div>
+      <div class="prio-top">
+        <div class="prio-top-lbl">Топ округов</div>
+        <div class="prio-top-list" id="pv-certPos-top">—</div>
+      </div>
+    </div>
+
+    <div class="prio prio-proc" onclick="prioModal('certProc')">
+      <div class="prio-hdr">
+        <div class="prio-lbl">Сертификаты<br>(На рассмотрении)</div>
+        <div class="prio-badge">⏳</div>
+      </div>
+      <div class="prio-val" id="pv-certProc">—</div>
+      <div class="prio-cap">заявок · <span id="pv-certProc-area">—</span></div>
+      <div class="prio-split">
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">Собственники</span>
+          <span class="prio-split-val" id="pv-certProc-sob">—</span>
+        </div>
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">Наниматели</span>
+          <span class="prio-split-val" id="pv-certProc-nan">—</span>
+        </div>
+      </div>
+      <div class="prio-top">
+        <div class="prio-top-lbl">Топ округов</div>
+        <div class="prio-top-list" id="pv-certProc-top">—</div>
+      </div>
+    </div>
+
+    <div class="prio prio-vyk" onclick="prioModal('vyk')">
+      <div class="prio-hdr">
+        <div class="prio-lbl">Выкупы</div>
+        <div class="prio-badge">₽</div>
+      </div>
+      <div class="prio-val" id="pv-vyk">—</div>
+      <div class="prio-cap">заявок · <span id="pv-vyk-area">—</span></div>
+      <div class="prio-split">
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">Только собственники</span>
+          <span class="prio-split-val" id="pv-vyk-sob">—</span>
+        </div>
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">Заявление не подавалось</span>
+          <span class="prio-split-val" id="pv-vyk-direct">—</span>
+        </div>
+      </div>
+      <div class="prio-top">
+        <div class="prio-top-lbl">Топ округов</div>
+        <div class="prio-top-list" id="pv-vyk-top">—</div>
+      </div>
+    </div>
+
+    <div class="prio prio-neg" onclick="prioModal('certNeg')">
+      <div class="prio-hdr">
+        <div class="prio-lbl">Выкупы<br>(отрицательные сертификаты)</div>
+        <div class="prio-badge">↺</div>
+      </div>
+      <div class="prio-val" id="pv-certNeg">—</div>
+      <div class="prio-cap">заявок · <span id="pv-certNeg-area">—</span></div>
+      <div class="prio-split">
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">К переводу в выкуп</span>
+          <span class="prio-split-val" id="pv-certNeg-sob">—</span>
+        </div>
+        <div class="prio-split-row">
+          <span class="prio-split-lbl">Согласие «да»</span>
+          <span class="prio-split-val" id="pv-certNeg-cons">—</span>
+        </div>
+      </div>
+      <div class="prio-top">
+        <div class="prio-top-lbl">Топ округов</div>
+        <div class="prio-top-list" id="pv-certNeg-top">—</div>
+      </div>
+    </div>
+  </div>
+
   <div class="kpi-hero">
     <div class="kpi-h" onclick="kpiModal('total')"><div class="kh-lbl">Всего квартир</div><div class="kh-val" id="kv-total">—</div><div class="kh-area" id="kv-area">—</div><div class="kh-hint">▼ список округов</div></div>
     <div class="kpi-h" onclick="kpiModal('sob')"><div class="kh-lbl">Собственники</div><div class="kh-val" id="kv-sob">—</div><div class="kh-area" id="kv-sob-a">—</div><div class="kh-sub" id="kv-sob-s">—</div><div class="kh-hint">▼ список округов</div></div>
@@ -579,8 +735,14 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
   </div>
 
   <div class="charts-row">
-    <div class="chart-card"><div class="cc-title">Статус решений по округам</div><div class="cwrap"><canvas id="c-dec"></canvas></div></div>
-    <div class="chart-card"><div class="cc-title">Собственники vs Наниматели</div><div class="cwrap"><canvas id="c-own"></canvas></div></div>
+    <div class="chart-card">
+      <div class="cc-title">Статус решений по округам · все округа, прокрутка ↔</div>
+      <div class="chart-scroll-h"><div class="chart-inner-h" id="c-dec-inner"><canvas id="c-dec"></canvas></div></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Собственники vs Наниматели · все округа, прокрутка ↕</div>
+      <div class="chart-scroll-v"><div class="chart-inner-v" id="c-own-inner"><canvas id="c-own"></canvas></div></div>
+    </div>
   </div>
   <div class="timeline-card">
     <div class="tl-head">
@@ -1271,30 +1433,28 @@ function toggleMrpRound(sheet){
   var btn=document.getElementById('mrp-btn');
   if(btn){if(_mapRoundFilter.length)btn.classList.add('has-val');else btn.classList.remove('has-val');}
   buildMrpTable((document.getElementById('mrp-search')||{}).value||'');
-  _applyMapFilter();
-  _highlightDistricts(_mapRoundFilter);
+  _applyMapFilter();   // _applyMapFilter сам вызовет _highlightDistricts с правильным набором
 }
 function resetMapRound(){
   _mapRoundFilter=[];
   var el=document.getElementById('mrp-val');if(el)el.textContent='Все';
   var btn=document.getElementById('mrp-btn');if(btn)btn.classList.remove('has-val');
   buildMrpTable('');
-  _applyMapFilter();
-  _highlightDistricts([]);
+  _applyMapFilter();   // вызовет _highlightDistricts с глобальным fState.round если активен
 }
 function _applyMapFilter(){
   if(!ymap||!_markersLayer)return;
   var vis=[];
-  _markersLayer.each(function(pm){
-    var sheet=pm.properties&&pm.properties.get('sheet');
-    if(!sheet)return;
-    var visible=!_mapRoundFilter.length||_mapRoundFilter.indexOf(sheet)>=0;
-    pm.options.set('visible',visible);
-    if(visible){try{var c=pm.geometry.getCoordinates();if(c&&c[0])vis.push(c);}catch(e){}}
+  // Используем плоский _markerData — надёжнее чем итерация по Yandex collection
+  _markerData.forEach(function(m){
+    var visible=!_mapRoundFilter.length||_mapRoundFilter.indexOf(m.sheet)>=0;
+    m.visible=visible;
+    try{m.pm.options.set('visible',visible);}catch(e){}
+    if(visible)vis.push([m.lat,m.lon]);
   });
   _fitMap(vis);
-  _geoSetStatus(_mapRoundFilter.length?'Фильтр: '+_mapRoundFilter.join(', '):'Все округа');
-  // Перестраиваем hull после изменения видимости маркеров
+  _geoSetStatus(_mapRoundFilter.length?'Фильтр: '+_mapRoundFilter.join(', '):'Все округа · '+_markerData.length+' домов');
+  // Перестраиваем подсветку под обновлённый набор
   var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
   _highlightDistricts(sheetsToHL);
 }
@@ -1404,6 +1564,7 @@ document.addEventListener('click',function(e){
 // ── Границы и подсветка округов (convex hull + ymaps.borders fallback) ─────
 var _hlLayer=null;          // ymaps.GeoObjectCollection — слой подсветки (ниже маркеров)
 var _markersLayer=null;     // ymaps.GeoObjectCollection — слой маркеров домов
+var _markerData=[];         // плоский JS-массив маркеров — НЕ зависит от внутренностей Yandex
 var _bordersCache={};       // sheet → [[lat,lon],...] готовые координаты полигонов
 var _bordersReady=false;    // флаг: реальные границы загружены
 var _bordersAttempted=false;
@@ -1472,69 +1633,61 @@ function _matchBorder(sheet){
   return null;
 }
 
-// Строим полигон из позиций маркеров (convex hull + buffer)
-function _buildHullFromMarkers(sheet){
-  if(!_markersLayer)return null;
-  var pts=[];
-  _markersLayer.each(function(pm){
-    if(pm.properties&&pm.properties.get('sheet')===sheet){
-      try{var c=pm.geometry.getCoordinates();if(c&&c[0]>50)pts.push(c);}catch(e){}
-    }
+// Вычисляем центр и радиус для подсветки округа из _markerData (плоский массив, надёжно)
+function _districtGeoFromMarkers(sheet){
+  var pts=_markerData.filter(function(m){return m.sheet===sheet&&m.lat&&m.lon;}).map(function(m){return[m.lat,m.lon];});
+  if(!pts.length){
+    var rc=ROUND_CENTERS[sheet];
+    return rc?{center:rc,radius:10000}:null;
+  }
+  var cx=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;
+  var cy=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;
+  var maxDist=0;
+  pts.forEach(function(p){
+    var dLat=(p[0]-cx)*111320;
+    var dLon=(p[1]-cy)*111320*Math.cos(cx*Math.PI/180);
+    var d=Math.sqrt(dLat*dLat+dLon*dLon);
+    if(d>maxDist)maxDist=d;
   });
-  if(pts.length<2)return null;
-  var hull=_convexHull(pts);
-  return _bufferHull(hull,0.025);
+  return{center:[cx,cy],radius:Math.max(maxDist+3000,5000)};
 }
 
-// Главная функция: подсвечивает выбранные округа
+// Главная функция: подсвечивает выбранные округа кольцами
 function _highlightDistricts(sheets){
   if(!ymap||!_hlLayer)return;
   _hlLayer.removeAll();
   if(!sheets||!sheets.length)return;
   sheets.forEach(function(sheet){
     var col=_mapColor(sheet);
-    var coords=null;
-
-    // Приоритет 1: реальные границы из ymaps.borders или BORDERS_URL
-    if(_bordersReady){coords=_matchBorder(sheet);}
-
-    // Приоритет 2: convex hull из позиций маркеров (работает для 2+ точек)
-    if(!coords){
-      var hull=_buildHullFromMarkers(sheet);
-      if(hull&&hull.length>=3){coords=[hull];}
+    // Приоритет 1: реальные границы из ymaps.borders / BORDERS_URL
+    if(_bordersReady){
+      var borderCoords=_matchBorder(sheet);
+      if(borderCoords){
+        try{
+          var poly=new ymaps.Polygon(borderCoords,{hintContent:sheet},{
+            fillColor:col+'26',strokeColor:col,strokeWidth:3,
+            strokeOpacity:0.8,fillOpacity:1,
+            interactivityModel:'default#transparent'
+          });
+          _hlLayer.add(poly);
+          return;
+        }catch(e){}
+      }
     }
-
-    if(coords){
-      var poly=new ymaps.Polygon(coords,{hintContent:sheet},{
+    // Приоритет 2: Circle вокруг центроида маркеров (всегда работает в Yandex Maps)
+    var info=_districtGeoFromMarkers(sheet);
+    if(!info)return;
+    try{
+      var circle=new ymaps.Circle([info.center,info.radius],{hintContent:sheet},{
         fillColor:col+'26',
         strokeColor:col,
-        strokeWidth:2.5,
-        strokeOpacity:0.75,
+        strokeWidth:3,
+        strokeOpacity:0.8,
         fillOpacity:1,
-        strokeStyle:{dash:[10,6]},
         interactivityModel:'default#transparent'
       });
-      _hlLayer.add(poly);
-    } else {
-      // Одиночная точка — ищем позицию маркера, затем ROUND_CENTERS
-      var center=null;
-      if(_markersLayer){
-        _markersLayer.each(function(pm){
-          if(!center&&pm.properties&&pm.properties.get('sheet')===sheet){
-            try{center=pm.geometry.getCoordinates();}catch(e){}
-          }
-        });
-      }
-      if(!center)center=ROUND_CENTERS[sheet]||null;
-      if(center){
-        var circ=new ymaps.Circle([center,9000],{hintContent:sheet},{
-          fillColor:col+'26',strokeColor:col,strokeWidth:2.5,strokeOpacity:0.75,
-          strokeStyle:{dash:[10,6]},fillOpacity:1,
-          interactivityModel:'default#transparent'
-        });
-        _hlLayer.add(circ);
-      }
-    }
+      _hlLayer.add(circle);
+    }catch(e){}
   });
 }
 
@@ -1574,28 +1727,40 @@ function renderMapPage(){
     _geoSetStatus('Яндекс.Карты не загрузились — проверьте API-ключ');
     return;
   }
+  // КРИТИЧНО: если контейнер карты невидим (display:none или нулевой размер),
+  // Yandex Maps создаст карту с нулевыми тайлами и маркеры будут невидимы.
+  // Откладываем рендер до момента когда контейнер реально получит размер.
+  var mapEl=document.getElementById('map');
+  if(!mapEl||!mapEl.offsetWidth||!mapEl.offsetHeight){
+    setTimeout(renderMapPage,150);
+    return;
+  }
   ymaps.ready(function(){
     yReady=true;
-    if(!mapInited){
-      mapInited=true;
+    if(!ymap){
       ymap=new ymaps.Map('map',{
         center:[55.55,37.5],zoom:8,
         controls:['zoomControl','typeSelector','fullscreenControl']
       },{suppressMapOpenBlock:true});
-      // Слой подсветки округов — добавляем ПЕРВЫМ, маркеры будут поверх
-      _hlLayer=new ymaps.GeoObjectCollection();
-      ymap.geoObjects.add(_hlLayer);
-      // Слой маркеров — добавляем ВТОРЫМ
-      _markersLayer=new ymaps.GeoObjectCollection();
-      ymap.geoObjects.add(_markersLayer);
-      // Попытка загрузить реальные границы Яндекса
+      mapInited=true;
       _tryLoadRealBorders();
       loadBorders();
     }
-    // Сбрасываем маркеры через removeAll (не затрагивает _hlLayer)
-    if(_markersLayer)_markersLayer.removeAll();
-    // Сбрасываем старые highlights при каждом рендере
-    if(_hlLayer)_hlLayer.removeAll();
+    // Защитное пересоздание слоёв если их нет
+    if(!_hlLayer){
+      _hlLayer=new ymaps.GeoObjectCollection();
+      ymap.geoObjects.add(_hlLayer);
+    }
+    if(!_markersLayer){
+      _markersLayer=new ymaps.GeoObjectCollection();
+      ymap.geoObjects.add(_markersLayer);
+    }
+    // Полная очистка перед рендером
+    _markersLayer.removeAll();
+    _hlLayer.removeAll();
+    _markerData=[];
+    // Принудительный пересчёт размера контейнера (на случай если карта была скрыта)
+    try{ymap.container.fitToViewport();}catch(e){}
     // Сбрасываем поиск
     clearMapSearch();
     _searchGroups=[];
@@ -1623,8 +1788,13 @@ function renderMapPage(){
     function showAll(){
       if(_geoGen!==myGen)return;
       _setOverlay(false);
-      if(!_markersLayer)return;
+      if(!_markersLayer){
+        // Защита: пересоздаём слой если он пропал
+        _markersLayer=new ymaps.GeoObjectCollection();
+        ymap.geoObjects.add(_markersLayer);
+      }
       _markersLayer.removeAll();
+      _markerData=[];   // сбрасываем плоский массив
       var allCoords=[];
       groups.forEach(function(g){
         if(!g.lat||!g.lon)return;
@@ -1632,20 +1802,21 @@ function renderMapPage(){
         var pm=new ymaps.Placemark([g.lat,g.lon],{sheet:g.sheet,
           hintContent:g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.'
         },{preset:'islands#circleDotIcon',iconColor:'#b05a4f'});
-        // visible ставим через options отдельно — надёжнее чем в конструкторе
         if(!visible)pm.options.set('visible',false);
         pm.events.add('click',function(e){e.stopPropagation();openMapModal(g);});
         _markersLayer.add(pm);
+        // Параллельно записываем в плоский массив
+        _markerData.push({sheet:g.sheet,addr:g.addr,lat:g.lat,lon:g.lon,pm:pm,group:g,visible:visible});
         if(visible)allCoords.push([g.lat,g.lon]);
       });
       _fitMap(allCoords);
       _buildColorLegend();
-      // Подсвечиваем: приоритет — локальный фильтр карты, затем глобальный фильтр верхней панели
+      // Подсвечиваем: приоритет — локальный фильтр карты, затем глобальный
       var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
       _highlightDistricts(sheetsToHL);
       var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
       var notFound=needGeo.length-geocoded;
-      _geoSetStatus('✓ '+groups.length+' домов · '+withCoords.length+' из таблицы · '+geocoded+' геокодировано'+(notFound?' · ⚠ '+notFound+' не найдено':''));
+      _geoSetStatus('✓ '+_markerData.length+' домов · '+withCoords.length+' из таблицы · '+geocoded+' геокодировано'+(notFound?' · ⚠ '+notFound+' не найдено':''));
     }
 
     if(!needGeo.length){showAll();return;}
@@ -1722,6 +1893,69 @@ function kpiModal(type){
       '<span class="mrow-meta">'+astr+' · '+pct+'%</span>'+
       '<span class="mrow-val" style="color:'+color+'">'+v+'</span></div>';
   }).join('');
+  openModal();
+}
+
+function prioModal(key){
+  var p=_computePrio(key);if(!p)return;
+  var cfg=p.cfg,col=cfg.color;
+  document.getElementById('modal-total').textContent=p.total.toLocaleString('ru');
+  document.getElementById('modal-total').style.color=col;
+  document.getElementById('modal-title').textContent=cfg.title+' · '+p.totalA.toFixed(0)+' м²';
+  // Сначала — топ по округам (что просил пользователь)
+  var html='<div style="background:var(--row-bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;border-left:3px solid '+col+'">'+
+    '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Топ округов</div>';
+  if(p.top.length){
+    html+=p.top.map(function(r,i){
+      var splitTxt=(key==='certPos'||key==='certProc')?
+        (' · собств. '+r.sob+' · наним. '+r.nan):
+        (' · '+r.area.toFixed(0)+' м²');
+      return'<div class="tcm-row"><span class="tcm-rank">'+(i+1)+'</span>'+
+        '<span class="tcm-name">'+r.sheet+'</span>'+
+        '<span class="tcm-area">'+r.area.toFixed(0)+' м²'+splitTxt+'</span>'+
+        '<span class="tcm-cnt" style="color:'+col+'">'+r.cnt+'</span></div>';
+    }).join('');
+  }else{
+    html+='<div style="color:var(--muted);font-size:12px;text-align:center;padding:6px">Нет данных</div>';
+  }
+  html+='</div>';
+  // Затем — список всех заявок этой категории
+  html+='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;padding-left:2px">Список заявок · '+p.total+' квартир</div>';
+  var sorted=p.rows.slice().sort(function(a,b){return n(b[C.area])-n(a[C.area]);});
+  html+=sorted.map(function(r,i){
+    return'<div class="mrow" style="border-left-color:'+col+'">'+
+      '<span class="mrow-rank">'+(i+1)+'</span>'+
+      '<span class="mrow-name">'+(r[C.addr]||'—')+'<small>'+(r._sheet||'')+' · кв. '+(r[C.apt]||'—')+' · '+normOwner(r[C.owner])+'</small></span>'+
+      '<span class="mrow-meta">'+(r[C.citizens]||'—')+' чел.</span>'+
+      '<span class="mrow-val" style="color:'+col+'">'+n(r[C.area]).toFixed(1)+' м²</span></div>';
+  }).join('')||'<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Заявок не найдено в текущей выборке</div>';
+  document.getElementById('modal-body').innerHTML=html;
+  openModal();
+}
+
+// Топ всех категорий — единое модальное окно
+function topByCategoryModal(){
+  var keys=['certPos','certProc','vyk','certNeg'];
+  var total=keys.reduce(function(s,k){var p=_computePrio(k);return s+(p?p.total:0);},0);
+  document.getElementById('modal-total').textContent=total.toLocaleString('ru');
+  document.getElementById('modal-total').style.color='var(--gold)';
+  document.getElementById('modal-title').textContent='Топ по округам · все 4 категории';
+  var html=keys.map(function(k){
+    var p=_computePrio(k);if(!p)return'';
+    var col=p.cfg.color;
+    var rows=p.top.map(function(r,i){
+      return'<div class="tcm-row"><span class="tcm-rank">'+(i+1)+'</span>'+
+        '<span class="tcm-name">'+r.sheet+'</span>'+
+        '<span class="tcm-area">'+r.area.toFixed(0)+' м²</span>'+
+        '<span class="tcm-cnt" style="color:'+col+'">'+r.cnt+'</span></div>';
+    }).join('')||'<div style="padding:10px 14px;color:var(--muted);font-size:11px">нет данных</div>';
+    return'<div class="tcm-section" style="color:'+col+'">'+
+      '<div class="tcm-section-hdr">'+
+        '<div class="tcm-section-title">'+p.cfg.title+'</div>'+
+        '<div class="tcm-section-total">'+p.total+'</div>'+
+      '</div>'+rows+'</div>';
+  }).join('');
+  document.getElementById('modal-body').innerHTML=html;
   openModal();
 }
 
@@ -1845,21 +2079,28 @@ function reloadAll(){
   // ────────────────────────────────────────────────────────────────────────
 
   clearInterval(autoT);clearInterval(cdT);secs=7200;
+  // Запоминаем активную вкладку чтобы вернуть её после загрузки
+  var prevActivePage=document.querySelector('.page.active');
+  var prevPageName=prevActivePage?prevActivePage.id.replace('page-',''):'overview';
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   var ld=document.getElementById('loading');ld.style.display='flex';
 
   // Синхронно чистим глобальное состояние до старта любых запросов
   allData=[];loaded=0;
-  mapInited=false;mapMarkersBuilt=false;
+  mapMarkersBuilt=false;
   selR=null;fState={round:[],dec:[],type:[]};
-  roundColorMap={};geocodeCache={};
+  roundColorMap={};
+  // НЕ сбрасываем geocodeCache — адреса уже известны, маркеры появятся мгновенно после загрузки
   // Сбрасываем геокодер: все ожидающие промисы дропаются через проверку _geoGen
   _geoGen++;_geoQ=[];_geoBusy=false;_geoTotal=0;_geoDone=0;
-  // Сбрасываем слой подсветки, кеш границ и поиск
-  _hlLayer=null;_markersLayer=null;_bordersCache={};_bordersReady=false;_bordersAttempted=false;
-  _searchGroups=[];_mapRoundFilter=[];
+  // НЕ уничтожаем карту — просто чистим слои; ymap, _hlLayer, _markersLayer остаются живы
+  _bordersCache={};_bordersReady=false;_bordersAttempted=false;
+  _searchGroups=[];_mapRoundFilter=[];_markerData=[];
+  if(ymap){
+    try{if(_markersLayer)_markersLayer.removeAll();}catch(e){}
+    try{if(_hlLayer)_hlLayer.removeAll();}catch(e){}
+  }
 
-  if(ymap){try{ymap.destroy();}catch(e){}ymap=null;}
   Object.keys(charts).forEach(function(k){
     if(charts[k]){try{charts[k].destroy();}catch(e){}charts[k]=null;}
   });
@@ -1937,7 +2178,15 @@ function reloadAll(){
     buildFilterMenus();
     renderAll();
     ld.style.display='none';
-    document.getElementById('page-overview').classList.add('active');
+    // Восстанавливаем активную вкладку (а не форсим overview)
+    document.getElementById('page-'+prevPageName).classList.add('active');
+    // Активный пункт верхнего меню
+    document.querySelectorAll('.ptab').forEach(function(b){b.classList.remove('active');});
+    var tabs=document.querySelectorAll('.ptab');
+    var tabIdx={'overview':0,'gos':1,'finance':2,'mappage':3}[prevPageName];
+    if(tabs[tabIdx])tabs[tabIdx].classList.add('active');
+    // Если на карте — пересобираем маркеры с новыми данными
+    if(prevPageName==='mappage')setTimeout(renderMapPage,80);
     document.getElementById('upd-time').textContent=
       new Date().toLocaleTimeString('ru')+' · округов '+okCount+'/'+total+' · '+allData.length+' строк';
     var fc=document.getElementById('fcnt');
@@ -2022,6 +2271,63 @@ function selRound(name){
   applyF();
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Конфигурация 4 главных категорий (priority)
+// ────────────────────────────────────────────────────────────────────────
+// 1. Сертификаты (Положительные)   — Сертификат + Решение=Положительное (собств. ИЛИ нанимат.)
+// 2. Сертификаты (На рассмотрении) — Сертификат + Решение=На рассмотрении (собств. ИЛИ нанимат.)
+// 3. Выкупы                        — все выкупы (только собственники)
+//      a) certType=Выкуп (заявление на сертификат не подавалось)
+//      b) certType=Сертификат + decision=Отрицательное + buyConsent=да
+// 4. Выкупы (отрицательные сертификаты) — только подтип b) из №3
+// ────────────────────────────────────────────────────────────────────────
+var _PRIO_CFG={
+  certPos:{title:'Сертификаты (Положительные)',color:'#3a7d5c',cls:'prio-pos',
+    filter:function(r){return normType(r[C.certType])==='Сертификат'&&normDecision(r[C.decision])==='Положительное';}},
+  certProc:{title:'Сертификаты (На рассмотрении)',color:'#b08d4f',cls:'prio-proc',
+    filter:function(r){return normType(r[C.certType])==='Сертификат'&&normDecision(r[C.decision])==='На рассмотрении';}},
+  vyk:{title:'Выкупы (все, только собственники)',color:'#d6a85a',cls:'prio-vyk',
+    filter:function(r){
+      if(normOwner(r[C.owner])!=='Собственник')return false;
+      var nt=normType(r[C.certType]),nd=normDecision(r[C.decision]);
+      if(nt==='Выкуп')return true;
+      if(nt==='Сертификат'&&nd==='Отрицательное'&&lo(r[C.buyConsent])==='да')return true;
+      return false;
+    }},
+  certNeg:{title:'Выкупы из отрицательных сертификатов',color:'#b05a4f',cls:'prio-neg',
+    filter:function(r){return normOwner(r[C.owner])==='Собственник'&&normType(r[C.certType])==='Сертификат'&&normDecision(r[C.decision])==='Отрицательное'&&lo(r[C.buyConsent])==='да';}}
+};
+
+// Агрегация по категории: возвращает строки, счётчики, разбивку, топ округов
+function _computePrio(key){
+  var cfg=_PRIO_CFG[key];if(!cfg)return null;
+  var rows=filteredData.filter(cfg.filter);
+  var sob=0,sobA=0,nan=0,nanA=0,totalA=0;
+  var direct=0,directA=0,fromNeg=0,fromNegA=0;   // только для vyk
+  var byRound={};
+  rows.forEach(function(r){
+    var a=n(r[C.area]);
+    var o=normOwner(r[C.owner]);
+    totalA+=a;
+    if(o==='Собственник'){sob++;sobA+=a;}
+    if(o==='Наниматель'){nan++;nanA+=a;}
+    // Подсчёт двух подтипов выкупа
+    if(key==='vyk'){
+      var nt=normType(r[C.certType]);
+      if(nt==='Выкуп'){direct++;directA+=a;}
+      else if(nt==='Сертификат'){fromNeg++;fromNegA+=a;}
+    }
+    var sh=r._sheet||'—';
+    if(!byRound[sh])byRound[sh]={sheet:sh,cnt:0,area:0,sob:0,nan:0};
+    byRound[sh].cnt++;byRound[sh].area+=a;
+    if(o==='Собственник')byRound[sh].sob++;
+    if(o==='Наниматель')byRound[sh].nan++;
+  });
+  var top=Object.values(byRound).sort(function(a,b){return b.cnt-a.cnt||a.sheet.localeCompare(b.sheet,'ru');});
+  return{rows:rows,total:rows.length,totalA:totalA,sob:sob,sobA:sobA,nan:nan,nanA:nanA,
+    direct:direct,directA:directA,fromNeg:fromNeg,fromNegA:fromNegA,top:top,cfg:cfg};
+}
+
 function renderAll(){
   var d=filteredData,area=0,sob=0,nan=0,cert=0,vyk=0,pos=0,proc=0,neg=0,rej=0,none=0;
   var sobA=0,nanA=0,certA=0,vykA=0;
@@ -2033,7 +2339,34 @@ function renderAll(){
     if(nd==='Положительное')pos++;else if(nd==='На рассмотрении')proc++;
     else if(nd==='Отказ')rej++;else if(nd==='Отрицательное')neg++;else none++;
   });
-  function setT(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
+  function setT(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
+
+  // ── 4 главные карточки ────────────────────────────────────────────────
+  function renderPrioCard(key){
+    var p=_computePrio(key);if(!p)return;
+    setT('pv-'+key,p.total.toLocaleString('ru'));
+    setT('pv-'+key+'-area',p.totalA.toFixed(0)+' м²');
+    if(key==='certPos'||key==='certProc'){
+      setT('pv-'+key+'-sob',p.sob+' · '+p.sobA.toFixed(0)+' м²');
+      setT('pv-'+key+'-nan',p.nan+' · '+p.nanA.toFixed(0)+' м²');
+    }else if(key==='vyk'){
+      setT('pv-vyk-sob',p.total+' заявок · '+p.totalA.toFixed(0)+' м²');
+      setT('pv-vyk-direct',p.direct+' · '+p.directA.toFixed(0)+' м²');
+    }else if(key==='certNeg'){
+      setT('pv-certNeg-sob',p.total+' заявок · '+p.totalA.toFixed(0)+' м²');
+      setT('pv-certNeg-cons',p.total+' (отриц.+согласие да)');
+    }
+    // Топ-5 округов внизу карточки
+    var topHtml=p.top.slice(0,5).map(function(r){
+      return'<div class="pt-row"><span class="pt-name">'+r.sheet+'</span><span class="pt-cnt">'+r.cnt+'</span></div>';
+    }).join('');
+    setT('pv-'+key+'-top',topHtml||'<span style="color:var(--muted)">нет данных</span>');
+  }
+  renderPrioCard('certPos');
+  renderPrioCard('certProc');
+  renderPrioCard('vyk');
+  renderPrioCard('certNeg');
+
   setT('kv-total',d.length.toLocaleString('ru'));setT('kv-area','Площадь: '+area.toFixed(0)+' м²');
   setT('kv-sob',sob.toLocaleString('ru'));setT('kv-sob-a','Площадь: '+sobA.toFixed(0)+' м²');setT('kv-sob-s',(d.length>0?Math.round(sob/d.length*100):0)+'% от всех');
   setT('kv-nan',nan.toLocaleString('ru'));setT('kv-nan-a','Площадь: '+nanA.toFixed(0)+' м²');setT('kv-nan-s',(d.length>0?Math.round(nan/d.length*100):0)+'% от всех');
@@ -2088,14 +2421,17 @@ function renderCharts(d){
   if(!d)return;
   var tick=themeTick(),grid=themeGrid(),F='Inter';
 
-  /* По округам — стек по решениям (топ-12 округов) */
+  /* По округам — стек по решениям (все округа, прокрутка) */
   var rmap={};
   d.forEach(function(r){var k=r._sheet||'—';if(!rmap[k])rmap[k]={Положительное:0,'На рассмотрении':0,Отрицательное:0,Отказ:0,'Не указано':0,total:0};rmap[k][normDecision(r[C.decision])]++;rmap[k].total++;});
-  var topR=Object.entries(rmap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');}).slice(0,12);
+  var topR=Object.entries(rmap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');});
   var rl=topR.map(function(e){return e[0];});
   var decOrder=['Положительное','На рассмотрении','Отрицательное','Отказ','Не указано'];
   var decCols={'Положительное':'#3a7d5c','На рассмотрении':'#b08d4f','Отрицательное':'#b05a4f','Отказ':'#7a6a8f','Не указано':'#5a7088'};
   var ds=decOrder.map(function(k){return{label:k,data:topR.map(function(e){return e[1][k];}),backgroundColor:decCols[k],borderRadius:4,borderSkipped:false};});
+  // Динамическая ширина: 75px на округ, минимум 100%
+  var decInner=document.getElementById('c-dec-inner');
+  if(decInner)decInner.style.width=Math.max(rl.length*75,800)+'px';
   var c1=document.getElementById('c-dec');
   if(c1){if(charts.dec){charts.dec.destroy();charts.dec=null;}
     charts.dec=new Chart(c1,{type:'bar',data:{labels:rl,datasets:ds},
@@ -2104,11 +2440,14 @@ function renderCharts(d){
         plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:12}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
         scales:{x:{stacked:true,ticks:{color:tick,font:{size:9,family:F},maxRotation:50},grid:{display:false}},y:{stacked:true,ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}}}}});}
 
-  /* Собственники vs Наниматели — по округам, topowner */
+  /* Собственники vs Наниматели — все округа, вертикальная прокрутка */
   var omap={};
   d.forEach(function(r){var k=r._sheet||'—';if(!omap[k])omap[k]={Собственник:0,Наниматель:0,total:0};var o=normOwner(r[C.owner]);if(o==='Собственник')omap[k].Собственник++;if(o==='Наниматель')omap[k].Наниматель++;omap[k].total++;});
-  var topO=Object.entries(omap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');}).slice(0,12);
+  var topO=Object.entries(omap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');});
   var ol=topO.map(function(e){return e[0];});
+  // Динамическая высота: 32px на округ, минимум 360px
+  var ownInner=document.getElementById('c-own-inner');
+  if(ownInner)ownInner.style.height=Math.max(ol.length*32,360)+'px';
   var c2=document.getElementById('c-own');
   if(c2){if(charts.own){charts.own.destroy();charts.own=null;}
     charts.own=new Chart(c2,{type:'bar',data:{labels:ol,datasets:[
