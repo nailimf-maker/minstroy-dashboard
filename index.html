@@ -1541,17 +1541,14 @@ function _ensureMigLayouts(){
 }
 
 // Кривая Безье — массив точек между source и destination
-// Кривая Безье — изгиб чередуется по знаку, нарастает по амплитуде (веер кривых)
+// Кривая Безье — все изгибы в одном направлении, амплитуда нарастает (веер)
 function _bezierCurvePoints(start,end,dstIdx,segments){
-  if(typeof dstIdx==='number'&&segments===undefined){segments=40;}
-  else if(typeof dstIdx==='number'&&typeof segments==='number'){}
-  else{segments=dstIdx||40;dstIdx=0;}
+  if(typeof dstIdx!=='number'){segments=dstIdx;dstIdx=0;}
+  segments=segments||40;
   var dLat=end[0]-start[0],dLon=end[1]-start[1];
   var midLat=(start[0]+end[0])/2,midLon=(start[1]+end[1])/2;
-  // Знак чередуется, амплитуда нарастает — кривые расходятся веером
-  var sign=(dstIdx%2===0)?1:-1;
-  var amp=0.10+Math.floor(dstIdx/2)*0.08;
-  var k=sign*Math.min(amp,0.45);
+  // Всегда одно направление, амплитуда 0.10 → 0.10+N*0.07 (веер)
+  var k=Math.min(0.10+dstIdx*0.07,0.55);
   var ctrlLat=midLat-dLon*k;
   var ctrlLon=midLon+dLat*k;
   var pts=[];
@@ -1728,12 +1725,12 @@ function _drawMigrations(data){
     },{
       strokeColor:color,strokeWidth:sw,strokeOpacity:0.90
     }));
-    // Наконечник стрелки на ~88% длины кривой
-    if(_arrowLayoutClass&&points.length>5){
-      var ai=Math.floor(points.length*0.87);
-      var angle=_bearingDeg(points[ai-2]||points[ai-1],points[ai]);
+    // Наконечник стрелки в КОНЦЕ кривой (в точке назначения)
+    if(_arrowLayoutClass&&points.length>3){
+      var lastIdx=points.length-1;
+      var angle=_bearingDeg(points[lastIdx-3]||points[lastIdx-1],points[lastIdx]);
       try{
-        _migrationLayer.add(new ymaps.Placemark(points[ai],{
+        _migrationLayer.add(new ymaps.Placemark(points[lastIdx],{
           angle:angle,color:color,
           hintContent:p.srcAddr+' → '+dst.dstAddr+' · '+p.count+' кв.'
         },{
@@ -1822,18 +1819,24 @@ function _openDestinationModal(dst){
   openModal();
 }
 
-// Видимость маркеров с учётом миграции: когда режим ON, прячем дома без миграции
+// Видимость маркеров с учётом миграции
+// Когда режим ON — показываем только дома у которых в filteredData есть newAddr
 function _updateMarkerVisibilityForMigration(){
   if(!_markerData.length)return;
   var migratingSrc={};
-  if(_migrationActive&&_lastMigrationData){
-    _lastMigrationData.pairs.forEach(function(p){
-      migratingSrc[p.srcSheet+'||'+p.srcAddr]=true;
+  if(_migrationActive){
+    filteredData.forEach(function(r){
+      var dstAddr=String(r[C.newAddr]||'').trim();
+      if(!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+      var srcSheet=r._sheet||'—';
+      if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
+      var srcAddr=String(r[C.addr]||'').trim();
+      migratingSrc[srcSheet+'||'+_normAddr(srcAddr)]=true;
     });
   }
   _markerData.forEach(function(m){
     var byRound=!_mapRoundFilter.length||_mapRoundFilter.indexOf(m.sheet)>=0;
-    var byMig=!_migrationActive||migratingSrc[m.sheet+'||'+m.addr];
+    var byMig=!_migrationActive||migratingSrc[m.sheet+'||'+_normAddr(m.addr)];
     var visible=byRound&&byMig;
     m.visible=visible;
     try{m.pm.options.set('visible',visible);}catch(e){}
