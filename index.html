@@ -1541,75 +1541,98 @@ function _ensureMigLayouts(){
 }
 
 // Кривая Безье — массив точек между source и destination
-function _bezierCurvePoints(start,end,segments){
-  segments=segments||40;
+// Кривая Безье — изгиб чередуется по знаку, нарастает по амплитуде (веер кривых)
+function _bezierCurvePoints(start,end,dstIdx,segments){
+  if(typeof dstIdx==='number'&&segments===undefined){segments=40;}
+  else if(typeof dstIdx==='number'&&typeof segments==='number'){}
+  else{segments=dstIdx||40;dstIdx=0;}
   var dLat=end[0]-start[0],dLon=end[1]-start[1];
   var midLat=(start[0]+end[0])/2,midLon=(start[1]+end[1])/2;
-  // Контрольная точка — перпендикуляр к середине отрезка, изгиб 18%
-  var k=0.18;
+  // Знак чередуется, амплитуда нарастает — кривые расходятся веером
+  var sign=(dstIdx%2===0)?1:-1;
+  var amp=0.10+Math.floor(dstIdx/2)*0.08;
+  var k=sign*Math.min(amp,0.45);
   var ctrlLat=midLat-dLon*k;
   var ctrlLon=midLon+dLat*k;
   var pts=[];
   for(var i=0;i<=segments;i++){
     var t=i/segments,u=1-t;
-    pts.push([
-      u*u*start[0]+2*u*t*ctrlLat+t*t*end[0],
-      u*u*start[1]+2*u*t*ctrlLon+t*t*end[1]
-    ]);
+    pts.push([u*u*start[0]+2*u*t*ctrlLat+t*t*end[0],
+              u*u*start[1]+2*u*t*ctrlLon+t*t*end[1]]);
   }
   return pts;
 }
 
-// Угол поворота наконечника (deg) — screen-coords, право=0deg
+// Угол поворота наконечника (deg), право=0deg (screen-coords)
 function _bearingDeg(p1,p2){
   var dLat=p2[0]-p1[0],dLon=p2[1]-p1[1];
-  // Screen-Y инвертирован (north=up). Стрелка по умолчанию смотрит вправо.
   return Math.atan2(-dLat,dLon)*180/Math.PI;
 }
 
-// Сбор данных: пары источник→назначение + дедуплицированные назначения
+// Нормализация адреса для надёжного сопоставления
+function _normAddr(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ');}
+
+// Сбор данных: 2 прохода
+// Проход 1 — собираем назначения из ВСЕХ строк с newAddr (без требования геокоординат источника)
+// Проход 2 — строим пары (для кривых) только там, где есть координаты источника
 function _buildMigrationData(){
-  var pairs={},destinations={};
+  var destinations={}, pairs={};
+
+  // ── Проход 1: полная агрегация для модала ────────────────────────────
   filteredData.forEach(function(r){
     var srcAddr=String(r[C.addr]||'').trim();
     var dstAddr=String(r[C.newAddr]||'').trim();
     if(!srcAddr||!dstAddr||dstAddr==='—'||dstAddr==='-')return;
     var srcSheet=r._sheet||'—';
-    // Респектируем локальный фильтр карты — миграция только по выбранному округу
     if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
     var dstDistrict=String(r[C.newDistrict]||'').trim()||srcSheet;
     var srcKey=srcSheet+'||'+srcAddr;
     var dstKey=dstDistrict+'||'+dstAddr;
-    var pairKey=srcKey+'→'+dstKey;
-    // Источник должен быть на карте (иначе нечего рисовать)
-    var src=null;
-    for(var i=0;i<_markerData.length;i++){
-      if(_markerData[i].sheet===srcSheet&&_markerData[i].addr===srcAddr){src=_markerData[i];break;}
-    }
-    if(!src||!src.lat)return;
-    // Дедуплицированное назначение
     if(!destinations[dstKey]){
       destinations[dstKey]={
         dstKey:dstKey,dstAddr:dstAddr,dstDistrict:dstDistrict,
         dstLat:0,dstLon:0,
         totalApts:0,totalArea:0,totalCit:0,
-        sources:{},      // srcKey → {srcSheet, srcAddr, srcLat, srcLon, count, area, apts}
-        byDistrict:{},   // srcSheet → count
-        byDistrictArea:{}// srcSheet → area
+        sources:{},byDistrict:{},byDistrictArea:{}
       };
     }
     var dst=destinations[dstKey];
     var a=n(r[C.area]),cit=n(r[C.citizens]);
     dst.totalApts++;dst.totalArea+=a;dst.totalCit+=cit;
     if(!dst.sources[srcKey]){
-      dst.sources[srcKey]={srcSheet:srcSheet,srcAddr:srcAddr,srcLat:src.lat,srcLon:src.lon,count:0,area:0,apts:[]};
+      dst.sources[srcKey]={srcSheet:srcSheet,srcAddr:srcAddr,
+        srcLat:0,srcLon:0,count:0,area:0,apts:[]};
     }
     dst.sources[srcKey].count++;
     dst.sources[srcKey].area+=a;
     dst.sources[srcKey].apts.push(r);
     dst.byDistrict[srcSheet]=(dst.byDistrict[srcSheet]||0)+1;
     dst.byDistrictArea[srcSheet]=(dst.byDistrictArea[srcSheet]||0)+a;
-    // Пара (для отрисовки кривой)
+  });
+
+  // ── Проход 2: пары для отрисовки (только источники с координатами) ──
+  // Нормализованный индекс для поиска в _markerData
+  var normMap={};
+  _markerData.forEach(function(m){normMap[m.sheet+'||'+_normAddr(m.addr)]=m;});
+
+  filteredData.forEach(function(r){
+    var srcAddr=String(r[C.addr]||'').trim();
+    var dstAddr=String(r[C.newAddr]||'').trim();
+    if(!srcAddr||!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+    var srcSheet=r._sheet||'—';
+    if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
+    var src=normMap[srcSheet+'||'+_normAddr(srcAddr)];
+    if(!src||!src.lat)return;   // нет координат — кривую не рисуем, но в модале уже посчитано
+    var dstDistrict=String(r[C.newDistrict]||'').trim()||srcSheet;
+    var srcKey=srcSheet+'||'+srcAddr;
+    var dstKey=dstDistrict+'||'+dstAddr;
+    var pairKey=srcKey+'→'+dstKey;
+    var dst=destinations[dstKey];if(!dst)return;
+    // Обновляем координаты источника в агрегате назначения (для маршрута)
+    if(dst.sources[srcKey]&&!dst.sources[srcKey].srcLat){
+      dst.sources[srcKey].srcLat=src.lat;
+      dst.sources[srcKey].srcLon=src.lon;
+    }
     if(!pairs[pairKey]){
       pairs[pairKey]={
         srcSheet:srcSheet,srcAddr:srcAddr,srcLat:src.lat,srcLon:src.lon,
@@ -1619,7 +1642,19 @@ function _buildMigrationData(){
     pairs[pairKey].count++;
     pairs[pairKey].apts.push(r);
   });
-  return{pairs:Object.values(pairs),destinations:destinations};
+
+  // Нумеруем пары по назначению для вариации изгиба кривых
+  var dstIdxMap={};
+  var pairsArr=Object.values(pairs);
+  pairsArr.forEach(function(p){
+    var dk=p.dst.dstKey;
+    if(dstIdxMap[dk]===undefined)dstIdxMap[dk]=0;
+    p._dstIdx=dstIdxMap[dk]++;
+    p._dstTotal=0; // заполним ниже
+  });
+  pairsArr.forEach(function(p){p._dstTotal=dstIdxMap[p.dst.dstKey]||1;});
+
+  return{pairs:pairsArr,destinations:destinations};
 }
 
 // Геокодинг только уникальных назначений (не пар)
@@ -1669,67 +1704,64 @@ function _geocodeMigrationDestinations(data,myGen){
   });
 }
 
-// Отрисовка: кривые + наконечники + дедуплицированные маркеры назначения
+// Отрисовка: веер кривых с переменным изгибом и толщиной + маркеры назначения
 function _drawMigrations(data){
   if(!_migrationLayer)return 0;
   _migrationLayer.removeAll();
   _ensureMigLayouts();
-  // Рисуем кривые (одна на пару источник-назначение)
+
+  // Рисуем кривые — веер с вариацией изгиба по _dstIdx
   data.pairs.forEach(function(p){
     var dst=p.dst;
     if(!dst.dstLat||!dst.dstLon)return;
     var color=_mapColor(p.srcSheet);
-    var points=_bezierCurvePoints([p.srcLat,p.srcLon],[dst.dstLat,dst.dstLon],40);
-    // Тёмная подложка для читаемости поверх карты
-    var bg=new ymaps.Polyline(points,{},{
-      strokeColor:'#1a1d29',strokeWidth:5,strokeOpacity:0.18
-    });
-    _migrationLayer.add(bg);
+    // Толщина 2–7px пропорционально числу квартир
+    var sw=Math.max(2,Math.min(7,1.6+p.count*0.22));
+    var points=_bezierCurvePoints([p.srcLat,p.srcLon],[dst.dstLat,dst.dstLon],p._dstIdx||0,40);
+    // Подложка (читаемость на любом фоне карты)
+    _migrationLayer.add(new ymaps.Polyline(points,{},{
+      strokeColor:'#fff',strokeWidth:sw+3,strokeOpacity:0.28
+    }));
     // Основная цветная кривая
-    var line=new ymaps.Polyline(points,{
+    _migrationLayer.add(new ymaps.Polyline(points,{
       hintContent:p.srcAddr+' ('+p.srcSheet+') → '+dst.dstAddr+' · '+p.count+' кв.'
     },{
-      strokeColor:color,strokeWidth:3.5,strokeOpacity:0.85
-    });
-    _migrationLayer.add(line);
-    // Наконечник на 90% длины кривой, повёрнут по направлению последнего сегмента
+      strokeColor:color,strokeWidth:sw,strokeOpacity:0.90
+    }));
+    // Наконечник стрелки на ~88% длины кривой
     if(_arrowLayoutClass&&points.length>5){
-      var idx=Math.floor(points.length*0.88);
-      var angle=_bearingDeg(points[idx-2]||points[idx-1],points[idx]);
+      var ai=Math.floor(points.length*0.87);
+      var angle=_bearingDeg(points[ai-2]||points[ai-1],points[ai]);
       try{
-        var arrow=new ymaps.Placemark(points[idx],{
+        _migrationLayer.add(new ymaps.Placemark(points[ai],{
           angle:angle,color:color,
           hintContent:p.srcAddr+' → '+dst.dstAddr+' · '+p.count+' кв.'
         },{
           iconLayout:_arrowLayoutClass,
-          iconShape:{type:'Rectangle',coordinates:[[-11,-11],[11,11]]}
-        });
-        _migrationLayer.add(arrow);
+          iconShape:{type:'Rectangle',coordinates:[[-12,-12],[12,12]]}
+        }));
       }catch(e){}
     }
   });
-  // Маркеры назначения — один на уникальный адрес
+
+  // Маркеры назначения — один на уникальный адрес (белый кружок с цветной обводкой)
   var dstList=Object.values(data.destinations).filter(function(d){return d.dstLat&&d.dstLon;});
   dstList.forEach(function(dst){
-    // Цвет — топ-источник этого назначения (визуально показывает откуда основной поток)
     var topSheet=Object.entries(dst.byDistrict).sort(function(a,b){return b[1]-a[1];})[0];
     var col=topSheet?_mapColor(topSheet[0]):'#3a7d5c';
     try{
       var pm=new ymaps.Placemark([dst.dstLat,dst.dstLon],{
         color:col,
-        hintContent:'🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. из '+Object.keys(dst.sources).length+' адресов'
+        hintContent:'🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. · '+Object.keys(dst.byDistrict).length+' округов · нажмите для деталей'
       },{
         iconLayout:_dstLayoutClass,
         iconShape:{type:'Rectangle',coordinates:[[-10,-10],[10,10]]}
       });
-      pm.events.add('click',function(e){
-        e.stopPropagation();
-        _openDestinationModal(dst);
-      });
+      pm.events.add('click',function(e){e.stopPropagation();_openDestinationModal(dst);});
       _migrationLayer.add(pm);
     }catch(e){}
   });
-  // Счётчик
+
   var cnt=document.getElementById('mig-cnt');
   if(cnt){
     if(dstList.length>0){cnt.textContent=dstList.length;cnt.style.display='inline-block';}
