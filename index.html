@@ -253,10 +253,10 @@ tr:hover td{background:var(--row-bg)}
 /* Иконка-наконечник стрелки миграции (поворачивается по направлению дуги) */
 .mig-arr-head{position:absolute;width:22px;height:22px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:none}
 .mig-arr-head svg{display:block;width:100%;height:100%}
-/* Маркер назначения (белая точка с цветной обводкой) */
-.mig-dst-mk{position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid;transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.45);cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}
-.mig-dst-mk:hover{transform:translate(-50%,-50%) scale(1.35);box-shadow:0 3px 12px rgba(0,0,0,.55)}
-html[data-theme="dark"] .mig-dst-mk{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.7)}
+/* Иконка нового дома на карте — SVG-домик */
+.mig-dst-house{position:absolute;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 5px rgba(0,0,0,.45));cursor:pointer;transition:transform .2s ease,filter .2s ease;width:30px;height:34px}
+.mig-dst-house:hover{transform:translate(-50%,-100%) scale(1.25);filter:drop-shadow(0 3px 10px rgba(0,0,0,.55))}
+.mig-dst-house svg{display:block;width:100%;height:100%}
 /* Прогресс-бар округа в модале назначения */
 .mig-dst-row{display:flex;align-items:center;gap:9px;padding:7px 10px;font-size:11.5px;border-radius:8px}
 .mig-dst-row:nth-child(odd){background:rgba(128,128,128,.05)}
@@ -1531,7 +1531,22 @@ function _ensureMigLayouts(){
   }
   if(!_dstLayoutClass){
     _dstLayoutClass=ymaps.templateLayoutFactory.createClass(
-      '<div class="mig-dst-mk" style="border-color:{{properties.color}}"></div>'
+      '<div class="mig-dst-house" style="color:{{properties.color}}">'+
+        '<svg viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">'+
+          // Тело дома — белое с цветной обводкой
+          '<rect x="2" y="16" width="26" height="18" rx="1.5" fill="white" stroke="currentColor" stroke-width="2"/>'+
+          // Крыша — закрашенный треугольник цветом округа
+          '<polygon points="0,17 15,2 30,17" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>'+
+          // Дверь
+          '<rect x="11" y="22" width="8" height="12" rx="2" fill="currentColor"/>'+
+          // Окно левое
+          '<rect x="3" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
+          // Окно правое
+          '<rect x="21" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
+          // Маленькая труба
+          '<rect x="20" y="5" width="3" height="7" rx="1" fill="currentColor"/>'+
+        '</svg>'+
+      '</div>'
     );
   }
 }
@@ -1752,7 +1767,7 @@ function _drawMigrations(data){
         hintContent:'🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. · '+Object.keys(dst.byDistrict).length+' округов · нажмите для деталей'
       },{
         iconLayout:_dstLayoutClass,
-        iconShape:{type:'Rectangle',coordinates:[[-10,-10],[10,10]]}
+        iconShape:{type:'Rectangle',coordinates:[[-15,-34],[15,0]]}
       });
       pm.events.add('click',function(e){e.stopPropagation();_openDestinationModal(dst);});
       _migrationLayer.add(pm);
