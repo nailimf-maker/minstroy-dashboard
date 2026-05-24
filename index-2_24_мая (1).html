@@ -1,0 +1,3135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Минстрой МО — Программа выдачи сертификатов</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script async src="https://api-maps.yandex.ru/2.1/?apikey=904e9ba6-8848-4b42-a871-82002e05c23a&lang=ru_RU"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#1a1d29;--ink-soft:#5a6072;--muted:#9097a8;
+  --gold:#b08d4f;--gold-soft:#c9aa70;--gold-tint:rgba(176,141,79,.10);
+  --line:rgba(26,29,41,.08);--line-soft:rgba(26,29,41,.05);
+  --glass:rgba(255,255,255,.62);--glass-strong:rgba(255,255,255,.78);
+  --glass-border:rgba(255,255,255,.85);
+  --pos:#3a7d5c;--proc:#b08d4f;--neg:#b05a4f;--rej:#7a6a8f;--none:#5a7088;
+  --shadow:0 8px 32px rgba(26,29,41,.06),0 2px 8px rgba(26,29,41,.04);
+  --shadow-lift:0 16px 48px rgba(26,29,41,.10),0 4px 14px rgba(26,29,41,.06);
+  --bg-grad:radial-gradient(1200px 800px at 12% -5%,rgba(176,141,79,.07),transparent 55%),radial-gradient(1000px 700px at 95% 8%,rgba(90,112,136,.06),transparent 50%),radial-gradient(900px 900px at 50% 110%,rgba(176,141,79,.05),transparent 55%),linear-gradient(180deg,#f6f6f4 0%,#eef0ee 100%);
+  --tab-bg:rgba(26,29,41,.04);--tab-active:rgba(255,255,255,.85);
+  --row-bg:rgba(255,255,255,.7);--th-bg:rgba(255,255,255,.7);
+}
+html[data-theme="dark"]{
+  --ink:#eef0f4;--ink-soft:#a8b0c2;--muted:#6b7488;
+  --gold:#d4b87a;--gold-soft:#e0c890;--gold-tint:rgba(212,184,122,.14);
+  --line:rgba(255,255,255,.10);--line-soft:rgba(255,255,255,.06);
+  --glass:rgba(38,42,56,.55);--glass-strong:rgba(44,49,66,.72);
+  --glass-border:rgba(255,255,255,.10);
+  --pos:#5fae84;--proc:#d4b87a;--neg:#d18378;--rej:#a596bc;--none:#8398b0;
+  --shadow:0 8px 32px rgba(0,0,0,.32),0 2px 8px rgba(0,0,0,.24);
+  --shadow-lift:0 16px 48px rgba(0,0,0,.42),0 4px 14px rgba(0,0,0,.30);
+  --bg-grad:radial-gradient(1200px 800px at 12% -5%,rgba(212,184,122,.10),transparent 55%),radial-gradient(1000px 700px at 95% 8%,rgba(120,140,170,.10),transparent 50%),radial-gradient(900px 900px at 50% 110%,rgba(212,184,122,.07),transparent 55%),linear-gradient(180deg,#14161f 0%,#0e1016 100%);
+  --tab-bg:rgba(255,255,255,.06);--tab-active:rgba(255,255,255,.12);
+  --row-bg:rgba(255,255,255,.05);--th-bg:rgba(30,34,46,.85);
+}
+body{font-family:'Inter',sans-serif;color:var(--ink);min-height:100vh;overflow-x:hidden;background:var(--bg-grad);background-attachment:fixed;letter-spacing:-.01em;transition:background .5s ease,color .4s ease}
+body::before{content:'';position:fixed;inset:0;background-image:url('bg.png');background-size:cover;background-position:center;background-repeat:no-repeat;background-attachment:fixed;opacity:.04;pointer-events:none;z-index:0;mix-blend-mode:multiply}
+html[data-theme="dark"] body::before{opacity:.06;mix-blend-mode:screen}
+
+/* HEADER */
+.hdr{background:var(--glass-strong);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);min-height:68px;display:flex;align-items:center;padding:0 32px;gap:18px;position:sticky;top:0;z-index:50;border-bottom:1px solid var(--glass-border);box-shadow:0 1px 0 var(--line-soft),0 8px 30px rgba(0,0,0,.04);transition:background .4s ease}
+.hdr-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;background:linear-gradient(145deg,var(--glass-strong),var(--glass));border:1px solid var(--glass-border);box-shadow:0 4px 14px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.5)}
+.hdr-titles{flex:1;min-width:0}
+.hdr-t1{font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-t2{font-size:10.5px;color:var(--muted);margin-top:2px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-prog{background:var(--gold-tint);border:1px solid rgba(176,141,79,.22);border-radius:999px;padding:7px 16px;font-size:11px;color:var(--gold);white-space:nowrap;font-weight:600;flex-shrink:0}
+.page-tabs{display:flex;gap:4px;background:var(--tab-bg);padding:4px;border-radius:12px;flex-shrink:0}
+.ptab{padding:8px 18px;border-radius:9px;border:none;background:transparent;color:var(--ink-soft);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .25s cubic-bezier(.4,0,.2,1);letter-spacing:-.01em;white-space:nowrap}
+.ptab:hover{color:var(--ink)}
+.ptab.active{background:var(--tab-active);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.4)}
+
+/* THEME TOGGLE */
+.theme-btn{width:60px;height:32px;border-radius:999px;border:1px solid var(--glass-border);background:var(--tab-bg);cursor:pointer;position:relative;flex-shrink:0;transition:background .35s ease;padding:0}
+.theme-knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:linear-gradient(145deg,#fff,#e8e8e4);box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:12px;transition:transform .35s cubic-bezier(.4,0,.2,1),background .35s}
+html[data-theme="dark"] .theme-knob{transform:translateX(28px);background:linear-gradient(145deg,#3a3f52,#262a38)}
+
+.clock-box{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;width:118px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--pos);animation:pulse 2.4s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(58,125,92,.35)}50%{box-shadow:0 0 0 7px rgba(58,125,92,0)}}
+#msk-time{font-size:13px;color:var(--ink);font-weight:700;letter-spacing:0;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+#upd-time{font-size:10px;color:var(--muted);white-space:nowrap;font-weight:500;font-variant-numeric:tabular-nums}
+.btn-upd{background:linear-gradient(145deg,#1f2330,#15171f);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.18);transition:all .2s;letter-spacing:-.01em;flex-shrink:0}
+html[data-theme="dark"] .btn-upd{background:linear-gradient(145deg,#d4b87a,#b8995e);color:#15171f}
+.btn-upd:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,0,0,.24)}
+
+/* FILTER BAR — табы */
+.fbar{background:var(--glass);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);padding:14px 32px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line-soft);position:relative;z-index:40;transition:background .4s ease}
+.filt-tab{position:relative}
+.filt-trigger{display:flex;align-items:center;gap:9px;background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink);border-radius:11px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;letter-spacing:-.01em}
+.filt-trigger:hover{background:var(--tab-active)}
+.filt-trigger.has-val{background:var(--gold-tint);border-color:rgba(176,141,79,.3);color:var(--gold)}
+.filt-trigger.open{background:var(--tab-active);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.filt-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.filt-trigger.has-val .filt-lbl{color:var(--gold)}
+.filt-val{font-weight:700}
+.filt-caret{font-size:9px;opacity:.6;transition:transform .25s}
+.filt-trigger.open .filt-caret{transform:rotate(180deg)}
+.filt-menu{display:none;position:absolute;top:calc(100% + 8px);left:0;min-width:230px;max-width:280px;background:var(--glass-strong);backdrop-filter:blur(26px) saturate(170%);-webkit-backdrop-filter:blur(26px) saturate(170%);border:1px solid var(--glass-border);border-radius:14px;box-shadow:var(--shadow-lift);z-index:60;overflow:hidden;animation:fadeUp .25s ease}
+.filt-menu.open{display:block}
+.filt-search{width:100%;border:none;border-bottom:1px solid var(--line);background:transparent;padding:11px 14px;font-size:12px;font-family:'Inter',sans-serif;color:var(--ink);outline:none}
+.filt-search::placeholder{color:var(--muted)}
+.filt-list{max-height:240px;overflow-y:auto;padding:6px}
+.filt-list::-webkit-scrollbar{width:5px}
+.filt-list::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.filt-opt{padding:9px 12px;font-size:12px;font-weight:600;color:var(--ink-soft);border-radius:9px;cursor:pointer;transition:all .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filt-opt:hover{background:var(--gold-tint);color:var(--gold)}
+.filt-opt.sel{background:var(--gold-tint);color:var(--gold);font-weight:700}
+.btn-rst{background:transparent;color:var(--ink-soft);border:1px solid var(--line);border-radius:11px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+.btn-rst:hover{color:var(--ink);border-color:rgba(128,128,128,.3)}
+#fcnt{font-size:11px;color:var(--gold);margin-left:auto;font-weight:700}
+
+/* LOADING */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 130px);gap:20px;position:relative;z-index:5}
+.spin{width:44px;height:44px;border:2.5px solid rgba(176,141,79,.15);border-top:2.5px solid var(--gold);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ldtxt{font-size:13px;color:var(--ink-soft);font-weight:600}
+.pgwrap{width:300px;background:rgba(176,141,79,.12);border-radius:999px;height:3px;overflow:hidden}
+.pgfill{height:3px;border-radius:999px;background:linear-gradient(90deg,var(--gold-soft),var(--gold));transition:width .4s;width:0%}
+
+.page{display:none;position:relative;z-index:1}
+.page.active{display:block}
+.content{padding:28px 32px;display:flex;flex-direction:column;gap:22px}
+.sect-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;padding-left:2px;display:flex;align-items:center;gap:10px}
+.sect-lbl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.sect-lbl-sm{font-size:10px;letter-spacing:.12em;margin-bottom:-6px}
+
+/* KPI HERO */
+.kpi-hero{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.kpi-h{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;padding:24px 22px;cursor:pointer;transition:all .35s cubic-bezier(.4,0,.2,1);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3);position:relative;overflow:hidden}
+.kpi-h::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);opacity:0;transition:opacity .35s}
+.kpi-h::after{content:'';position:absolute;top:-30px;right:-30px;width:90px;height:90px;border-radius:50%;background:var(--gold);opacity:.04;transition:all .35s}
+.kpi-h:hover,.kpi-h.active-kpi{transform:translateY(-4px);box-shadow:var(--shadow-lift)}
+.kpi-h:hover::before,.kpi-h.active-kpi::before{opacity:1}
+.kpi-h:hover::after,.kpi-h.active-kpi::after{opacity:.08;transform:scale(1.15)}
+.kpi-h.active-kpi{border-color:rgba(176,141,79,.35)}
+.kh-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px}
+.kh-val{font-size:38px;font-weight:800;color:var(--ink);line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.kh-area{font-size:11.5px;color:var(--gold);margin-top:8px;font-weight:700}
+.kh-sub{font-size:11px;color:var(--ink-soft);margin-top:4px;font-weight:600}
+.kh-hint{font-size:9px;color:var(--gold);margin-top:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:0;transition:opacity .25s}
+.kpi-h:hover .kh-hint,.kpi-h.active-kpi .kh-hint{opacity:1}
+
+/* Компактные варианты для вкладки Карта */
+.kpi-hero-sm{gap:10px}
+.kpi-hero-sm .kpi-h{padding:14px 14px;border-radius:14px}
+.kpi-hero-sm .kh-lbl{font-size:9px;margin-bottom:6px;letter-spacing:.1em}
+.kpi-hero-sm .kh-val{font-size:24px}
+.kpi-hero-sm .kh-area{font-size:10px;margin-top:5px}
+.kpi-hero-sm .kh-sub{font-size:9.5px;margin-top:2px}
+.kpi-hero-sm .kh-hint{display:none}
+.dec-row-sm{gap:10px}
+.dec-row-sm .dec-card{padding:14px 14px;border-radius:14px}
+.dec-row-sm .dc-label{font-size:9px;margin-bottom:6px}
+.dec-row-sm .dc-val{font-size:24px}
+.dec-row-sm .dc-sub{font-size:9.5px;margin-top:4px}
+.dec-row-sm .dc-icon{font-size:16px;bottom:10px;right:12px}
+
+/* DECISION CARDS */
+.dec-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.dec-card{border-radius:18px;padding:24px 20px;cursor:pointer;transition:all .35s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
+.dec-card::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;transition:width .3s}
+.dec-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift)}
+.dec-card:hover::before{width:5px}
+.dc-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px}
+.dc-val{font-size:36px;font-weight:800;line-height:1;letter-spacing:-.04em;color:var(--ink);font-variant-numeric:tabular-nums}
+.dc-sub{font-size:11px;color:var(--ink-soft);margin-top:7px;font-weight:600}
+.dc-icon{position:absolute;bottom:14px;right:18px;font-size:22px;opacity:.18}
+.dc-pos::before{background:var(--pos)}.dc-pos .dc-val{color:var(--pos)}
+.dc-proc::before{background:var(--proc)}.dc-proc .dc-val{color:var(--proc)}
+.dc-neg::before{background:var(--neg)}.dc-neg .dc-val{color:var(--neg)}
+.dc-rej::before{background:var(--rej)}.dc-rej .dc-val{color:var(--rej)}
+.dc-none::before{background:var(--none)}.dc-none .dc-val{color:var(--none)}
+
+/* TOP */
+.top-section{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.top-block{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;padding:24px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
+.tb-title{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.tb-title::before{content:'';width:14px;height:2px;background:var(--gold);display:inline-block;border-radius:999px}
+.top-bar-row{display:flex;align-items:center;gap:9px;margin-bottom:7px;padding:9px 12px;background:var(--row-bg);border:1px solid var(--line-soft);border-radius:12px;transition:all .2s}
+.top-bar-row:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.tbr-rank{font-size:10px;font-weight:700;color:var(--muted);width:18px;text-align:right;flex-shrink:0}
+.tbr-name{font-size:12px;font-weight:700;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;transition:color .15s}
+.tbr-name:hover{color:var(--gold)}
+.tbr-area{font-size:9px;color:var(--muted);white-space:nowrap;flex-shrink:0;font-weight:600}
+.tbr-cnt{font-size:15px;font-weight:800;color:var(--ink);min-width:28px;text-align:right;flex-shrink:0;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tbr-bg{flex:1;height:7px;background:rgba(128,128,128,.12);border-radius:999px;overflow:hidden;min-width:40px}
+.tbr-fill{height:7px;border-radius:999px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.top-show-more{text-align:center;padding:11px 0 2px;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;border-top:1px solid var(--line-soft);margin-top:9px;transition:color .2s}
+.top-show-more:hover{color:var(--ink)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,12,18,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.modal{background:var(--glass-strong);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-border);border-radius:22px;width:560px;max-width:96vw;max-height:84vh;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column}
+.modal-header{background:var(--th-bg);padding:18px 24px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);flex-shrink:0}
+.modal-total{font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.modal-title{font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.1em;flex:1}
+.modal-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;font-family:'Inter',sans-serif;transition:color .2s;flex-shrink:0}
+.modal-close:hover{color:var(--ink)}
+.modal-body{overflow-y:auto;padding:16px}
+.modal-body::-webkit-scrollbar{width:6px}
+.modal-body::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.mrow{display:grid;grid-template-columns:24px 1fr auto auto;align-items:center;gap:10px;padding:11px 14px;background:var(--row-bg);border:1px solid var(--line-soft);border-radius:12px;margin-bottom:7px;border-left:3px solid var(--gold-soft);transition:all .2s;cursor:pointer}
+.mrow:hover{transform:translateX(3px);box-shadow:0 4px 14px rgba(0,0,0,.1)}
+.mrow-rank{font-size:10px;font-weight:700;color:var(--muted);text-align:right}
+.mrow-name{font-size:12px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.mrow-name small{display:block;font-size:9.5px;color:var(--muted);font-weight:500;margin-top:2px}
+.mrow-meta{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap;text-align:right}
+.mrow-val{font-size:16px;font-weight:800;color:var(--gold);white-space:nowrap;text-align:right;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.chart-card,.timeline-card,.card{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;padding:28px 30px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
+.card{padding:24px}
+.cc-title,.ctitle{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;display:flex;align-items:center;gap:9px}
+.ctitle{margin-bottom:16px}
+.cc-title::before,.ctitle::before{content:'';width:16px;height:2px;background:var(--gold);display:inline-block;border-radius:999px}
+.cwrap{position:relative;height:360px;width:100%}
+.tl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.tl-nav{display:flex;gap:6px}
+.tl-btn{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--row-bg);color:var(--ink);cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;font-weight:700;transition:all .2s}
+.tl-btn:hover{background:var(--gold-tint);color:var(--gold);border-color:rgba(176,141,79,.3)}
+.tl-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+.tl-scroll::-webkit-scrollbar{height:7px}
+.tl-scroll::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.tl-inner{height:400px;min-width:100%}
+
+/* REGISTRY */
+.registry-card{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
+.reg-header{background:var(--th-bg);padding:18px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.reg-title{font-size:13px;font-weight:700;color:var(--ink);flex:1}
+.reg-cnt{font-size:11px;color:var(--gold);font-weight:700}
+.reg-sort{background:var(--row-bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 12px;font-size:11px;outline:none;font-family:'Inter',sans-serif;font-weight:600;cursor:pointer}
+.reg-sort option{background:#fff;color:#1a1d29}
+html[data-theme="dark"] .reg-sort option{background:#262a38;color:#eef0f4}
+.twrap{overflow:auto;max-height:520px}
+.twrap::-webkit-scrollbar{width:6px;height:6px}
+.twrap::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--th-bg);backdrop-filter:blur(8px);color:var(--muted);padding:12px 13px;text-align:left;position:sticky;top:0;white-space:nowrap;z-index:2;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9px}
+td{padding:11px 13px;border-bottom:1px solid var(--line-soft);white-space:nowrap;color:var(--ink-soft);font-weight:500}
+tr:hover td{background:var(--row-bg)}
+.b{display:inline-block;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:700}
+.bp{background:rgba(58,125,92,.14);color:var(--pos)}.bn{background:rgba(176,90,79,.14);color:var(--neg)}
+.bpr{background:rgba(176,141,79,.16);color:var(--gold)}.br{background:rgba(122,106,143,.16);color:var(--rej)}.bnone{background:rgba(90,112,136,.14);color:var(--none)}
+
+/* FIN */
+.fin-kpi{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;padding:24px 22px;position:relative;overflow:hidden;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
+.fin-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);opacity:.5}
+.fk-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+.fk-val{font-size:28px;font-weight:800;color:var(--ink);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.fk-sub{font-size:11px;color:var(--ink-soft);margin-top:8px;font-weight:600}
+.fk-sub2{margin-top:8px;padding-top:8px;border-top:1px solid var(--line-soft);color:var(--gold);font-weight:700;font-size:11px}
+.fin-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.finrow3{grid-template-columns:repeat(3,1fr)}
+.fin-scroll{max-height:380px;overflow-y:auto;padding-right:6px}
+.fin-scroll::-webkit-scrollbar{width:6px}
+.fin-scroll::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+
+/* MAP */
+.map-content{padding:0;display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
+/* СВОДКА ДЛЯ ОТЧЁТА */
+.sum-box{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;padding:22px 26px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
+.sum-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px}
+.sum-title{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:8px}
+.sum-copy{background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink-soft);border-radius:10px;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.sum-copy:hover{color:var(--gold);border-color:rgba(176,141,79,.3);background:var(--gold-tint)}
+.sum-copy.copied{color:var(--pos);border-color:rgba(58,125,92,.35);background:rgba(58,125,92,.10)}
+.sum-lines{display:flex;flex-direction:column;gap:9px}
+.sum-line{display:flex;align-items:baseline;gap:10px;padding:10px 14px;background:var(--row-bg);border-radius:12px;border:1px solid var(--line-soft);border-left:3px solid}
+.sum-lbl{font-size:12px;font-weight:600;color:var(--ink-soft);flex:1;min-width:0}
+.sum-val{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0}
+.sum-num{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.sum-area{font-weight:700;font-variant-numeric:tabular-nums}
+.sum-total{background:var(--gold-tint);border-color:rgba(176,141,79,.25)!important}
+.sum-total .sum-lbl{font-size:13px;font-weight:800;color:var(--ink)}
+.sum-total .sum-num{font-size:22px;color:var(--gold)}
+.sum-total .sum-area{color:var(--gold)}
+/* Скрытый textarea для копирования */
+#sum-plain{position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none}
+.btn-mig-top{background:rgba(58,125,92,.12)!important;color:var(--pos)!important;border:1px solid rgba(58,125,92,.28)!important;font-weight:700}
+.btn-mig-top:hover{background:rgba(58,125,92,.20)!important}
+.mig-toggle{display:flex;align-items:center;gap:7px;padding:9px 14px;font-size:11px;font-weight:700;background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink);border-radius:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap}
+.mig-toggle:hover{background:var(--tab-active)}
+.mig-toggle.active{background:rgba(58,125,92,.16);color:var(--pos);border-color:rgba(58,125,92,.35);box-shadow:0 2px 8px rgba(58,125,92,.15)}
+.mig-toggle .mig-arr{font-size:12px;opacity:.9}
+.mig-cnt{font-size:9px;background:var(--pos);color:#fff;padding:1px 7px;border-radius:999px;font-weight:800;margin-left:2px}
+/* Иконка-наконечник стрелки миграции (поворачивается по направлению дуги) */
+.mig-arr-head{position:absolute;width:22px;height:22px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));pointer-events:none}
+.mig-arr-head svg{display:block;width:100%;height:100%}
+/* Иконка нового дома на карте — SVG-домик */
+.mig-dst-house{position:absolute;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 5px rgba(0,0,0,.45));cursor:pointer;transition:transform .2s ease,filter .2s ease;width:30px;height:34px}
+.mig-dst-house:hover{transform:translate(-50%,-100%) scale(1.25);filter:drop-shadow(0 3px 10px rgba(0,0,0,.55))}
+.mig-dst-house svg{display:block;width:100%;height:100%}
+/* Прогресс-бар округа в модале назначения */
+.mig-dst-row{display:flex;align-items:center;gap:9px;padding:7px 10px;font-size:11.5px;border-radius:8px}
+.mig-dst-row:nth-child(odd){background:rgba(128,128,128,.05)}
+.mig-dst-rank{font-size:9px;color:var(--muted);width:18px;text-align:right;font-weight:700}
+.mig-dst-name{font-weight:700;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.mig-dst-bar{flex:1;height:6px;background:rgba(128,128,128,.15);border-radius:999px;overflow:hidden;max-width:120px;min-width:40px}
+.mig-dst-fill{height:100%;border-radius:999px}
+.mig-dst-cnt{font-weight:800;width:34px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
+/* Scrollable charts */
+.chart-scroll-h{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+.chart-scroll-h::-webkit-scrollbar{height:7px}
+.chart-scroll-h::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.chart-inner-h{height:360px;min-width:100%}
+.chart-scroll-v{overflow-y:auto;overflow-x:hidden;height:360px;padding-right:6px}
+.chart-scroll-v::-webkit-scrollbar{width:7px}
+.chart-scroll-v::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.chart-inner-v{width:100%;min-height:360px}
+.map-toolbar{background:var(--glass-strong);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.map-lbl{font-size:13px;font-weight:700;color:var(--ink);flex:1}
+/* Строка поиска адреса */
+.map-searchbar{background:var(--glass-strong);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border-bottom:1px solid var(--line);padding:8px 20px 10px;flex-shrink:0;position:relative;z-index:45}
+.map-sw{display:flex;align-items:center;gap:9px;background:var(--tab-bg);border:1.5px solid var(--glass-border);border-radius:12px;padding:0 14px;transition:border-color .2s,background .2s}
+.map-sw:focus-within{border-color:rgba(176,141,79,.5);background:var(--glass)}
+.map-si-icon{font-size:13px;flex-shrink:0;opacity:.55}
+.map-si{flex:1;border:none;background:transparent;padding:10px 0;font-size:12.5px;font-family:'Inter',sans-serif;color:var(--ink);outline:none;font-weight:500;min-width:0}
+.map-si::placeholder{color:var(--muted)}
+.map-sx{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:4px;border-radius:6px;transition:color .15s;display:none;line-height:1;font-family:'Inter',sans-serif}
+.map-sx:hover{color:var(--ink)}
+.map-sd{display:none;position:absolute;left:20px;right:20px;top:calc(100% + 2px);z-index:100;background:var(--glass-strong);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);border:1px solid var(--glass-border);border-radius:14px;box-shadow:var(--shadow-lift);overflow:hidden;animation:fadeUp .2s ease}
+.map-sd.open{display:block}
+.map-sd-item{padding:10px 16px;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:10px}
+.map-sd-item:last-child{border-bottom:none}
+.map-sd-item:hover,.map-sd-item.msd-active{background:var(--gold-tint)}
+.map-sd-dot{width:8px;height:8px;border-radius:3px;flex-shrink:0}
+.map-sd-addr{font-size:12px;font-weight:700;color:var(--ink);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-sd-meta{font-size:10px;color:var(--muted);font-weight:600;white-space:nowrap}
+.map-sd-empty{padding:14px 16px;font-size:12px;color:var(--muted);font-weight:600;text-align:center}
+.map-wrap{position:relative;flex:1}
+#map{height:calc(100vh - 207px);min-height:380px;background:var(--glass)}
+.map-legend{display:flex;gap:14px;padding:9px 18px;background:var(--glass-strong);backdrop-filter:blur(16px);border-top:1px solid var(--line);flex-wrap:wrap;align-items:center;flex-shrink:0}
+.leg{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-soft);font-weight:600}
+.ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+#geost{font-size:10px;color:var(--gold);font-weight:700;margin-left:auto;white-space:nowrap}
+/* Overlay геокодирования */
+#map-overlay{display:none;position:absolute;inset:0;z-index:10;background:rgba(10,12,20,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#map-overlay.active{display:flex}
+.map-ov-box{background:var(--glass-strong);border:1px solid var(--glass-border);border-radius:18px;padding:28px 36px;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:var(--shadow-lift)}
+.map-ov-title{font-size:13px;font-weight:700;color:var(--ink)}
+.map-ov-sub{font-size:11px;color:var(--muted);font-weight:600}
+/* Панель фильтра округов */
+#map-round-panel{display:none;max-height:52vh;overflow-y:auto;background:var(--glass-strong);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);border-bottom:1px solid var(--line);animation:fadeUp .22s ease}
+#map-round-panel.open{display:block}
+#map-round-panel::-webkit-scrollbar{width:6px}
+#map-round-panel::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.mrp-search{width:100%;border:none;border-bottom:1px solid var(--line);background:transparent;padding:11px 20px;font-size:12px;font-family:'Inter',sans-serif;color:var(--ink);outline:none}
+.mrp-search::placeholder{color:var(--muted)}
+.mrp-table{width:100%;border-collapse:collapse;font-size:11px}
+.mrp-table th{background:var(--th-bg);color:var(--muted);padding:8px 12px;text-align:right;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9px;white-space:nowrap}
+.mrp-table th:first-child{text-align:left}
+.mrp-table td{padding:9px 12px;border-bottom:1px solid var(--line-soft);text-align:right;color:var(--ink-soft);font-weight:500;white-space:nowrap}
+.mrp-table td:first-child{text-align:left}
+.mrp-table tr{cursor:pointer;transition:background .15s}
+.mrp-table tr:hover td{background:var(--gold-tint)}
+.mrp-table tr.mrp-sel td{background:var(--gold-tint);font-weight:700;color:var(--gold)}
+/* Модал карты */
+.map-modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,12,18,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:1200;align-items:center;justify-content:center;padding:20px}
+.map-modal-overlay.open{display:flex;animation:fadeUp .25s ease}
+.map-modal{background:var(--glass-strong);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-border);border-radius:22px;width:580px;max-width:96vw;max-height:82vh;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column}
+.mm-hdr{background:var(--th-bg);padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:14px;flex-shrink:0}
+.mm-addr{font-size:14px;font-weight:800;color:var(--ink);letter-spacing:-.02em;flex:1}
+.mm-sheet{font-size:11px;color:var(--gold);font-weight:700;margin-top:3px}
+.mm-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;font-family:'Inter',sans-serif;transition:color .2s;flex-shrink:0;line-height:1}
+.mm-close:hover{color:var(--ink)}
+.mm-body{overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.mm-body::-webkit-scrollbar{width:6px}
+.mm-body::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.mm-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.mm-kpi{background:var(--row-bg);border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px}
+.mm-kpi-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.mm-kpi-val{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.03em;line-height:1}
+.mm-kpi-sub{font-size:10px;color:var(--ink-soft);font-weight:600;margin-top:3px}
+.mm-sect{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.mm-sect::after{content:'';flex:1;height:1px;background:var(--line)}
+.mm-dec-chips{display:flex;flex-wrap:wrap;gap:6px}
+.mm-chip{padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700}
+.mm-apts-table{width:100%;border-collapse:collapse;font-size:11px}
+.mm-apts-table th{background:var(--th-bg);color:var(--muted);padding:8px 10px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9px;border-bottom:1px solid var(--line)}
+.mm-apts-table td{padding:8px 10px;border-bottom:1px solid var(--line-soft);color:var(--ink-soft);font-weight:500}
+.mm-apts-table tr:last-child td{border-bottom:none}
+.ymaps-2-1-79-balloon,.ymaps-2-1-79-balloon__content{border-radius:14px!important;font-family:'Inter',sans-serif!important}
+html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%) brightness(0.88)}
+/* Возвращаем нормальные цвета маркерам и балунам внутри тёмной карты */
+html[data-theme="dark"] .ymaps-2-1-79-svg-icon,
+html[data-theme="dark"] .ymaps-2-1-79-svg-icon-content,
+html[data-theme="dark"] .ymaps-2-1-79-image,
+html[data-theme="dark"] .ymaps-2-1-79-balloon,
+html[data-theme="dark"] .ymaps-2-1-79-float-button,
+html[data-theme="dark"] .ymaps-2-1-79-controls__control{
+  filter:invert(94%) hue-rotate(180deg) saturate(55%) brightness(0.88)
+}
+.map-legend{display:flex;gap:14px;padding:9px 18px;background:var(--glass-strong);backdrop-filter:blur(16px);border-top:1px solid var(--line);flex-wrap:wrap;align-items:center;flex-shrink:0}
+.leg{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-soft);font-weight:600}
+.ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+#geost{font-size:10px;color:var(--gold);font-weight:700;margin-left:auto;white-space:nowrap}
+/* Overlay геокодирования */
+#map-overlay{display:none;position:absolute;inset:0;z-index:10;background:rgba(10,12,20,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#map-overlay.active{display:flex}
+.map-ov-box{background:var(--glass-strong);border:1px solid var(--glass-border);border-radius:18px;padding:28px 36px;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:var(--shadow-lift)}
+.map-ov-title{font-size:13px;font-weight:700;color:var(--ink)}
+.map-ov-sub{font-size:11px;color:var(--muted);font-weight:600}
+/* Панель фильтра округов */
+#map-round-panel{display:none;max-height:52vh;overflow-y:auto;background:var(--glass-strong);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);border-bottom:1px solid var(--line);animation:fadeUp .22s ease}
+#map-round-panel.open{display:block}
+#map-round-panel::-webkit-scrollbar{width:6px}
+#map-round-panel::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.mrp-search{width:100%;border:none;border-bottom:1px solid var(--line);background:transparent;padding:11px 20px;font-size:12px;font-family:'Inter',sans-serif;color:var(--ink);outline:none}
+.mrp-search::placeholder{color:var(--muted)}
+.mrp-table{width:100%;border-collapse:collapse;font-size:11px}
+.mrp-table th{background:var(--th-bg);color:var(--muted);padding:8px 12px;text-align:right;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--line);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9px;white-space:nowrap}
+.mrp-table th:first-child{text-align:left}
+.mrp-table td{padding:9px 12px;border-bottom:1px solid var(--line-soft);text-align:right;color:var(--ink-soft);font-weight:500;white-space:nowrap}
+.mrp-table td:first-child{text-align:left}
+.mrp-table tr{cursor:pointer;transition:background .15s}
+.mrp-table tr:hover td{background:var(--gold-tint)}
+.mrp-table tr.mrp-sel td{background:var(--gold-tint);font-weight:700;color:var(--gold)}
+.mrp-name{font-size:12px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
+.mrp-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+/* Модал карты */
+.map-modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,12,18,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:1200;align-items:center;justify-content:center;padding:20px}
+.map-modal-overlay.open{display:flex;animation:fadeUp .25s ease}
+.map-modal{background:var(--glass-strong);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border:1px solid var(--glass-border);border-radius:22px;width:580px;max-width:96vw;max-height:82vh;box-shadow:0 30px 80px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column}
+.mm-hdr{background:var(--th-bg);padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:14px;flex-shrink:0}
+.mm-addr{font-size:14px;font-weight:800;color:var(--ink);letter-spacing:-.02em;flex:1}
+.mm-sheet{font-size:11px;color:var(--gold);font-weight:700;margin-top:3px}
+.mm-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;font-family:'Inter',sans-serif;transition:color .2s;flex-shrink:0;line-height:1}
+.mm-close:hover{color:var(--ink)}
+.mm-body{overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.mm-body::-webkit-scrollbar{width:6px}
+.mm-body::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
+.mm-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.mm-kpi{background:var(--row-bg);border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px}
+.mm-kpi-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.mm-kpi-val{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.03em;line-height:1}
+.mm-kpi-sub{font-size:10px;color:var(--ink-soft);font-weight:600;margin-top:3px}
+.mm-sect{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.mm-sect::after{content:'';flex:1;height:1px;background:var(--line)}
+.mm-dec-chips{display:flex;flex-wrap:wrap;gap:6px}
+.mm-chip{padding:5px 12px;border-radius:999px;font-size:11px;font-weight:700}
+.mm-apts-table{width:100%;border-collapse:collapse;font-size:11px}
+.mm-apts-table th{background:var(--th-bg);color:var(--muted);padding:8px 10px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:9px;border-bottom:1px solid var(--line)}
+.mm-apts-table td{padding:8px 10px;border-bottom:1px solid var(--line-soft);color:var(--ink-soft);font-weight:500}
+.mm-apts-table tr:last-child td{border-bottom:none}
+.ymaps-2-1-79-balloon,.ymaps-2-1-79-balloon__content{border-radius:14px!important;font-family:'Inter',sans-serif!important}
+html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%) brightness(0.88)}
+@media(max-width:768px){
+  body{overflow-y:auto;height:auto}
+
+  /* HEADER */
+  .hdr{flex-wrap:wrap;min-height:auto;padding:10px 14px;gap:8px;position:sticky;top:0;z-index:50}
+  .hdr-titles{flex:1;min-width:0}
+  .hdr-t1{font-size:12px;white-space:normal;line-height:1.3}
+  .hdr-t2{display:none}
+  .hdr-prog{display:none}
+  .page-tabs{order:10;width:100%;overflow-x:auto;padding:3px;border-radius:10px}
+  .page-tabs::-webkit-scrollbar{display:none}
+  .ptab{padding:7px 12px;font-size:11px;white-space:nowrap;flex-shrink:0}
+  .clock-box{display:none}
+  .theme-btn{width:46px;height:28px;flex-shrink:0}
+  .theme-knob{width:20px;height:20px;font-size:10px}
+  html[data-theme="dark"] .theme-knob{transform:translateX(22px)}
+  .btn-upd{padding:7px 12px;font-size:11px;flex-shrink:0}
+
+  /* FILTER BAR */
+  .fbar{padding:10px 14px;gap:8px}
+  .filt-trigger{padding:7px 12px;font-size:11px;min-width:auto}
+  .filt-menu{min-width:180px}
+  .btn-rst{padding:7px 12px;font-size:11px}
+
+  /* CONTENT */
+  .content{padding:14px;gap:16px}
+
+  /* KPI */
+  .kpi-hero{grid-template-columns:repeat(2,1fr);gap:10px}
+  .kh-val{font-size:28px}
+  .kpi-h{padding:18px 14px}
+  .kpi-hero-sm .kh-val{font-size:20px}
+
+  /* DECISIONS */
+  .dec-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .dc-val{font-size:26px}
+  .dec-card{padding:18px 14px}
+  .dec-row-sm .dc-val{font-size:20px}
+
+  /* TOP SECTIONS */
+  .top-section{grid-template-columns:1fr;gap:12px}
+
+  /* CHARTS */
+  .charts-row{grid-template-columns:1fr;gap:14px}
+  .cwrap{height:240px}
+  .chart-card,.timeline-card{padding:18px 16px}
+
+  /* TIMELINE */
+  .tl-inner{height:280px !important}
+
+  /* REGISTRY */
+  .registry-card .reg-header{flex-wrap:wrap;gap:8px}
+  .twrap{max-height:360px}
+  table{font-size:10px}
+  th,td{padding:7px 8px}
+
+  /* FINANCE */
+  .fin-kpi-row{grid-template-columns:repeat(2,1fr);gap:10px}
+  .fk-val{font-size:20px}
+
+  /* MAP PAGE */
+  .map-content{padding:0;gap:0}
+  .map-toolbar{padding:10px 14px;gap:8px;border-radius:0}
+  .map-searchbar{padding:6px 14px 8px}
+  #map{min-height:300px;height:calc(100vh - 185px)}
+  .map-legend{gap:8px;padding:7px 12px}
+  #map-round-panel{max-height:55vh}
+  .mm-kpi-row{grid-template-columns:repeat(2,1fr)}
+
+  /* ГОСПРОГРАММА */
+  .gos-kpi-row,.fin-kpi-row{grid-template-columns:repeat(2,1fr)}
+
+  /* МОДАЛ */
+  .modal{width:96vw;max-height:88vh;border-radius:16px}
+  .modal-header{padding:14px 16px}
+  .modal-body{padding:12px}
+  .mrow{grid-template-columns:18px 1fr auto auto;gap:8px;padding:9px 10px}
+
+  /* КНОПКИ ЭКСПОРТ/ОБНОВИТЬ */
+  .btn-upd+.btn-upd{margin-left:0}
+}
+
+/* Очень маленький экран ≤ 400px */
+@media(max-width:400px){
+  .kpi-hero{grid-template-columns:1fr 1fr}
+  .kh-val{font-size:24px}
+  .dec-row{grid-template-columns:1fr 1fr}
+  .map-stats{grid-template-columns:repeat(2,1fr)}
+  .filt-trigger .filt-lbl{display:none}
+  .filt-trigger{padding:7px 10px}
+  .hdr-t1{font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-icon">🏛️</div>
+  <div class="hdr-titles">
+    <div class="hdr-t1">Минстрой МО · Управление ликвидации аварийного жилья</div>
+    <div class="hdr-t2">Министерство строительного комплекса Московской области</div>
+  </div>
+  <div class="hdr-prog">Сертификаты · 2026</div>
+  <div class="page-tabs">
+    <button class="ptab active" onclick="switchPage('overview',this)">Обзор</button>
+    <button class="ptab" onclick="switchPage('gos',this)">Госпрограмма</button>
+    <button class="ptab" onclick="switchPage('finance',this)">Финансирование</button>
+    <button class="ptab" onclick="switchPage('mappage',this)">Карта</button>
+  </div>
+  <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="День / Ночь">
+    <span class="theme-knob" id="theme-knob">☀️</span>
+  </button>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="live-dot"></div>
+    <div class="clock-box">
+      <span id="msk-time">—</span>
+      <span id="upd-time">Загрузка...</span>
+    </div>
+  </div>
+  <button class="btn-upd" onclick="exportExcel()" style="background:linear-gradient(145deg,#3a7d5c,#2e6349)">⤓ Excel</button>
+  <button class="btn-upd" onclick="reloadAll()">↺ Обновить</button>
+</div>
+
+<div class="fbar">
+  <div class="filt-tab">
+    <button class="filt-trigger" id="ft-round" onclick="toggleFilt('round',event)">
+      <span class="filt-lbl">Округ</span><span class="filt-val" id="fv-round">Все</span><span class="filt-caret">▼</span>
+    </button>
+    <div class="filt-menu" id="fm-round">
+      <input class="filt-search" id="fs-round" placeholder="Поиск округа..." oninput="filtSearch('round')" onclick="event.stopPropagation()">
+      <div class="filt-list" id="fl-round"></div>
+    </div>
+  </div>
+  <div class="filt-tab">
+    <button class="filt-trigger" id="ft-dec" onclick="toggleFilt('dec',event)">
+      <span class="filt-lbl">Решение</span><span class="filt-val" id="fv-dec">Все</span><span class="filt-caret">▼</span>
+    </button>
+    <div class="filt-menu" id="fm-dec">
+      <div class="filt-list" id="fl-dec"></div>
+    </div>
+  </div>
+  <div class="filt-tab">
+    <button class="filt-trigger" id="ft-type" onclick="toggleFilt('type',event)">
+      <span class="filt-lbl">Тип</span><span class="filt-val" id="fv-type">Все</span><span class="filt-caret">▼</span>
+    </button>
+    <div class="filt-menu" id="fm-type">
+      <div class="filt-list" id="fl-type"></div>
+    </div>
+  </div>
+  <button class="btn-rst" onclick="resetF()">↺ Сброс</button>
+  <button class="btn-rst btn-mig-top" onclick="showMigrationTop()" title="Топ округов по направлениям миграции">📊 Топ миграции</button>
+  <span id="fcnt"></span>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spin"></div>
+  <div class="ldtxt" id="ldtxt">Подключение к данным...</div>
+  <div class="pgwrap"><div class="pgfill" id="pgfill"></div></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-total" id="modal-total">—</span>
+      <span class="modal-title" id="modal-title">—</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ОБЗОР -->
+<div class="page active" id="page-overview">
+<div class="content">
+  <div class="sum-box">
+    <div class="sum-head">
+      <div class="sum-title">📋 Сводка по сертификатам и выкупам</div>
+      <button class="sum-copy" id="sum-copy-btn" onclick="copySummary()">
+        <span id="sum-copy-icon">⎘</span> <span id="sum-copy-lbl">Копировать</span>
+      </button>
+    </div>
+    <div class="sum-lines">
+      <div class="sum-line" style="border-left-color:var(--pos)">
+        <div class="sum-lbl">Сертификаты (положительное решение)</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--pos)" id="sr-cp-cnt">—</span> <span id="sr-cp-word">заявлений</span> на <span class="sum-area" style="color:var(--pos)" id="sr-cp-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line" style="border-left-color:var(--gold)">
+        <div class="sum-lbl">Выкупов</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--gold)" id="sr-vy-cnt">—</span> <span id="sr-vy-word">помещений</span> на <span class="sum-area" style="color:var(--gold)" id="sr-vy-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line" style="border-left-color:var(--proc)">
+        <div class="sum-lbl">На рассмотрении</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--proc)" id="sr-pr-cnt">—</span> <span id="sr-pr-word">заявлений</span> на <span class="sum-area" style="color:var(--proc)" id="sr-pr-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line" style="border-left-color:var(--neg)">
+        <div class="sum-lbl">Согласны на выкуп без сертификата (отказ/отрицательные)</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--neg)" id="sr-nc-cnt">—</span> <span id="sr-nc-word">собственников</span> на <span class="sum-area" style="color:var(--neg)" id="sr-nc-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line sum-total">
+        <div class="sum-lbl">ИТОГО</div>
+        <div class="sum-val"><span class="sum-num" id="sr-tt-cnt">—</span> <span id="sr-tt-word">помещений</span> на <span class="sum-area" id="sr-tt-area">—</span> кв.м</div>
+      </div>
+    </div>
+    <textarea id="sum-plain" readonly></textarea>
+  </div>
+
+  <div class="kpi-hero">
+    <div class="kpi-h" onclick="kpiModal('total')"><div class="kh-lbl">Всего квартир</div><div class="kh-val" id="kv-total">—</div><div class="kh-area" id="kv-area">—</div><div class="kh-hint">▼ список округов</div></div>
+    <div class="kpi-h" onclick="kpiModal('sob')"><div class="kh-lbl">Собственники</div><div class="kh-val" id="kv-sob">—</div><div class="kh-area" id="kv-sob-a">—</div><div class="kh-sub" id="kv-sob-s">—</div><div class="kh-hint">▼ список округов</div></div>
+    <div class="kpi-h" onclick="kpiModal('nan')"><div class="kh-lbl">Наниматели</div><div class="kh-val" id="kv-nan">—</div><div class="kh-area" id="kv-nan-a">—</div><div class="kh-sub" id="kv-nan-s">—</div><div class="kh-hint">▼ список округов</div></div>
+    <div class="kpi-h" onclick="kpiModal('cert')"><div class="kh-lbl">Сертификаты</div><div class="kh-val" id="kv-cert">—</div><div class="kh-area" id="kv-cert-a">—</div><div class="kh-sub" id="kv-cert-s">—</div><div class="kh-hint">▼ список округов</div></div>
+    <div class="kpi-h" onclick="kpiModal('vyk')"><div class="kh-lbl">Выкуп</div><div class="kh-val" id="kv-vyk">—</div><div class="kh-area" id="kv-vyk-a">—</div><div class="kh-sub" id="kv-vyk-s">—</div><div class="kh-hint">▼ список округов</div></div>
+  </div>
+
+  <div class="sect-lbl">Решения · нажмите для списка домов</div>
+  <div class="dec-row" id="dec-row"></div>
+
+  <div class="sect-lbl">Топ округов · нажмите «показать все»</div>
+  <div class="top-section">
+    <div class="top-block"><div class="tb-title">По количеству квартир</div><div id="top-total"></div></div>
+    <div class="top-block"><div class="tb-title">По собственникам</div><div id="top-sob"></div></div>
+    <div class="top-block"><div class="tb-title">По нанимателям</div><div id="top-nan"></div></div>
+  </div>
+  <div class="top-section">
+    <div class="top-block"><div class="tb-title">По сертификатам</div><div id="top-cert"></div></div>
+    <div class="top-block"><div class="tb-title">По выкупу</div><div id="top-vyk"></div></div>
+    <div class="top-block"><div class="tb-title">По положительным решениям</div><div id="top-pos"></div></div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="cc-title">Статус решений по округам · все округа, прокрутка ↔</div>
+      <div class="chart-scroll-h"><div class="chart-inner-h" id="c-dec-inner"><canvas id="c-dec"></canvas></div></div>
+    </div>
+    <div class="chart-card">
+      <div class="cc-title">Собственники vs Наниматели · все округа, прокрутка ↕</div>
+      <div class="chart-scroll-v"><div class="chart-inner-v" id="c-own-inner"><canvas id="c-own"></canvas></div></div>
+    </div>
+  </div>
+  <div class="timeline-card">
+    <div class="tl-head">
+      <div class="cc-title" style="margin-bottom:0">Подача заявлений</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="page-tabs" style="padding:3px">
+          <button class="ptab active" id="tl-day" style="padding:6px 14px;font-size:11px" onclick="setTlMode('day',this)">По дням</button>
+          <button class="ptab" id="tl-mon" style="padding:6px 14px;font-size:11px" onclick="setTlMode('month',this)">По месяцам</button>
+        </div>
+        <div class="tl-nav">
+          <button class="tl-btn" onclick="tlScroll(-1)">‹</button>
+          <button class="tl-btn" onclick="tlScroll(1)">›</button>
+        </div>
+      </div>
+    </div>
+    <div class="tl-scroll" id="tl-scroll"><div class="tl-inner" id="tl-inner"><canvas id="c-timeline"></canvas></div></div>
+  </div>
+  <div class="registry-card">
+    <div class="reg-header">
+      <div class="reg-title" id="reg-title">Реестр домов</div>
+      <div class="reg-cnt" id="reg-cnt"></div>
+      <select class="reg-sort" id="reg-sort" onchange="renderRegistry()">
+        <option value="decision">По решению</option>
+        <option value="area">По площади ↓</option>
+        <option value="citizens">По гражданам ↓</option>
+        <option value="round">По округу</option>
+      </select>
+    </div>
+    <div class="twrap"><table id="tbl-registry"></table></div>
+  </div>
+</div>
+</div>
+
+<!-- ФИНАНСИРОВАНИЕ -->
+<div class="page" id="page-finance">
+<div class="content">
+  <div class="fin-kpi-row finrow3" id="fin-kpi-row"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div class="card"><div class="ctitle">Топ по стоимости оценки · все округа (прокрутка)</div><div id="fin-top-eval" class="fin-scroll"></div></div>
+    <div class="card"><div class="ctitle">Топ по цене договора ДКП/ДДУ · все округа (прокрутка)</div><div id="fin-top-dkp" class="fin-scroll"></div></div>
+  </div>
+  <div class="chart-card">
+    <div class="cc-title">Стоимость по оценке vs Цена договора — топ-15 округов (млн ₽)</div>
+    <div style="position:relative;height:320px"><canvas id="c-fin-compare"></canvas></div>
+  </div>
+  <div class="registry-card">
+    <div class="reg-header">
+      <div class="reg-title">Финансовая детализация</div>
+      <div class="reg-cnt" id="fin-reg-cnt"></div>
+      <select class="reg-sort" id="fin-sort" onchange="renderFinRegistry()">
+        <option value="price_desc">По стоимости оценки ↓</option>
+        <option value="price_asc">По стоимости оценки ↑</option>
+        <option value="contract_desc">По цене договора ↓</option>
+        <option value="round">По округу</option>
+        <option value="paid">Оплата Мин-ва</option>
+      </select>
+    </div>
+    <div class="twrap"><table id="tbl-fin"></table></div>
+  </div>
+</div>
+</div>
+
+<!-- ГОСПРОГРАММА -->
+<div class="page" id="page-gos">
+<div class="content">
+  <div class="sect-lbl">Госпрограмма · финансирование расселения</div>
+  <div class="fin-kpi-row" id="gos-kpi-row"></div>
+  <div class="registry-card">
+    <div class="reg-header">
+      <div class="reg-title">Госпрограмма · по округам</div>
+      <div class="reg-cnt" id="gos-reg-cnt"></div>
+    </div>
+    <div class="twrap"><table id="tbl-gos"></table></div>
+  </div>
+</div>
+</div>
+
+<!-- КАРТА -->
+<div class="page" id="page-mappage">
+<div class="map-content">
+
+  <!-- Тулбар с фильтром -->
+  <div class="map-toolbar">
+    <div class="map-lbl">🗺️ Карта переселения · МО</div>
+    <button class="filt-trigger" id="mrp-btn" onclick="toggleMapRoundPanel(event)" style="gap:7px">
+      <span class="filt-lbl" style="font-size:9px">Округ</span>
+      <span id="mrp-val" style="font-weight:700">Все</span>
+      <span id="mrp-caret" style="font-size:9px;opacity:.6;transition:transform .25s">▼</span>
+    </button>
+    <button class="btn-rst" onclick="resetMapRound()" style="padding:9px 14px;font-size:11px">↺ Сброс</button>
+    <button class="mig-toggle" id="mig-btn" onclick="toggleMigration()" title="Показать стрелки миграции в новое жильё">
+      <span class="mig-arr">🏠→🏘</span>
+      <span>Миграция</span>
+      <span class="mig-cnt" id="mig-cnt" style="display:none">0</span>
+    </button>
+    <span id="geost" style="font-size:10.5px;color:var(--gold);font-weight:700">Загрузка карты...</span>
+  </div>
+
+  <!-- Строка поиска адреса -->
+  <div class="map-searchbar" id="map-searchbar">
+    <div class="map-sw">
+      <span class="map-si-icon">🔍</span>
+      <input class="map-si" id="map-si" placeholder="Поиск дома по адресу или населённому пункту..."
+             oninput="onMapSearch(this.value)" onkeydown="onMapSearchKey(event)"
+             onclick="event.stopPropagation()" autocomplete="off">
+      <button class="map-sx" id="map-sx" onclick="clearMapSearch()" title="Очистить">✕</button>
+    </div>
+    <div class="map-sd" id="map-sd" onclick="event.stopPropagation()"></div>
+  </div>
+
+  <!-- Панель выбора округа -->
+  <div id="map-round-panel">
+    <input class="mrp-search" id="mrp-search" placeholder="🔍  Поиск округа..." oninput="filterMrpRows()" onclick="event.stopPropagation()">
+    <table class="mrp-table" id="mrp-table">
+      <thead><tr>
+        <th style="min-width:140px">Округ</th>
+        <th>Домов</th><th>Кв.</th><th>Площадь м²</th>
+        <th>Граждан</th><th>Серт.</th><th>Выкуп</th>
+        <th>Собств.</th><th>Наним.</th>
+        <th style="color:var(--pos)">✓</th>
+        <th style="color:var(--proc)">⏳</th>
+        <th style="color:var(--neg)">✗</th>
+        <th style="color:var(--rej)">⊘</th>
+      </tr></thead>
+      <tbody id="mrp-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Карта -->
+  <div class="map-wrap">
+    <!-- Оверлей геокодирования -->
+    <div id="map-overlay">
+      <div class="map-ov-box">
+        <div class="spin"></div>
+        <div class="map-ov-title">Геокодирование адресов...</div>
+        <div class="map-ov-sub" id="map-ov-sub">Подготовка...</div>
+        <div class="pgwrap" style="width:220px"><div class="pgfill" id="map-ov-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div class="map-legend">
+      <div class="leg"><div class="ldot" style="background:#b05a4f"></div>Аварийный дом</div>
+      <div class="leg" style="color:var(--gold);font-weight:700">· цвет = округ</div>
+      <div id="map-color-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-left:8px"></div>
+      <span id="geost" style="display:none"></span><!-- geost теперь в toolbar -->
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- МОДАЛ КАРТЫ -->
+<div class="map-modal-overlay" id="map-modal" onclick="closeMapModal(event)">
+  <div class="map-modal">
+    <div class="mm-hdr">
+      <div style="flex:1;min-width:0">
+        <div class="mm-addr" id="mm-addr">—</div>
+        <div class="mm-sheet" id="mm-sheet">—</div>
+      </div>
+      <button class="mm-close" onclick="closeMapModal()">✕</button>
+    </div>
+    <div class="mm-body" id="mm-body"></div>
+  </div>
+</div>
+
+<script>
+var PUB='https://docs.google.com/spreadsheets/d/e/2PACX-1vSzyHOAkQRwBuyLTWw0xyAkA3aQWjHNAT1wSRMmmB7zjYARDMG470ErejHEFid200TUUbGvbQNYUPsE/pub?output=csv';
+var SHEETS=[
+  {name:'Балашиха',gid:'1795562364'},{name:'Богородский',gid:'0'},{name:'Бронницы',gid:'1103582215'},
+  {name:'Волоколамский',gid:'220979544'},{name:'Дмитровский',gid:'1892432856'},{name:'Воскресенск',gid:'1653606013'},
+  {name:'Домодедово',gid:'1870428576'},{name:'Дубна',gid:'1718290784'},{name:'Егорьевск',gid:'1549030074'},
+  {name:'Жуковский',gid:'305796329'},{name:'Зарайск',gid:'283920738'},{name:'Истра',gid:'1434615352'},
+  {name:'Кашира',gid:'1580393335'},{name:'Клин',gid:'1338049965'},{name:'Коломна',gid:'106788836'},
+  {name:'Королев',gid:'1576913234'},{name:'Котельники',gid:'1390969273'},{name:'Красногорск',gid:'1821499361'},
+  {name:'Лобня',gid:'2065587021'},{name:'Лосино-Петровский',gid:'2082287183'},{name:'Луховицы',gid:'239748466'},
+  {name:'Люберцы',gid:'1843254790'},{name:'Можайский',gid:'661476574'},{name:'Мытищи',gid:'846842811'},
+  {name:'Наро-Фоминский',gid:'249806909'},{name:'Одинцовский',gid:'1539692434'},{name:'Орехово-Зуево',gid:'696528998'},
+  {name:'Павлово-Посадский',gid:'1190501242'},{name:'Подольск',gid:'1062490300'},{name:'Пушкинский',gid:'1496220984'},
+  {name:'Раменский',gid:'732430860'},{name:'Рузский',gid:'376297159'},{name:'Сергиево-Посадский',gid:'782139300'},
+  {name:'Серебряные Пруды',gid:'344890850'},{name:'Серпухов',gid:'1919190345'},{name:'Солнечногорск',gid:'24184888'},
+  {name:'Ступино',gid:'1528804810'},{name:'Талдомский',gid:'652495233'},{name:'Химки',gid:'1817325599'},
+  {name:'Чехов',gid:'1699541847'},{name:'Шатура',gid:'1588732400'},{name:'Шаховская',gid:'1886732760'},
+  {name:'Щелково',gid:'2101160216'},{name:'Электросталь',gid:'1617637044'}
+];
+var C={mo:3,np:4,addr:5,apt:6,area:7,citizens:8,owner:11,certType:12,dateApp:13,
+  decision:14,signed:15,buyConsent:17,price:20,dkp:21,newDistrict:22,newAddr:23,newArea:24,
+  builder:25,contractType:26,contractPrice:27,minPay:28,lat:29,lon:30,
+  // ⬇ Столбцы Госпрограммы — при необходимости поправьте номера под вашу таблицу ⬇
+  subprog:31,        // № Подпрограммы, в рамках которого проходит расселение
+  finProvided:32,    // Обеспечено финансирование на сертификаты (ГП) ДА/НЕТ
+  limit:33};         // Лимиты по Госпрограмме
+
+function normType(r){var s=String(r||'').trim().toLowerCase();if(!s||s==='-'||s==='—')return'Не указано';if(s.indexOf('сертификат')>=0)return'Сертификат';if(s.indexOf('выкуп')>=0)return'Выкуп';if(s.indexOf('не подавал')>=0)return'Не подавалось';return'Другое';}
+function normOwner(r){var s=String(r||'').trim().toLowerCase();if(!s||s==='-'||s==='—')return'Не указано';if(s.indexOf('собственник')>=0)return'Собственник';if(s.indexOf('наниматель')>=0)return'Наниматель';return'Другое';}
+function normDecision(r){var s=String(r||'').trim().toLowerCase();if(!s||s==='-'||s==='—')return'Не указано';if(s.indexOf('положительн')>=0)return'Положительное';if(s.indexOf('отриц')>=0)return'Отрицательное';if(s.indexOf('отказ')>=0)return'Отказ';if(s.indexOf('рассм')>=0||s.indexOf('приостановк')>=0)return'На рассмотрении';return'Не указано';}
+function n(x){var s=String(x||'').trim().replace(/\s/g,'');if(s.indexOf(',')>-1&&s.indexOf('.')>-1)s=s.replace(/,/g,'');else if(s.indexOf(',')>-1)s=s.replace(',','.');var v=parseFloat(s);return isNaN(v)?0:v;}
+function lo(s){return String(s||'').toLowerCase();}
+function up(s){return String(s||'').toUpperCase();}
+function fmtRub(v){return v>0?new Intl.NumberFormat('ru-RU').format(v)+' ₽':'—';}
+function fmtMln(v){if(!v||v===0)return'0';if(v>=1e9)return(v/1e9).toFixed(1)+'млрд';if(v>=1e6)return(v/1e6).toFixed(1)+'млн';if(v>=1e3)return(v/1e3).toFixed(0)+'K';return v.toFixed(0);}
+function bdec(v){var l=lo(v||'');if(l.indexOf('полож')>=0)return'<span class="b bp">'+v+'</span>';if(l.indexOf('отриц')>=0)return'<span class="b bn">'+v+'</span>';if(l.indexOf('рассм')>=0||l.indexOf('приостановк')>=0)return'<span class="b bpr">'+v+'</span>';if(l.indexOf('отказ')>=0)return'<span class="b br">'+v+'</span>';return v?'<span class="b bnone">'+v+'</span>':'—';}
+function cdec(d){var v=lo(d||'');if(v.indexOf('положит')>=0)return'#3a7d5c';if(v.indexOf('отриц')>=0)return'#b05a4f';if(v.indexOf('рассм')>=0||v.indexOf('приостановк')>=0)return'#b08d4f';if(v.indexOf('отказ')>=0)return'#7a6a8f';return'#5a7088';}
+
+var allData=[],filteredData=[],loaded=0;
+// Счётчик поколений загрузки. Каждый вызов reloadAll() увеличивает его.
+// Все асинхронные коллбэки сравнивают свой myGen с _loadGen и молча
+// прекращают работу, если была запущена более новая загрузка.
+// Это единственный правильный способ остановить «гонку» при двойном нажатии «Обновить».
+var _loadGen=0;
+var ymap=null,mapInited=false,yReady=false;
+var geocodeCache={};
+var mapMarkersBuilt=false;
+var roundColorMap={};
+// HOUSES может задаваться во внешнем файле; если его нет — пустой массив,
+// чтобы карта не падала с ошибкой и остальной дашборд работал стабильно
+var HOUSES=(typeof window!=='undefined'&&window.HOUSES)?window.HOUSES:[];
+// Безопасные обёртки (в исходном коде вызывались, но не были объявлены)
+function buildMapMarkers(){if(mapInited&&ymap){mapMarkersBuilt=true;renderMapPage();}}
+function drawMapMarkers(){if(mapInited&&ymap)renderMapPage();}
+
+// Центры городских округов МО — точные координаты
+var ROUND_CENTERS={
+  'Балашиха':     [55.7964,37.9383],
+  'Богородский':  [55.9167,38.7833],
+  'Бронницы':     [55.4258,38.2700],
+  'Волоколамский':[56.0383,35.9500],
+  'Воскресенск':  [55.3200,38.6700],
+  'Дмитровский':  [56.3500,37.5200],
+  'Домодедово':   [55.4408,37.7681],
+  'Дубна':        [56.7333,37.1667],
+  'Егорьевск':    [55.3833,39.0333],
+  'Жуковский':    [55.5958,38.1167],
+  'Зарайск':      [54.7583,38.8750],
+  'Истра':        [55.9167,36.8667],
+  'Кашира':       [54.8417,38.1583],
+  'Клин':         [56.3333,36.7333],
+  'Коломна':      [55.0833,38.7833],
+  'Королев':      [55.9167,37.8167],
+  'Котельники':   [55.6583,37.8667],
+  'Красногорск':  [55.8219,37.3361],
+  'Лобня':        [56.0167,37.4667],
+  'Лосино-Петровский':[55.8667,38.2000],
+  'Луховицы':     [54.9667,39.0333],
+  'Люберцы':      [55.6781,37.8939],
+  'Можайский':    [55.5083,36.0167],
+  'Мытищи':       [55.9128,37.7297],
+  'Наро-Фоминский':[55.3883,36.7297],
+  'Одинцовский':  [55.6761,37.2797],
+  'Орехово-Зуево':[55.8000,38.9833],
+  'Павлово-Посадский':[55.7833,38.6500],
+  'Подольск':     [55.4311,37.5486],
+  'Пушкинский':   [56.0167,37.8500],
+  'Раменский':    [55.5667,38.2333],
+  'Рузский':      [55.7000,36.1833],
+  'Сергиево-Посадский':[56.3000,38.1333],
+  'Серебряные Пруды':[54.4500,38.7167],
+  'Серпухов':     [54.9167,37.4167],
+  'Солнечногорск':[56.1833,36.9833],
+  'Ступино':      [54.9000,38.0667],
+  'Талдомский':   [56.7333,37.5333],
+  'Химки':        [55.8883,37.4297],
+  'Чехов':        [55.1500,37.4667],
+  'Шатура':       [55.5667,39.5333],
+  'Шаховская':    [56.0333,35.5167],
+  'Щелково':      [55.9167,38.0167],
+  'Электросталь': [55.7833,38.4500]
+};
+var charts={dec:null,own:null,tl:null,fin:null};
+var selR=null;
+var fState={round:[],dec:[],type:[]};
+var tlMode='day';
+// ⬇⬇⬇ ВСТАВЬТЕ СЮДА ССЫЛКУ НА GeoJSON С ГРАНИЦАМИ ГОРОДСКИХ ОКРУГОВ МО ⬇⬇⬇
+// Файл должен содержать поля свойств с названием округа (name / NAME / NL_NAME_2 и т.п.)
+var BORDERS_URL='';
+// ⬆⬆⬆ Пока пусто — границы не рисуются, остальная карта Яндекс работает ⬆⬆⬆
+var autoT,cdT,secs=7200;
+
+var decCfg=[
+  {key:'pos',label:'Положительное',cls:'dc-pos',icon:'✓',color:'#3a7d5c',filter:'положительн'},
+  {key:'proc',label:'На рассмотрении',cls:'dc-proc',icon:'⏳',color:'#b08d4f',filter:'рассм'},
+  {key:'neg',label:'Отрицательное',cls:'dc-neg',icon:'✗',color:'#b05a4f',filter:'отриц'},
+  {key:'rej',label:'Отказ',cls:'dc-rej',icon:'⊘',color:'#7a6a8f',filter:'отказ'},
+  {key:'none',label:'Не указано',cls:'dc-none',icon:'?',color:'#5a7088',filter:'none'}
+];
+
+/* THEME */
+function toggleTheme(){
+  var html=document.documentElement;
+  var dark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('theme-knob').textContent=dark?'☀️':'🌙';
+  setTimeout(function(){
+    if(document.getElementById('page-overview').classList.contains('active'))renderCharts(filteredData);
+    if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
+    // Обновляем карту: пересчитываем размер контейнера после смены фильтра тайлов
+    if(ymap){try{ymap.container.fitToViewport();}catch(e){}}
+  },120);
+}
+
+/* FILTER TABS — мультивыбор (инклюзивно, с суммированием) */
+function buildFilterMenus(){
+  var rounds={};allData.forEach(function(r){if(r._sheet)rounds[r._sheet]=1;});
+  var rl=Object.keys(rounds).sort();
+  document.getElementById('fl-round').innerHTML='<div class="filt-opt'+(fState.round.length===0?' sel':'')+'" onclick="pickFilt(\'round\',\'\')">Все округа</div>'+
+    rl.map(function(x){return'<div class="filt-opt'+(fState.round.indexOf(x)>=0?' sel':'')+'" data-v="'+x.toLowerCase()+'" onclick="pickFilt(\'round\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.round.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
+  var decs={};allData.forEach(function(r){decs[normDecision(r[C.decision])]=1;});
+  var dl=Object.keys(decs).sort();
+  document.getElementById('fl-dec').innerHTML='<div class="filt-opt'+(fState.dec.length===0?' sel':'')+'" onclick="pickFilt(\'dec\',\'\')">Все решения</div>'+
+    dl.map(function(x){return'<div class="filt-opt'+(fState.dec.indexOf(x)>=0?' sel':'')+'" onclick="pickFilt(\'dec\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.dec.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
+  var types={};allData.forEach(function(r){types[normType(r[C.certType])]=1;});
+  var tl=Object.keys(types).sort();
+  document.getElementById('fl-type').innerHTML='<div class="filt-opt'+(fState.type.length===0?' sel':'')+'" onclick="pickFilt(\'type\',\'\')">Все типы</div>'+
+    tl.map(function(x){return'<div class="filt-opt'+(fState.type.indexOf(x)>=0?' sel':'')+'" onclick="pickFilt(\'type\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.type.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
+}
+function toggleFilt(k,e){
+  if(e)e.stopPropagation();
+  var menu=document.getElementById('fm-'+k),trig=document.getElementById('ft-'+k);
+  var isOpen=menu.classList.contains('open');
+  document.querySelectorAll('.filt-menu').forEach(function(m){m.classList.remove('open');});
+  document.querySelectorAll('.filt-trigger').forEach(function(t){t.classList.remove('open');});
+  if(!isOpen){menu.classList.add('open');trig.classList.add('open');
+    var s=document.getElementById('fs-'+k);if(s){s.value='';s.focus();filtSearch(k);}}
+}
+function filtSearch(k){
+  var q=lo(document.getElementById('fs-'+k).value);
+  document.querySelectorAll('#fl-'+k+' .filt-opt').forEach(function(o){
+    var v=o.getAttribute('data-v');
+    if(!v){o.style.display=q?'none':'';return;}
+    o.style.display=v.indexOf(q)>=0?'':'none';
+  });
+}
+function pickFilt(k,v){
+  if(v===''){fState[k]=[];}
+  else{
+    var i=fState[k].indexOf(v);
+    if(i>=0)fState[k].splice(i,1);   // повторный клик — убрать
+    else fState[k].push(v);          // добавить (суммирование)
+  }
+  var lbl=fState[k].length===0?'Все':(fState[k].length===1?fState[k][0]:fState[k].length+' выбр.');
+  document.getElementById('fv-'+k).textContent=lbl;
+  var trig=document.getElementById('ft-'+k);
+  if(fState[k].length)trig.classList.add('has-val');else trig.classList.remove('has-val');
+  buildFilterMenus();           // перерисовать галочки, меню остаётся открытым
+  applyF();
+}
+document.addEventListener('click',function(){
+  document.querySelectorAll('.filt-menu').forEach(function(m){m.classList.remove('open');});
+  document.querySelectorAll('.filt-trigger').forEach(function(t){t.classList.remove('open');});
+});
+
+function switchPage(name,btn){
+  document.querySelectorAll('.ptab').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  btn.classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='mappage')setTimeout(function(){renderMapPage();},60);
+  if(name==='finance')renderFinance();
+  if(name==='gos')setTimeout(renderGos,60);
+  if(name==='overview')setTimeout(function(){renderCharts(filteredData);},60);
+}
+
+// Необходимое финансирование: площадь (мин. 28 м²) × 181 759 ₽
+function needFin(a){return (a<28?28:a)*181759;}
+
+function gosToggle(gi){
+  var hdr=document.getElementById('gos-grp-'+gi);
+  if(!hdr)return;
+  var open=hdr.getAttribute('data-open')==='1';
+  document.querySelectorAll('[data-grp="'+gi+'"]').forEach(function(r){r.style.display=open?'none':'';});
+  hdr.setAttribute('data-open',open?'0':'1');
+  var car=document.getElementById('gos-car-'+gi);
+  if(car)car.textContent=open?'▸':'▾';
+}
+
+function renderGos(){
+  var d=filteredData;
+  var groups={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!groups[k])groups[k]=[];groups[k].push(r);});
+  var keys=Object.keys(groups).sort(function(a,b){return a.localeCompare(b,'ru');});
+
+  var tE=0,tC=0,tL=0,tNF=0,paidCnt=0,qc=0,tA=0;
+  d.forEach(function(r){var a=n(r[C.area]);tA+=a;tNF+=needFin(a);tE+=n(r[C.price]);tC+=n(r[C.contractPrice]);tL+=n(r[C.limit]);if(lo(r[C.minPay])==='да')paidCnt++;qc++;});
+
+  document.getElementById('gos-kpi-row').innerHTML=
+    '<div class="fin-kpi"><div class="fk-lbl">Квартир · площадь</div><div class="fk-val">'+qc.toLocaleString('ru')+'</div><div class="fk-sub">'+tA.toFixed(0)+' м² · '+keys.length+' округов</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Необходимое финанс. на сертификаты</div><div class="fk-val" style="color:var(--gold)">'+fmtMln(tNF)+' ₽</div><div class="fk-sub">181 759 ₽/м² · мин. 28 м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке · договоры</div><div class="fk-val">'+fmtMln(tE)+' ₽</div><div class="fk-sub">Договоры: '+fmtMln(tC)+' ₽</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Лимиты по Госпрограмме</div><div class="fk-val">'+fmtMln(tL)+' ₽</div><div class="fk-sub">Оплата Мин-ва: '+paidCnt+'</div></div>';
+
+  document.getElementById('gos-reg-cnt').textContent=keys.length+' округов · '+qc+' квартир · нажмите на округ';
+
+  var rub=function(v){return v>0?new Intl.NumberFormat('ru-RU').format(Math.round(v))+' ₽':'—';};
+  var html='<thead><tr><th>№</th><th>Округ / Адрес</th><th>Кв.</th><th>Площадь м²</th>'+
+    '<th>Необходимое финанс. на сертификаты ₽</th><th>№ Подпрограммы</th>'+
+    '<th>Стоимость по оценке ₽</th><th>Цена договора ДКП/ДДУ ₽</th>'+
+    '<th>Оплата Министерства</th><th>Лимиты по Госпрограмме ₽</th></tr></thead><tbody>';
+
+  keys.forEach(function(k,gi){
+    var rows=groups[k];
+    var gA=0,gNF=0,gE=0,gC=0,gL=0;
+    rows.forEach(function(r){var a=n(r[C.area]);gA+=a;gNF+=needFin(a);gE+=n(r[C.price]);gC+=n(r[C.contractPrice]);gL+=n(r[C.limit]);});
+    html+='<tr id="gos-grp-'+gi+'" data-open="0" onclick="gosToggle('+gi+')" style="cursor:pointer;background:var(--th-bg)">'+
+      '<td style="font-weight:800;color:var(--gold)"><span id="gos-car-'+gi+'">▸</span></td>'+
+      '<td style="font-weight:800;color:var(--ink)">'+k+' <span style="color:var(--muted);font-weight:600">· '+rows.length+' кв.</span></td>'+
+      '<td style="text-align:center;font-weight:700">'+rows.length+'</td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--ink)">'+gA.toFixed(1)+'</td>'+
+      '<td style="text-align:right;font-weight:800;color:var(--gold)">'+rub(gNF)+'</td>'+
+      '<td></td>'+
+      '<td style="text-align:right;font-weight:700">'+rub(gE)+'</td>'+
+      '<td style="text-align:right;font-weight:700">'+rub(gC)+'</td>'+
+      '<td></td>'+
+      '<td style="text-align:right;font-weight:700;color:var(--gold)">'+rub(gL)+'</td></tr>';
+    rows.forEach(function(r,i){
+      var a=n(r[C.area]);
+      var paid=String(r[C.minPay]||'').trim();
+      var paidStyle=lo(paid)==='да'?'color:#3a7d5c;font-weight:700':'color:#aaa';
+      html+='<tr data-grp="'+gi+'" style="display:none">'+
+        '<td style="color:var(--muted)">'+(i+1)+'</td>'+
+        '<td style="padding-left:28px;max-width:210px;white-space:normal;color:var(--ink-soft);font-weight:600">'+(r[C.addr]||'—')+'</td>'+
+        '<td style="text-align:center">'+(r[C.apt]||'—')+'</td>'+
+        '<td style="text-align:right;font-weight:600;color:var(--ink)">'+a.toFixed(2)+(a<28?' <span style="color:var(--gold);font-size:9px" title="учтено как 28 м²">→28</span>':'')+'</td>'+
+        '<td style="text-align:right;font-weight:700;color:var(--gold)">'+rub(needFin(a))+'</td>'+
+        '<td style="text-align:center">'+(r[C.subprog]||'—')+'</td>'+
+        '<td style="text-align:right">'+rub(n(r[C.price]))+'</td>'+
+        '<td style="text-align:right">'+rub(n(r[C.contractPrice]))+'</td>'+
+        '<td style="text-align:center;'+paidStyle+'">'+(paid||'—')+'</td>'+
+        '<td style="text-align:right;color:var(--gold)">'+rub(n(r[C.limit]))+'</td></tr>';
+    });
+  });
+  html+='</tbody>';
+  document.getElementById('tbl-gos').innerHTML=html;
+}
+
+function exportExcel(){
+  if(typeof XLSX==='undefined'){alert('Библиотека Excel ещё загружается, повторите через секунду');return;}
+  if(!allData.length){alert('Данные не загружены');return;}
+  var wb=XLSX.utils.book_new();
+
+  // Лист 1: ПОЛНЫЙ реестр — ВСЕ округа, ВСЕ строки (без фильтра)
+  var reg=[['Округ','Г.О/М.О','Нас. пункт','Адрес','Кв.','Площадь м²','Граждан','ФИО заявителя','Телефон','Тип права','Тип','Дата заявл.','Решение','Подписано','Стоимость по оценке ₽','ДКП/ДДУ','Цена договора ₽','Оплата Мин-ва']];
+  allData.forEach(function(r){
+    reg.push([r._sheet||'',r[C.mo]||'',r[C.np]||'',r[C.addr]||'',r[C.apt]||'',n(r[C.area]),n(r[C.citizens]),r[9]||'',r[10]||'',normOwner(r[C.owner]),normType(r[C.certType]),r[C.dateApp]||'',normDecision(r[C.decision]),r[C.signed]||'',n(r[C.price]),r[C.dkp]||'',n(r[C.contractPrice]),r[C.minPay]||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(reg),'Реестр (все)');
+
+  // Лист 2: Сводка по ВСЕМ округам
+  var rm=roundMap(allData);
+  var sum=[['Округ','Квартир','Площадь всего м²','Граждан','Собственники','Площадь собств. м²','Наниматели','Площадь наним. м²','Сертификаты','Площадь серт. м²','Выкуп','Площадь выкуп м²','Положительных','Площадь полож. м²']];
+  Object.entries(rm).sort(function(a,b){return b[1].t-a[1].t;}).forEach(function(e){var v=e[1];
+    sum.push([e[0],v.t,+v.aT.toFixed(1),v.cit,v.sob,+v.aSob.toFixed(1),v.nan,+v.aNan.toFixed(1),v.cert,+v.aCert.toFixed(1),v.vyk,+v.aVyk.toFixed(1),v.pos,+v.aPos.toFixed(1)]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sum),'Сводка по округам');
+
+  // Лист 3: Финансы по ВСЕМ округам
+  var fin=[['Округ','Стоимость по оценке ₽','Цена договоров ДКП/ДДУ ₽','Разница ₽','Квартир']];
+  var fm={};
+  allData.forEach(function(r){var k=r._sheet||'—';if(!fm[k])fm[k]={ev:0,cp:0,c:0};fm[k].ev+=n(r[C.price]);fm[k].cp+=n(r[C.contractPrice]);fm[k].c++;});
+  Object.entries(fm).sort(function(a,b){return b[1].ev-a[1].ev;}).forEach(function(e){var v=e[1];
+    fin.push([e[0],Math.round(v.ev),Math.round(v.cp),Math.round(v.cp-v.ev),v.c]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fin),'Финансы');
+
+  // Лист 4: Госпрограмма
+  var gp=[['Округ (Г.О/М.О)','№ Подпрограммы','Финансирование на сертификаты (ГП) ДА/НЕТ','Адрес','Кв.','Стоимость по оценке ₽','Цена договора ДКП/ДДУ ₽','Оплата Министерства да/нет','Лимиты по Госпрограмме ₽']];
+  allData.forEach(function(r){
+    gp.push([r._sheet||'',r[C.subprog]||'',r[C.finProvided]||'',r[C.addr]||'',r[C.apt]||'',n(r[C.price]),n(r[C.contractPrice]),r[C.minPay]||'',r[C.limit]||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(gp),'Госпрограмма');
+
+  // Лист 5: Решения (итог по всем)
+  var dc={};allData.forEach(function(r){var nd=normDecision(r[C.decision]);dc[nd]=(dc[nd]||0)+1;});
+  var dec=[['Решение','Количество','% от всех']];
+  Object.entries(dc).forEach(function(e){dec.push([e[0],e[1],Math.round(e[1]/allData.length*100)+'%']);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dec),'Решения');
+
+  // Лист 6: Текущая выборка (по активным фильтрам)
+  if(filteredData.length<allData.length){
+    var cur=[['Округ','Адрес','Кв.','Площадь м²','Граждан','Тип','Решение']];
+    filteredData.forEach(function(r){cur.push([r._sheet||'',r[C.addr]||'',r[C.apt]||'',n(r[C.area]),n(r[C.citizens]),normType(r[C.certType]),normDecision(r[C.decision])]);});
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(cur),'Текущий фильтр');
+  }
+
+  var fname='Минстрой_МО_дашборд_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,fname);
+}
+
+/* MAP — параллельное геокодирование + панель округов + модал */
+
+// ── Состояние карты ───────────────────────────────────────────────────────
+var _mapRoundFilter=[];
+var _mapRoundColors={};
+var _mapRoundIdx=0;
+var MAP_PALETTE=['#b08d4f','#3a7d5c','#5a7088','#7a6a8f','#b05a4f','#c9aa70','#6c7689','#a88a5a','#8a9bb0','#9c8552','#5f8a72','#6f8a9c','#a07860','#7a8faa'];
+function _mapColor(sheet){
+  if(!_mapRoundColors[sheet])_mapRoundColors[sheet]=MAP_PALETTE[(_mapRoundIdx++)%MAP_PALETTE.length];
+  return _mapRoundColors[sheet];
+}
+
+// ── Параллельный геокодер ─────────────────────────────────────────────────
+var _geoQ=[];var _geoBusy=false;var _geoTotal=0;var _geoDone=0;var _geoGen=0;
+
+function _geoSetStatus(txt){
+  var el=document.getElementById('geost');if(el)el.textContent=txt;
+}
+// ────────────────────────────────────────────────────────────────────────
+// ПОСТОЯННЫЙ КЕШ ГЕОКОДИНГА (localStorage)
+// Условия использования API Яндекс Карт, раздел 5.1.5:
+// «кэширование результатов... исключительно для улучшения
+//  функциональности Сервисов... на срок не более 30 дней»
+// Каждая запись хранится с меткой времени; записи старше 30 дней удаляются.
+// ────────────────────────────────────────────────────────────────────────
+var GEO_CACHE_KEY='minstroy_geocache_v3';  // v3 = формат с TTL
+var GEO_CACHE_TTL=30*24*60*60*1000;        // 30 дней в мс (согл. п. 5.1.5)
+var _geoCacheDirty=false;
+
+// Загружаем кеш; фильтруем записи старше 30 дней
+function _loadGeoCacheFromStorage(){
+  var now=Date.now();
+  try{
+    var s=localStorage.getItem(GEO_CACHE_KEY);
+    if(!s)return 0;
+    var loaded=JSON.parse(s);
+    var cnt=0,expired=0;
+    Object.keys(loaded).forEach(function(k){
+      var entry=loaded[k];
+      // Поддержка старого формата v2 (просто массив без TTL)
+      var coords=Array.isArray(entry)?entry:entry.c;
+      var ts=Array.isArray(entry)?0:(entry.t||0);
+      // Удаляем записи старше 30 дней
+      if(ts>0&&now-ts>GEO_CACHE_TTL){expired++;return;}
+      if(!geocodeCache[k]){geocodeCache[k]=coords;cnt++;}
+    });
+    if(expired>0)console.info('[geocache] удалено записей (>30 дней): '+expired);
+    return cnt;
+  }catch(e){return 0;}
+}
+
+// Отложенная запись — каждая запись получает текущую метку времени
+function _markCacheDirty(){
+  if(_geoCacheDirty)return;
+  _geoCacheDirty=true;
+  setTimeout(_flushGeoCache,1500);
+}
+function _flushGeoCache(){
+  _geoCacheDirty=false;
+  var now=Date.now();
+  var toSave={};
+  Object.keys(geocodeCache).forEach(function(k){
+    toSave[k]={c:geocodeCache[k],t:now};
+  });
+  try{
+    localStorage.setItem(GEO_CACHE_KEY,JSON.stringify(toSave));
+  }catch(e){
+    console.warn('[geocache] flush failed:',e.message);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Суточный счётчик API-запросов геокодера (лимит Яндекс = 1000/сутки)
+// ────────────────────────────────────────────────────────────────────────
+var GEO_DAILY_KEY='minstroy_geocache_daily_v1';
+var _todayGeoUsed=0;
+var GEO_DAY_LIMIT=950;   // оставляем 50 запросов буфером
+
+function _loadDailyCount(){
+  var today=new Date().toISOString().slice(0,10);
+  try{
+    var s=localStorage.getItem(GEO_DAILY_KEY);
+    if(s){var d=JSON.parse(s);if(d.date===today){_todayGeoUsed=d.count||0;return;}}
+  }catch(e){}
+  _todayGeoUsed=0;
+}
+function _incDailyCount(){
+  _todayGeoUsed++;
+  var today=new Date().toISOString().slice(0,10);
+  try{localStorage.setItem(GEO_DAILY_KEY,JSON.stringify({date:today,count:_todayGeoUsed}));}catch(e){}
+}
+function _dailyLeft(){return Math.max(0,GEO_DAY_LIMIT-_todayGeoUsed);}
+
+// Загружаем суточный счётчик при старте
+_loadDailyCount();
+
+// Количество записей в кеше
+function _geoCacheSize(){return Object.keys(geocodeCache).length;}
+
+function _geocodeSingle(addr,sheet){
+  var key=sheet+'|'+addr;
+  if(geocodeCache[key])return Promise.resolve(geocodeCache[key]);
+  var query='Московская область, '+sheet+', '+addr;
+  return ymaps.geocode(query,{results:1,boundedBy:[[53.5,34.5],[57.5,41.0]]})
+    .then(function(res){
+      var obj=res.geoObjects.get(0);
+      if(!obj)return null;
+      var c=obj.geometry.getCoordinates();
+      if(c&&c[0]>50&&c[0]<60&&c[1]>30&&c[1]<45){
+        geocodeCache[key]=c;
+        _incDailyCount();    // считаем API-запрос
+        _markCacheDirty();   // сохраняем в localStorage
+        return c;
+      }
+      return null;
+    }).catch(function(){return null;});
+}
+function _geocodeBatch(items,batchSize,delayMs,myGen,onProgress){
+  return new Promise(function(resolve){
+    var results=new Array(items.length).fill(null);
+    var idx=0;
+    function nextBatch(){
+      if(_geoGen!==myGen){resolve(results);return;}
+      if(idx>=items.length){resolve(results);return;}
+      var end=Math.min(idx+batchSize,items.length);
+      var slice=items.slice(idx,end);
+      var startIdx=idx;idx=end;
+      Promise.all(slice.map(function(item,i){
+        return _geocodeSingle(item.addr,item.sheet).then(function(c){
+          results[startIdx+i]=c;
+          _geoDone++;
+          if(onProgress)onProgress(_geoDone,items.length);
+        });
+      })).then(function(){
+        if(idx<items.length)setTimeout(nextBatch,delayMs);
+        else resolve(results);
+      });
+    }
+    nextBatch();
+  });
+}
+
+// ── Группировка строк по зданию ───────────────────────────────────────────
+function buildAddressGroups(data){
+  var groups={};
+  data.forEach(function(r){
+    var addr=String(r[C.addr]||'').trim();
+    if(!addr||addr==='—'||addr==='-')return;
+    var sheet=r._sheet||'—';
+    var key=sheet+'||'+addr;
+    if(!groups[key])groups[key]={addr:addr,sheet:sheet,key:key,rows:[],lat:0,lon:0};
+    groups[key].rows.push(r);
+    if(!groups[key].lat){
+      var la=n(String(r[C.lat]||'').replace(',','.'));
+      var lo=n(String(r[C.lon]||'').replace(',','.'));
+      if(la>50&&lo>30){groups[key].lat=la;groups[key].lon=lo;}
+    }
+  });
+  return Object.values(groups);
+}
+
+// ── Статистика по группе ──────────────────────────────────────────────────
+function _groupStats(g){
+  var sob=0,nan=0,cert=0,vyk=0,pos=0,proc=0,neg=0,rej=0,none=0,totCit=0,totArea=0;
+  g.rows.forEach(function(r){
+    totCit+=n(r[C.citizens]);totArea+=n(r[C.area]);
+    var o=normOwner(r[C.owner]);if(o==='Собственник')sob++;if(o==='Наниматель')nan++;
+    var nt=normType(r[C.certType]);if(nt==='Сертификат')cert++;if(nt==='Выкуп')vyk++;
+    var nd=normDecision(r[C.decision]);
+    if(nd==='Положительное')pos++;else if(nd==='На рассмотрении')proc++;
+    else if(nd==='Отрицательное')neg++;else if(nd==='Отказ')rej++;else none++;
+  });
+  return{sob:sob,nan:nan,cert:cert,vyk:vyk,pos:pos,proc:proc,neg:neg,rej:rej,none:none,totCit:totCit,totArea:totArea};
+}
+
+// ── Модал здания ──────────────────────────────────────────────────────────
+function openMapModal(g){
+  var s=_groupStats(g);
+  document.getElementById('mm-addr').textContent=g.addr;
+  document.getElementById('mm-sheet').textContent=g.sheet+' · '+g.rows.length+' квартир';
+  var html=
+    '<div class="mm-kpi-row">'+
+      '<div class="mm-kpi"><div class="mm-kpi-lbl">Квартир</div><div class="mm-kpi-val">'+g.rows.length+'</div><div class="mm-kpi-sub">в этом доме</div></div>'+
+      '<div class="mm-kpi"><div class="mm-kpi-lbl">Граждан</div><div class="mm-kpi-val">'+s.totCit+'</div><div class="mm-kpi-sub">суммарно</div></div>'+
+      '<div class="mm-kpi"><div class="mm-kpi-lbl">Площадь</div><div class="mm-kpi-val" style="font-size:17px">'+s.totArea.toFixed(1)+'</div><div class="mm-kpi-sub">м² суммарно</div></div>'+
+      '<div class="mm-kpi"><div class="mm-kpi-lbl">Сертификат</div><div class="mm-kpi-val" style="color:var(--gold)">'+s.cert+'</div><div class="mm-kpi-sub">Выкуп: '+s.vyk+'</div></div>'+
+    '</div>'+
+    '<div>'+
+      '<div class="mm-sect">Тип права</div>'+
+      '<div class="mm-dec-chips">'+
+        (s.sob?'<span class="mm-chip" style="background:rgba(176,141,79,.15);color:var(--gold)">Собственник: '+s.sob+'</span>':'')+
+        (s.nan?'<span class="mm-chip" style="background:rgba(90,112,136,.15);color:var(--none)">Наниматель: '+s.nan+'</span>':'')+
+      '</div>'+
+    '</div>'+
+    '<div>'+
+      '<div class="mm-sect">Решения</div>'+
+      '<div class="mm-dec-chips">'+
+        (s.pos?'<span class="mm-chip" style="background:rgba(58,125,92,.14);color:var(--pos)">✓ Положительное: '+s.pos+'</span>':'')+
+        (s.proc?'<span class="mm-chip" style="background:rgba(176,141,79,.14);color:var(--proc)">⏳ На рассмотрении: '+s.proc+'</span>':'')+
+        (s.neg?'<span class="mm-chip" style="background:rgba(176,90,79,.14);color:var(--neg)">✗ Отрицательное: '+s.neg+'</span>':'')+
+        (s.rej?'<span class="mm-chip" style="background:rgba(122,106,143,.14);color:var(--rej)">⊘ Отказ: '+s.rej+'</span>':'')+
+        (s.none?'<span class="mm-chip" style="background:rgba(90,112,136,.12);color:var(--none)">? Не указано: '+s.none+'</span>':'')+
+      '</div>'+
+    '</div>'+
+    '<div>'+
+      '<div class="mm-sect">Квартиры</div>'+
+      '<table class="mm-apts-table">'+
+        '<thead><tr><th>Кв.</th><th>Площадь</th><th>Граждан</th><th>Право</th><th>Тип</th><th>Решение</th></tr></thead>'+
+        '<tbody>'+
+        g.rows.map(function(r){
+          var nd=normDecision(r[C.decision]);
+          return'<tr>'+
+            '<td style="font-weight:700;color:var(--ink)">'+(r[C.apt]||'—')+'</td>'+
+            '<td style="text-align:right;font-weight:600">'+n(r[C.area]).toFixed(1)+' м²</td>'+
+            '<td style="text-align:center">'+(r[C.citizens]||'—')+'</td>'+
+            '<td>'+normOwner(r[C.owner])+'</td>'+
+            '<td>'+normType(r[C.certType])+'</td>'+
+            '<td style="color:'+cdec(nd)+';font-weight:700;white-space:nowrap">'+nd+'</td>'+
+          '</tr>';
+        }).join('')+
+        '</tbody></table>'+
+    '</div>';
+  document.getElementById('mm-body').innerHTML=html;
+  document.getElementById('map-modal').classList.add('open');
+}
+function closeMapModal(e){
+  if(!e||e.target===document.getElementById('map-modal'))
+    document.getElementById('map-modal').classList.remove('open');
+}
+
+// ── Панель фильтра округов ────────────────────────────────────────────────
+var _mrpOpen=false;
+function toggleMapRoundPanel(e){
+  if(e)e.stopPropagation();
+  _mrpOpen=!_mrpOpen;
+  var p=document.getElementById('map-round-panel');
+  var c=document.getElementById('mrp-caret');
+  if(_mrpOpen){p.classList.add('open');if(c)c.style.transform='rotate(180deg)';
+    var si=document.getElementById('mrp-search');if(si){si.value='';si.focus();}
+    buildMrpTable('');
+  }else{p.classList.remove('open');if(c)c.style.transform='';}
+}
+document.addEventListener('click',function(e){
+  if(_mrpOpen&&!e.target.closest('#map-round-panel')&&!e.target.closest('#mrp-btn')){
+    _mrpOpen=false;
+    var p=document.getElementById('map-round-panel');
+    var c=document.getElementById('mrp-caret');
+    if(p)p.classList.remove('open');
+    if(c)c.style.transform='';
+  }
+});
+function filterMrpRows(){
+  var q=(document.getElementById('mrp-search').value||'').toLowerCase();
+  buildMrpTable(q);
+}
+function buildMrpTable(q){
+  var groups=buildAddressGroups(filteredData);
+  var byRound={};
+  groups.forEach(function(g){
+    var k=g.sheet;
+    if(!byRound[k])byRound[k]={sheet:k,houses:0,apts:0,area:0,cit:0,cert:0,vyk:0,sob:0,nan:0,pos:0,proc:0,neg:0,rej:0};
+    var s=_groupStats(g);
+    byRound[k].houses++;byRound[k].apts+=g.rows.length;byRound[k].area+=s.totArea;
+    byRound[k].cit+=s.totCit;byRound[k].cert+=s.cert;byRound[k].vyk+=s.vyk;
+    byRound[k].sob+=s.sob;byRound[k].nan+=s.nan;
+    byRound[k].pos+=s.pos;byRound[k].proc+=s.proc;byRound[k].neg+=s.neg;byRound[k].rej+=s.rej;
+  });
+  var rows=Object.values(byRound).sort(function(a,b){return a.sheet.localeCompare(b.sheet,'ru');});
+  if(q)rows=rows.filter(function(r){return r.sheet.toLowerCase().indexOf(q)>=0;});
+  var tbody=document.getElementById('mrp-tbody');if(!tbody)return;
+  tbody.innerHTML=rows.map(function(r){
+    var sel=_mapRoundFilter.indexOf(r.sheet)>=0;
+    var col=_mapColor(r.sheet);
+    return'<tr class="'+(sel?'mrp-sel':'')+'" data-sheet="'+r.sheet+'" onclick="toggleMrpRound(\''+r.sheet.replace(/'/g,"\\'")+'\')" style="font-variant-numeric:tabular-nums">'+
+      '<td><div style="display:flex;align-items:center;gap:7px"><div style="width:9px;height:9px;border-radius:3px;background:'+col+';flex-shrink:0"></div><span style="font-size:12px;font-weight:700;color:var(--ink)">'+r.sheet+'</span></div></td>'+
+      '<td>'+r.houses+'</td><td>'+r.apts+'</td>'+
+      '<td>'+r.area.toFixed(0)+'</td><td>'+r.cit+'</td>'+
+      '<td style="color:var(--gold)">'+r.cert+'</td>'+
+      '<td style="color:var(--rej)">'+r.vyk+'</td>'+
+      '<td style="color:var(--gold)">'+r.sob+'</td>'+
+      '<td style="color:var(--none)">'+r.nan+'</td>'+
+      '<td style="color:var(--pos);font-weight:700">'+r.pos+'</td>'+
+      '<td style="color:var(--proc)">'+r.proc+'</td>'+
+      '<td style="color:var(--neg)">'+r.neg+'</td>'+
+      '<td style="color:var(--rej)">'+r.rej+'</td>'+
+    '</tr>';
+  }).join('');
+}
+function toggleMrpRound(sheet){
+  var i=_mapRoundFilter.indexOf(sheet);
+  if(i>=0)_mapRoundFilter.splice(i,1);else _mapRoundFilter.push(sheet);
+  var lbl=_mapRoundFilter.length===0?'Все':(_mapRoundFilter.length===1?_mapRoundFilter[0]:_mapRoundFilter.length+' округов');
+  document.getElementById('mrp-val').textContent=lbl;
+  var btn=document.getElementById('mrp-btn');
+  if(btn){if(_mapRoundFilter.length)btn.classList.add('has-val');else btn.classList.remove('has-val');}
+  buildMrpTable((document.getElementById('mrp-search')||{}).value||'');
+  _applyMapFilter();   // _applyMapFilter сам вызовет _highlightDistricts с правильным набором
+}
+function resetMapRound(){
+  _mapRoundFilter=[];
+  var el=document.getElementById('mrp-val');if(el)el.textContent='Все';
+  var btn=document.getElementById('mrp-btn');if(btn)btn.classList.remove('has-val');
+  buildMrpTable('');
+  _applyMapFilter();   // вызовет _highlightDistricts с глобальным fState.round если активен
+}
+function _applyMapFilter(){
+  if(!ymap||!_markersLayer)return;
+  _rebuildMarkersLayer();   // физически пересобирает слой с учётом round-фильтра и миграции
+  var vis=[];
+  _markerData.forEach(function(m){if(m.visible)vis.push([m.lat,m.lon]);});
+  _fitMap(vis);
+  _geoSetStatus(_mapRoundFilter.length?'Фильтр: '+_mapRoundFilter.join(', ')+' · '+vis.length+' домов':'Все округа · '+_markerData.length+' домов');
+  var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+  _highlightDistricts(sheetsToHL);
+  if(_migrationActive)_refreshMigrationsIfActive();
+}
+
+// ── Поиск адреса ───────────────────────────────────────────────────────────
+var _searchTimer=null;
+var _searchGroups=[];   // кешируем buildAddressGroups для скорости
+var _searchActiveIdx=-1;
+
+function onMapSearch(q){
+  var sx=document.getElementById('map-sx');
+  if(sx)sx.style.display=q?'block':'none';
+  clearTimeout(_searchTimer);
+  if(!q||q.length<2){closeSearchDropdown();return;}
+  _searchTimer=setTimeout(function(){_runSearch(q);},180);
+}
+
+function _runSearch(q){
+  var lq=q.toLowerCase().replace(/ул\.|д\.|дом|кв\./gi,'').trim();
+  if(!_searchGroups.length)_searchGroups=buildAddressGroups(filteredData);
+  var res=_searchGroups.filter(function(g){
+    return(g.addr.toLowerCase().indexOf(lq)>=0||g.sheet.toLowerCase().indexOf(lq)>=0)&&g.lat&&g.lon;
+  }).slice(0,10);
+  _renderSearchDropdown(res,q);
+}
+
+function _renderSearchDropdown(results,q){
+  var sd=document.getElementById('map-sd');if(!sd)return;
+  _searchActiveIdx=-1;
+  if(!results.length){
+    sd.innerHTML='<div class="map-sd-empty">Ничего не найдено по запросу «'+q+'»</div>';
+    sd.classList.add('open');return;
+  }
+  sd.innerHTML=results.map(function(g,i){
+    var col=_mapColor(g.sheet);
+    var s=_groupStats(g);
+    var hi=_highlightMatch(g.addr,q);
+    return'<div class="map-sd-item" data-idx="'+i+'" onclick="selectSearchResult('+i+')" onmouseenter="_setSearchActive('+i+')">'+
+      '<div class="map-sd-dot" style="background:'+col+'"></div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="map-sd-addr">'+hi+'</div>'+
+        '<div class="map-sd-meta">'+g.sheet+' · '+g.rows.length+' кв. · '+s.totCit+' чел. · '+s.totArea.toFixed(0)+' м²</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  sd._results=results;
+  sd.classList.add('open');
+}
+
+function _highlightMatch(text,q){
+  var lq=q.toLowerCase();var lt=text.toLowerCase();
+  var idx=lt.indexOf(lq);
+  if(idx<0)return text;
+  return text.substring(0,idx)+'<mark style="background:rgba(176,141,79,.3);border-radius:3px;padding:0 1px">'+text.substring(idx,idx+q.length)+'</mark>'+text.substring(idx+q.length);
+}
+
+function _setSearchActive(i){
+  _searchActiveIdx=i;
+  document.querySelectorAll('.map-sd-item').forEach(function(el,j){
+    el.classList.toggle('msd-active',j===i);
+  });
+}
+
+function onMapSearchKey(e){
+  var sd=document.getElementById('map-sd');
+  var items=sd?sd.querySelectorAll('.map-sd-item'):[];
+  if(e.key==='ArrowDown'){e.preventDefault();_setSearchActive(Math.min(_searchActiveIdx+1,items.length-1));}
+  else if(e.key==='ArrowUp'){e.preventDefault();_setSearchActive(Math.max(_searchActiveIdx-1,0));}
+  else if(e.key==='Enter'){e.preventDefault();if(_searchActiveIdx>=0)selectSearchResult(_searchActiveIdx);else if(sd&&sd._results&&sd._results.length)selectSearchResult(0);}
+  else if(e.key==='Escape'){clearMapSearch();}
+}
+
+function selectSearchResult(i){
+  var sd=document.getElementById('map-sd');
+  if(!sd||!sd._results)return;
+  var g=sd._results[i];if(!g)return;
+  closeSearchDropdown();
+  var inp=document.getElementById('map-si');
+  if(inp)inp.value=g.addr;
+  var sx=document.getElementById('map-sx');if(sx)sx.style.display='block';
+  // Центрируем карту и открываем модал
+  if(ymap&&g.lat&&g.lon){
+    ymap.setCenter([g.lat,g.lon],16,{duration:500});
+    setTimeout(function(){openMapModal(g);},520);
+  }
+  // Подсвечиваем округ адреса
+  _highlightDistricts([g.sheet]);
+}
+
+function clearMapSearch(){
+  var inp=document.getElementById('map-si');if(inp)inp.value='';
+  var sx=document.getElementById('map-sx');if(sx)sx.style.display='none';
+  closeSearchDropdown();
+  _searchGroups=[];  // сбросить кеш при следующем поиске
+}
+
+function closeSearchDropdown(){
+  var sd=document.getElementById('map-sd');
+  if(sd){sd.classList.remove('open');sd._results=null;}
+}
+
+// Закрываем дропдаун при клике вне
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#map-searchbar'))closeSearchDropdown();
+});
+
+// ── Границы и подсветка округов (convex hull + ymaps.borders fallback) ─────
+var _hlLayer=null;          // ymaps.GeoObjectCollection — слой подсветки (ниже маркеров)
+var _markersLayer=null;     // ymaps.GeoObjectCollection — слой маркеров домов
+var _markerData=[];         // плоский JS-массив маркеров — НЕ зависит от внутренностей Yandex
+var _bordersCache={};       // sheet → [[lat,lon],...] готовые координаты полигонов
+var _bordersReady=false;    // флаг: реальные границы загружены
+var _bordersAttempted=false;
+
+// Алгоритм выпуклой оболочки (Andrew's monotone chain)
+function _convexHull(pts){
+  if(!pts||pts.length<2)return pts||[];
+  var p=pts.slice().sort(function(a,b){return a[0]-b[0]||a[1]-b[1];});
+  function cross(o,a,b){return(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);}
+  var lo=[],hi=[];
+  for(var i=0;i<p.length;i++){while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p[i])<=0)lo.pop();lo.push(p[i]);}
+  for(var i=p.length-1;i>=0;i--){while(hi.length>=2&&cross(hi[hi.length-2],hi[hi.length-1],p[i])<=0)hi.pop();hi.push(p[i]);}
+  hi.pop();lo.pop();
+  return lo.concat(hi);
+}
+
+// Расширяем выпуклую оболочку от центроида на deg градусов (~2 км)
+function _bufferHull(hull,deg){
+  if(!hull||hull.length<2)return hull;
+  var cx=hull.reduce(function(s,p){return s+p[0];},0)/hull.length;
+  var cy=hull.reduce(function(s,p){return s+p[1];},0)/hull.length;
+  return hull.map(function(p){
+    var dx=p[0]-cx,dy=p[1]-cy;
+    var len=Math.sqrt(dx*dx+dy*dy)||0.0001;
+    return[p[0]+dx/len*deg,p[1]+dy/len*deg];
+  });
+}
+
+// Попытка загрузить реальные границы через ymaps.borders (Yandex Maps 2.1)
+// Вызывается один раз при инициализации карты
+function _tryLoadRealBorders(){
+  if(_bordersAttempted)return;
+  _bordersAttempted=true;
+  if(typeof ymaps==='undefined'||!ymaps.borders){return;}
+  ymaps.borders.load('RU-MOS',{lang:'ru',quality:2})
+    .then(function(res){
+      var feats=(res&&res.features)||[];
+      if(!feats.length)return;
+      feats.forEach(function(f){
+        var p=f.properties||{};
+        var nm=(p.name||p.NAME||p.NL_NAME_2||p.NAME_2||'').replace(/городской округ|муниципальный район|г\.\s*/gi,'').trim();
+        if(!nm||!f.geometry)return;
+        var geom=f.geometry;
+        var rings=null;
+        if(geom.type==='Polygon')rings=geom.coordinates;
+        else if(geom.type==='MultiPolygon'){
+          // Берём крупнейший контур
+          var biggest=geom.coordinates.reduce(function(mx,c){return c[0].length>mx[0].length?c:mx;},geom.coordinates[0]);
+          rings=biggest;
+        }
+        if(rings){_bordersCache[nm]=flipCoords(rings);}
+      });
+      _bordersReady=true;
+    })
+    .catch(function(){_bordersReady=false;});
+}
+
+// Нормализация имени для сопоставления с кешем границ
+function _matchBorder(sheet){
+  if(_bordersCache[sheet])return _bordersCache[sheet];
+  var norm=sheet.replace(/городской округ|муниципальный|район|г\.\s*/gi,'').trim().toLowerCase();
+  for(var k in _bordersCache){
+    var kn=k.toLowerCase();
+    if(kn===norm||kn.indexOf(norm)>=0||norm.indexOf(kn)>=0)return _bordersCache[k];
+  }
+  return null;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// MIGRATION — цветные кривые-стрелки от аварийного дома → новое жильё
+// ════════════════════════════════════════════════════════════════════════
+var _migrationActive=false;
+var _migrationLayer=null;     // ymaps.GeoObjectCollection — слой стрелок и маркеров
+var _migrationGen=0;          // защита от гонок при повторном переключении
+var _lastMigrationData=null;  // кеш последней структуры данных
+var _arrowLayoutClass=null;   // кастомная иконка-наконечник стрелки
+var _dstLayoutClass=null;     // кастомная иконка маркера назначения
+
+// Регистрируем кастомные SVG-иконки (один раз после готовности ymaps)
+function _ensureMigLayouts(){
+  if(typeof ymaps==='undefined')return;
+  if(!_arrowLayoutClass){
+    _arrowLayoutClass=ymaps.templateLayoutFactory.createClass(
+      '<div class="mig-arr-head" style="transform:translate(-50%,-50%) rotate({{properties.angle}}deg);color:{{properties.color}}">'+
+        '<svg viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">'+
+          '<path d="M2 11 L17 11 M11 4 L19 11 L11 18" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'+
+        '</svg>'+
+      '</div>'
+    );
+  }
+  if(!_dstLayoutClass){
+    _dstLayoutClass=ymaps.templateLayoutFactory.createClass(
+      '<div class="mig-dst-house" style="color:{{properties.color}}">'+
+        '<svg viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">'+
+          // Тело дома — белое с цветной обводкой
+          '<rect x="2" y="16" width="26" height="18" rx="1.5" fill="white" stroke="currentColor" stroke-width="2"/>'+
+          // Крыша — закрашенный треугольник цветом округа
+          '<polygon points="0,17 15,2 30,17" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>'+
+          // Дверь
+          '<rect x="11" y="22" width="8" height="12" rx="2" fill="currentColor"/>'+
+          // Окно левое
+          '<rect x="3" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
+          // Окно правое
+          '<rect x="21" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
+          // Маленькая труба
+          '<rect x="20" y="5" width="3" height="7" rx="1" fill="currentColor"/>'+
+        '</svg>'+
+      '</div>'
+    );
+  }
+}
+
+// Кривая Безье — массив точек между source и destination
+// Кривая Безье — все изгибы в одном направлении, амплитуда нарастает (веер)
+function _bezierCurvePoints(start,end,dstIdx,segments){
+  if(typeof dstIdx!=='number'){segments=dstIdx;dstIdx=0;}
+  segments=segments||40;
+  var dLat=end[0]-start[0],dLon=end[1]-start[1];
+  var midLat=(start[0]+end[0])/2,midLon=(start[1]+end[1])/2;
+  // Всегда одно направление, амплитуда 0.10 → 0.10+N*0.07 (веер)
+  var k=Math.min(0.10+dstIdx*0.07,0.55);
+  var ctrlLat=midLat-dLon*k;
+  var ctrlLon=midLon+dLat*k;
+  var pts=[];
+  for(var i=0;i<=segments;i++){
+    var t=i/segments,u=1-t;
+    pts.push([u*u*start[0]+2*u*t*ctrlLat+t*t*end[0],
+              u*u*start[1]+2*u*t*ctrlLon+t*t*end[1]]);
+  }
+  return pts;
+}
+
+// Угол поворота наконечника (deg), право=0deg (screen-coords)
+function _bearingDeg(p1,p2){
+  var dLat=p2[0]-p1[0],dLon=p2[1]-p1[1];
+  return Math.atan2(-dLat,dLon)*180/Math.PI;
+}
+
+// Нормализация адреса для надёжного сопоставления
+function _normAddr(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ');}
+
+// Сбор данных: 2 прохода
+// Проход 1 — собираем назначения из ВСЕХ строк с newAddr (без требования геокоординат источника)
+// Проход 2 — строим пары (для кривых) только там, где есть координаты источника
+function _buildMigrationData(){
+  var destinations={}, pairs={};
+
+  // ── Проход 1: полная агрегация для модала ────────────────────────────
+  filteredData.forEach(function(r){
+    var srcAddr=String(r[C.addr]||'').trim();
+    var dstAddr=String(r[C.newAddr]||'').trim();
+    if(!srcAddr||!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+    var srcSheet=r._sheet||'—';
+    if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
+    var dstDistrict=_getDstDistrict(r);   // newDistrict столбец → парсинг из адреса
+    var srcKey=srcSheet+'||'+srcAddr;
+    // КЛЮЧ только по нормализованному адресу — иначе "Шатура||адрес" ≠ "Луховицы||адрес"
+    // когда newDistrict пуст и fallback — имя исходного округа
+    var dstKey=_normAddr(dstAddr);
+    if(!destinations[dstKey]){
+      destinations[dstKey]={
+        dstKey:dstKey,dstAddr:dstAddr,
+        // Округ назначения — первое непустое значение из newDistrict
+        dstDistrict:dstDistrict||'—',
+        dstLat:0,dstLon:0,
+        totalApts:0,totalArea:0,totalCit:0,
+        sources:{},byDistrict:{},byDistrictArea:{}
+      };
+    }else if(!destinations[dstKey].dstDistrict||destinations[dstKey].dstDistrict==='—'){
+      // Обновляем dstDistrict первым непустым значением
+      if(dstDistrict)destinations[dstKey].dstDistrict=dstDistrict;
+    }
+    var dst=destinations[dstKey];
+    var a=n(r[C.area]),cit=n(r[C.citizens]);
+    dst.totalApts++;dst.totalArea+=a;dst.totalCit+=cit;
+    if(!dst.sources[srcKey]){
+      dst.sources[srcKey]={srcSheet:srcSheet,srcAddr:srcAddr,
+        srcLat:0,srcLon:0,count:0,area:0,apts:[]};
+    }
+    dst.sources[srcKey].count++;
+    dst.sources[srcKey].area+=a;
+    dst.sources[srcKey].apts.push(r);
+    dst.byDistrict[srcSheet]=(dst.byDistrict[srcSheet]||0)+1;
+    dst.byDistrictArea[srcSheet]=(dst.byDistrictArea[srcSheet]||0)+a;
+  });
+
+  // ── Проход 2: пары для отрисовки (только источники с координатами) ──
+  var normMap={};
+  _markerData.forEach(function(m){normMap[m.sheet+'||'+_normAddr(m.addr)]=m;});
+
+  filteredData.forEach(function(r){
+    var srcAddr=String(r[C.addr]||'').trim();
+    var dstAddr=String(r[C.newAddr]||'').trim();
+    if(!srcAddr||!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+    var srcSheet=r._sheet||'—';
+    if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
+    var src=normMap[srcSheet+'||'+_normAddr(srcAddr)];
+    if(!src||!src.lat)return;
+    var srcKey=srcSheet+'||'+srcAddr;
+    var dstKey=_normAddr(dstAddr);          // тот же ключ что и в проходе 1
+    var pairKey=srcKey+'→'+dstKey;
+    var dst=destinations[dstKey];if(!dst)return;
+    if(dst.sources[srcKey]&&!dst.sources[srcKey].srcLat){
+      dst.sources[srcKey].srcLat=src.lat;
+      dst.sources[srcKey].srcLon=src.lon;
+    }
+    if(!pairs[pairKey]){
+      pairs[pairKey]={
+        srcSheet:srcSheet,srcAddr:srcAddr,srcLat:src.lat,srcLon:src.lon,
+        dst:dst,count:0,apts:[]
+      };
+    }
+    pairs[pairKey].count++;
+    pairs[pairKey].apts.push(r);
+  });
+
+  // Нумеруем пары по назначению для вариации изгиба кривых
+  var dstIdxMap={};
+  var pairsArr=Object.values(pairs);
+  pairsArr.forEach(function(p){
+    var dk=p.dst.dstKey;
+    if(dstIdxMap[dk]===undefined)dstIdxMap[dk]=0;
+    p._dstIdx=dstIdxMap[dk]++;
+    p._dstTotal=0; // заполним ниже
+  });
+  pairsArr.forEach(function(p){p._dstTotal=dstIdxMap[p.dst.dstKey]||1;});
+
+  return{pairs:pairsArr,destinations:destinations};
+}
+
+// Геокодинг только уникальных назначений (не пар)
+function _geocodeMigrationDestinations(data,myGen){
+  return new Promise(function(resolve){
+    var dstList=Object.values(data.destinations);
+    if(!dstList.length){resolve();return;}
+    // Сначала пробуем кеш
+    dstList.forEach(function(d){
+      var k='mig|'+_normAddr(d.dstAddr);   // ключ = нормализованный адрес (как dstKey)
+      if(geocodeCache[k]){d.dstLat=geocodeCache[k][0];d.dstLon=geocodeCache[k][1];}
+    });
+    var needGeo=dstList.filter(function(d){return !d.dstLat;});
+    if(!needGeo.length){resolve();return;}
+    var BATCH=12,DELAY=80;
+    var idx=0,done=0,total=needGeo.length;
+    function next(){
+      if(_migrationGen!==myGen){resolve();return;}
+      if(idx>=needGeo.length){resolve();return;}
+      var end=Math.min(idx+BATCH,needGeo.length);
+      var slice=needGeo.slice(idx,end);
+      idx=end;
+      Promise.all(slice.map(function(it){
+        var q='Московская область, '+it.dstDistrict+', '+it.dstAddr;
+        return ymaps.geocode(q,{results:1,boundedBy:[[53.5,34.5],[57.5,41.0]]})
+          .then(function(res){
+            var obj=res.geoObjects.get(0);
+            if(obj){
+              var c=obj.geometry.getCoordinates();
+              if(c&&c[0]>53&&c[0]<58&&c[1]>34&&c[1]<42){
+                it.dstLat=c[0];it.dstLon=c[1];
+                geocodeCache['mig|'+_normAddr(it.dstAddr)]=c;
+                _incDailyCount();    // считаем API-запрос
+                _markCacheDirty();
+              }
+            }
+          })
+          .catch(function(){})
+          .then(function(){
+            done++;_setOverlay(true,'Поиск адресов нового жилья '+done+'/'+total,Math.round(done/total*100));
+          });
+      })).then(function(){
+        if(idx<needGeo.length)setTimeout(next,DELAY);
+        else resolve();
+      });
+    }
+    _setOverlay(true,'Поиск адресов нового жилья 0/'+total,0);
+    next();
+  });
+}
+
+// Отрисовка: веер кривых с переменным изгибом и толщиной + маркеры назначения
+function _drawMigrations(data){
+  if(!_migrationLayer)return 0;
+  _migrationLayer.removeAll();
+  _ensureMigLayouts();
+
+  // Рисуем кривые — веер с вариацией изгиба по _dstIdx
+  data.pairs.forEach(function(p){
+    var dst=p.dst;
+    if(!dst.dstLat||!dst.dstLon)return;
+    var color=_mapColor(p.srcSheet);
+    // Толщина 2–7px пропорционально числу квартир
+    var sw=Math.max(2,Math.min(7,1.6+p.count*0.22));
+    var points=_bezierCurvePoints([p.srcLat,p.srcLon],[dst.dstLat,dst.dstLon],p._dstIdx||0,40);
+    // Подложка (читаемость на любом фоне карты)
+    _migrationLayer.add(new ymaps.Polyline(points,{},{
+      strokeColor:'#fff',strokeWidth:sw+3,strokeOpacity:0.28
+    }));
+    // Основная цветная кривая
+    _migrationLayer.add(new ymaps.Polyline(points,{
+      hintContent:p.srcAddr+' ('+p.srcSheet+') → '+dst.dstAddr+' · '+p.count+' кв.'
+    },{
+      strokeColor:color,strokeWidth:sw,strokeOpacity:0.90
+    }));
+    // Наконечник стрелки на 90% кривой — не перекрывает белый маркер назначения
+    if(_arrowLayoutClass&&points.length>3){
+      var lastIdx=Math.floor(points.length*0.90);
+      var angle=_bearingDeg(points[lastIdx-3]||points[lastIdx-1],points[lastIdx]);
+      try{
+        _migrationLayer.add(new ymaps.Placemark(points[lastIdx],{
+          angle:angle,color:color,
+          hintContent:p.srcAddr+' → '+dst.dstAddr+' · '+p.count+' кв.'
+        },{
+          iconLayout:_arrowLayoutClass,
+          iconShape:{type:'Rectangle',coordinates:[[-12,-12],[12,12]]}
+        }));
+      }catch(e){}
+    }
+  });
+
+  // Маркеры назначения — один на уникальный адрес (белый кружок с цветной обводкой)
+  var dstList=Object.values(data.destinations).filter(function(d){return d.dstLat&&d.dstLon;});
+  dstList.forEach(function(dst){
+    var topSheet=Object.entries(dst.byDistrict).sort(function(a,b){return b[1]-a[1];})[0];
+    var col=topSheet?_mapColor(topSheet[0]):'#3a7d5c';
+    try{
+      var pm=new ymaps.Placemark([dst.dstLat,dst.dstLon],{
+        color:col,
+        hintContent:'🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. · '+Object.keys(dst.byDistrict).length+' округов · нажмите для деталей'
+      },{
+        iconLayout:_dstLayoutClass,
+        iconShape:{type:'Rectangle',coordinates:[[-15,-34],[15,0]]}
+      });
+      pm.events.add('click',function(e){e.stopPropagation();_openDestinationModal(dst);});
+      _migrationLayer.add(pm);
+    }catch(e){}
+  });
+
+  var cnt=document.getElementById('mig-cnt');
+  if(cnt){
+    if(dstList.length>0){cnt.textContent=dstList.length;cnt.style.display='inline-block';}
+    else cnt.style.display='none';
+  }
+  return dstList.length;
+}
+
+// Модал назначения: все адреса-источники + топ округов
+function _openDestinationModal(dst){
+  var sources=Object.values(dst.sources).sort(function(a,b){return b.count-a.count;});
+  var districts=Object.entries(dst.byDistrict).sort(function(a,b){return b[1]-a[1];});
+  document.getElementById('modal-total').textContent=dst.totalApts;
+  document.getElementById('modal-total').style.color='#3a7d5c';
+  document.getElementById('modal-title').textContent='🏘 Новое жильё · '+sources.length+' адресов источников';
+  var html='';
+  // Шапка с инфой о назначении
+  html+='<div style="background:var(--row-bg);border-radius:12px;padding:14px 16px;margin-bottom:14px;border-left:3px solid #3a7d5c">'+
+    '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Адрес назначения</div>'+
+    '<div style="font-size:14px;font-weight:800;color:var(--ink);margin-bottom:3px">'+dst.dstAddr+'</div>'+
+    '<div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:12px">'+dst.dstDistrict+'</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:11px">'+
+      '<div><span style="color:var(--muted)">Квартир:</span> <b style="color:var(--ink)">'+dst.totalApts+'</b></div>'+
+      '<div><span style="color:var(--muted)">Граждан:</span> <b style="color:var(--ink)">'+dst.totalCit+'</b></div>'+
+      '<div><span style="color:var(--muted)">Площадь:</span> <b style="color:var(--ink)">'+dst.totalArea.toFixed(1)+' м²</b></div>'+
+    '</div></div>';
+  // Топ округов-источников
+  if(districts.length){
+    var max=districts[0][1];
+    html+='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;padding-left:2px">Топ округов источников · '+districts.length+'</div>';
+    html+='<div style="background:var(--row-bg);border-radius:10px;padding:6px;margin-bottom:14px">';
+    districts.forEach(function(d,i){
+      var sheet=d[0],cnt=d[1];
+      var color=_mapColor(sheet);
+      var pct=Math.round(cnt/max*100);
+      var area=dst.byDistrictArea[sheet]||0;
+      html+='<div class="mig-dst-row">'+
+        '<span class="mig-dst-rank">'+(i+1)+'</span>'+
+        '<span class="mig-dst-name">'+sheet+'</span>'+
+        '<span style="font-size:10px;color:var(--muted);font-weight:600">'+area.toFixed(0)+' м²</span>'+
+        '<div class="mig-dst-bar"><div class="mig-dst-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'+
+        '<span class="mig-dst-cnt" style="color:'+color+'">'+cnt+'</span>'+
+      '</div>';
+    });
+    html+='</div>';
+  }
+  // Все адреса-источники
+  html+='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;padding-left:2px">Адреса аварийных домов · '+sources.length+'</div>';
+  html+=sources.map(function(s,i){
+    var color=_mapColor(s.srcSheet);
+    return'<div class="mrow" style="border-left-color:'+color+'">'+
+      '<span class="mrow-rank">'+(i+1)+'</span>'+
+      '<span class="mrow-name">'+s.srcAddr+'<small>'+s.srcSheet+' · '+s.count+' кв.</small></span>'+
+      '<span class="mrow-meta">'+s.area.toFixed(1)+' м²</span>'+
+      '<span class="mrow-val" style="color:'+color+'">'+s.count+' →</span></div>';
+  }).join('');
+  document.getElementById('modal-body').innerHTML=html;
+  openModal();
+}
+
+// Перестраиваем слой маркеров: физически добавляем/убираем из коллекции
+// (options.set('visible') ненадёжен в Yandex Maps 2.1)
+function _rebuildMarkersLayer(){
+  if(!_markersLayer||!_markerData.length)return;
+  _markersLayer.removeAll();
+  // Какие дома имеют данные миграции (newAddr заполнен)
+  var migratingSrc={};
+  if(_migrationActive){
+    filteredData.forEach(function(r){
+      var dstAddr=String(r[C.newAddr]||'').trim();
+      if(!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+      var srcSheet=r._sheet||'—';
+      if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
+      migratingSrc[srcSheet+'||'+_normAddr(String(r[C.addr]||''))]=true;
+    });
+  }
+  _markerData.forEach(function(m){
+    var byRound=!_mapRoundFilter.length||_mapRoundFilter.indexOf(m.sheet)>=0;
+    var byMig=!_migrationActive||!!migratingSrc[m.sheet+'||'+_normAddr(m.addr)];
+    m.visible=byRound&&byMig;
+    if(m.visible)_markersLayer.add(m.pm);
+  });
+}
+// Алиас для обратной совместимости с вызовами в других функциях
+function _updateMarkerVisibilityForMigration(){_rebuildMarkersLayer();}
+
+// Главное переключение режима
+function toggleMigration(){
+  _migrationActive=!_migrationActive;
+  var btn=document.getElementById('mig-btn');
+  if(btn){if(_migrationActive)btn.classList.add('active');else btn.classList.remove('active');}
+  if(!_migrationActive){
+    if(_migrationLayer)_migrationLayer.removeAll();
+    var cnt=document.getElementById('mig-cnt');
+    if(cnt)cnt.style.display='none';
+    _lastMigrationData=null;
+    _updateMarkerVisibilityForMigration();   // вернуть все маркеры
+    _setOverlay(false);
+    return;
+  }
+  if(!ymap){_geoSetStatus('Карта не готова');_migrationActive=false;if(btn)btn.classList.remove('active');return;}
+  if(!_migrationLayer){
+    _migrationLayer=new ymaps.GeoObjectCollection();
+    ymap.geoObjects.add(_migrationLayer);
+  }
+  _migrationGen++;
+  var myGen=_migrationGen;
+  var data=_buildMigrationData();
+  if(!data.pairs.length){
+    _geoSetStatus('Нет данных миграции'+(_mapRoundFilter.length?' для выбранного округа':' в текущей выборке'));
+    _migrationActive=false;
+    if(btn)btn.classList.remove('active');
+    return;
+  }
+  _lastMigrationData=data;
+  _geocodeMigrationDestinations(data,myGen).then(function(){
+    if(_migrationGen!==myGen||!_migrationActive)return;
+    _setOverlay(false);
+    var drawn=_drawMigrations(data);
+    var total=Object.keys(data.destinations).length;
+    var failed=total-drawn;
+    _geoSetStatus('Миграция: '+drawn+' адресов назначения · '+data.pairs.length+' маршрутов'+(failed?' · ⚠ '+failed+' не найдено':''));
+    _updateMarkerVisibilityForMigration();   // скрыть дома без миграции
+  });
+}
+
+// Обновление миграций при смене фильтра (если режим активен)
+function _refreshMigrationsIfActive(){
+  if(!_migrationActive)return;
+  if(!_migrationLayer)return;
+  _migrationLayer.removeAll();
+  _migrationGen++;
+  var myGen=_migrationGen;
+  var data=_buildMigrationData();
+  if(!data.pairs.length){
+    _lastMigrationData=null;
+    var cnt=document.getElementById('mig-cnt');
+    if(cnt)cnt.style.display='none';
+    _setOverlay(false);
+    _updateMarkerVisibilityForMigration();
+    return;
+  }
+  _lastMigrationData=data;
+  _geocodeMigrationDestinations(data,myGen).then(function(){
+    if(_migrationGen!==myGen||!_migrationActive)return;
+    _setOverlay(false);
+    _drawMigrations(data);
+    _updateMarkerVisibilityForMigration();
+  });
+}
+
+// Вычисляем центр и радиус для подсветки округа из _markerData (плоский массив, надёжно)
+function _districtGeoFromMarkers(sheet){
+  var pts=_markerData.filter(function(m){return m.sheet===sheet&&m.lat&&m.lon;}).map(function(m){return[m.lat,m.lon];});
+  if(!pts.length){
+    var rc=ROUND_CENTERS[sheet];
+    return rc?{center:rc,radius:10000}:null;
+  }
+  var cx=pts.reduce(function(s,p){return s+p[0];},0)/pts.length;
+  var cy=pts.reduce(function(s,p){return s+p[1];},0)/pts.length;
+  var maxDist=0;
+  pts.forEach(function(p){
+    var dLat=(p[0]-cx)*111320;
+    var dLon=(p[1]-cy)*111320*Math.cos(cx*Math.PI/180);
+    var d=Math.sqrt(dLat*dLat+dLon*dLon);
+    if(d>maxDist)maxDist=d;
+  });
+  return{center:[cx,cy],radius:Math.max(maxDist+3000,5000)};
+}
+
+// Главная функция: подсвечивает выбранные округа кольцами
+function _highlightDistricts(sheets){
+  if(!ymap||!_hlLayer)return;
+  _hlLayer.removeAll();
+  if(!sheets||!sheets.length)return;
+  sheets.forEach(function(sheet){
+    var col=_mapColor(sheet);
+    // Приоритет 1: реальные границы из ymaps.borders / BORDERS_URL
+    if(_bordersReady){
+      var borderCoords=_matchBorder(sheet);
+      if(borderCoords){
+        try{
+          var poly=new ymaps.Polygon(borderCoords,{hintContent:sheet},{
+            fillColor:col+'26',strokeColor:col,strokeWidth:3,
+            strokeOpacity:0.8,fillOpacity:1,
+            interactivityModel:'default#transparent'
+          });
+          _hlLayer.add(poly);
+          return;
+        }catch(e){}
+      }
+    }
+    // Приоритет 2: Circle вокруг центроида маркеров (всегда работает в Yandex Maps)
+    var info=_districtGeoFromMarkers(sheet);
+    if(!info)return;
+    try{
+      var circle=new ymaps.Circle([info.center,info.radius],{hintContent:sheet},{
+        fillColor:col+'26',
+        strokeColor:col,
+        strokeWidth:3,
+        strokeOpacity:0.8,
+        fillOpacity:1,
+        interactivityModel:'default#transparent'
+      });
+      _hlLayer.add(circle);
+    }catch(e){}
+  });
+}
+
+// ── fitBounds ─────────────────────────────────────────────────────────────
+function _fitMap(coordsArr){
+  if(!ymap||!coordsArr||!coordsArr.length)return;
+  try{
+    if(coordsArr.length===1){ymap.setCenter(coordsArr[0],15);}
+    else{ymap.setBounds(ymaps.util.bounds.fromPoints(coordsArr),{checkZoomRange:true,zoomMargin:60});}
+  }catch(e){}
+}
+
+// ── Цветная легенда ───────────────────────────────────────────────────────
+function _buildColorLegend(){
+  var el=document.getElementById('map-color-legend');if(!el)return;
+  el.innerHTML=Object.entries(_mapRoundColors).sort(function(a,b){return a[0].localeCompare(b[0],'ru');}).map(function(e){
+    return'<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--ink-soft);font-weight:600;white-space:nowrap">'+
+      '<span style="width:9px;height:9px;border-radius:3px;background:'+e[1]+';display:inline-block;flex-shrink:0"></span>'+e[0]+'</span>';
+  }).join('');
+}
+
+// ── Оверлей загрузки ──────────────────────────────────────────────────────
+function _setOverlay(show,txt,pct){
+  var ov=document.getElementById('map-overlay');if(!ov)return;
+  if(show){
+    ov.classList.add('active');
+    var sub=document.getElementById('map-ov-sub');
+    var fill=document.getElementById('map-ov-fill');
+    if(sub)sub.textContent=txt||'';
+    if(fill)fill.style.width=(pct||0)+'%';
+  }else{ov.classList.remove('active');}
+}
+
+// ── Главная функция рендера карты ─────────────────────────────────────────
+function renderMapPage(){
+  if(typeof ymaps==='undefined'){
+    _geoSetStatus('Яндекс.Карты не загрузились — проверьте API-ключ');
+    return;
+  }
+  ymaps.ready(function(){
+    yReady=true;
+    if(!ymap){
+      ymap=new ymaps.Map('map',{
+        center:[55.55,37.5],zoom:8,
+        controls:['zoomControl','typeSelector','fullscreenControl']
+      },{suppressMapOpenBlock:true});
+      mapInited=true;
+      // Пересчитываем размер сразу — на случай если контейнер был скрыт
+      setTimeout(function(){try{ymap.container.fitToViewport();}catch(e){}},50);
+      _tryLoadRealBorders();
+      loadBorders();
+    }
+    // Защитное пересоздание слоёв если их нет
+    if(!_hlLayer){
+      _hlLayer=new ymaps.GeoObjectCollection();
+      ymap.geoObjects.add(_hlLayer);
+    }
+    if(!_markersLayer){
+      _markersLayer=new ymaps.GeoObjectCollection();
+      ymap.geoObjects.add(_markersLayer);
+    }
+    // Полная очистка перед рендером
+    _markersLayer.removeAll();
+    _hlLayer.removeAll();
+    _markerData=[];
+    if(_migrationLayer)_migrationLayer.removeAll();
+    // Принудительный пересчёт размера контейнера (на случай если карта была скрыта)
+    try{ymap.container.fitToViewport();}catch(e){}
+    // Сбрасываем поиск
+    clearMapSearch();
+    _searchGroups=[];
+    _mapRoundColors={};_mapRoundIdx=0;
+
+    var groups=buildAddressGroups(filteredData);
+    if(!groups.length){
+      _geoSetStatus('Нет адресов в текущей выборке');
+      _setOverlay(false);return;
+    }
+    // Стабильная палитра по алфавиту
+    groups.map(function(g){return g.sheet;})
+      .filter(function(s,i,a){return a.indexOf(s)===i;})
+      .sort(function(a,b){return a.localeCompare(b,'ru');})
+      .forEach(function(s){_mapColor(s);});
+
+    var withCoords=groups.filter(function(g){return g.lat&&g.lon;});
+    var needGeo   =groups.filter(function(g){return !g.lat||!g.lon;});
+
+    _geoGen++;var myGen=_geoGen;
+
+    // ── showAll: рисует маркеры из groups у которых есть координаты ──────
+    function showAll(){
+      if(_geoGen!==myGen)return;
+      _setOverlay(false);
+      if(!_markersLayer){
+        _markersLayer=new ymaps.GeoObjectCollection();
+        ymap.geoObjects.add(_markersLayer);
+      }
+      _markersLayer.removeAll();
+      _markerData=[];
+      var allCoords=[];
+      groups.forEach(function(g){
+        if(!g.lat||!g.lon)return;
+        var byRound=!_mapRoundFilter.length||_mapRoundFilter.indexOf(g.sheet)>=0;
+        var col=_mapColor(g.sheet);
+        var pm=new ymaps.Placemark([g.lat,g.lon],{sheet:g.sheet,
+          hintContent:g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.'
+        },{preset:'islands#circleDotIcon',iconColor:col});
+        pm.events.add('click',function(e){e.stopPropagation();openMapModal(g);});
+        _markerData.push({sheet:g.sheet,addr:g.addr,lat:g.lat,lon:g.lon,pm:pm,group:g,visible:byRound,color:col});
+        if(byRound)allCoords.push([g.lat,g.lon]);
+      });
+      _rebuildMarkersLayer();
+      _fitMap(allCoords);
+      _buildColorLegend();
+      var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+      _highlightDistricts(sheetsToHL);
+      _refreshMigrationsIfActive();
+      var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
+      var notFound=needGeo.length-geocoded;
+      var inQueue=Math.max(0,needGeo.length-Math.min(needGeo.length,50)-geocoded);
+      _geoSetStatus(
+        '✓ '+_markerData.length+' домов'+
+        (withCoords.length?' · '+withCoords.length+' из таблицы':'')+
+        (geocoded?' · '+geocoded+' геокодировано':'')+
+        ' · кеш: '+_geoCacheSize()+' адресов'+
+        (notFound>0&&inQueue>0?' · ⏳ '+inQueue+' в очереди':'')
+      );
+    }
+
+    // ── Шаг 1: показываем сразу что есть (таблица + кеш) ─────────────────
+    showAll();
+    if(!needGeo.length)return;
+
+    // ── Шаг 2: геокодируем остальные (используем суточный бюджет)
+    var budget=_dailyLeft();
+    var toGeo=needGeo.slice(0,budget);
+    var overLimit=needGeo.length-toGeo.length;
+    var qTxt=overLimit>0?' · лимит API: ещё '+overLimit+' завтра':'';
+
+    if(toGeo.length===0){
+      _geoSetStatus('⚠ Суточный лимит API исчерпан ('+GEO_DAY_LIMIT+'/сутки) · завтра геокодирование продолжится автоматически');
+      return;
+    }
+
+    _setOverlay(true,'Геокодирование 0/'+toGeo.length+qTxt,0);
+
+    _geocodeBatch(toGeo,4,300,myGen,function(done,total){
+      if(_geoGen!==myGen)return;
+      _setOverlay(true,'Геокодирование '+done+'/'+total+qTxt,Math.round(done/total*100));
+    }).then(function(results){
+      if(_geoGen!==myGen)return;
+      results.forEach(function(c,i){if(c){toGeo[i].lat=c[0];toGeo[i].lon=c[1];}});
+      showAll();
+    });
+  });
+}
+
+/* Границы городских округов — раскраска палитрой дашборда (Яндекс) */
+function loadBorders(){
+  // Попытка загрузить GeoJSON границ из внешнего источника (если задан BORDERS_URL)
+  if(!BORDERS_URL){return;}
+  fetch(BORDERS_URL).then(function(r){return r.json();}).then(function(gj){
+    var feats=gj.features||[];
+    feats.forEach(function(f){
+      var p=f.properties||{};
+      var nm=p.name||p.NAME||p.NL_NAME_2||p.NAME_2||p.district||p.okrug||'';
+      if(!nm||!f.geometry)return;
+      var key=nm.replace(/городской округ|муниципальный район|г\.\s*/gi,'').trim();
+      var geom=f.geometry;
+      var rings=null;
+      if(geom.type==='Polygon')rings=geom.coordinates;
+      else if(geom.type==='MultiPolygon'){
+        var biggest=geom.coordinates.reduce(function(mx,c){return c[0].length>mx[0].length?c:mx;},geom.coordinates[0]);
+        rings=biggest;
+      }
+      if(rings){_bordersCache[key]=flipCoords(rings);_bordersReady=true;}
+    });
+    // Перерисовываем подсветку если уже есть активный фильтр
+    var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+    if(sheetsToHL.length)_highlightDistricts(sheetsToHL);
+    _geoSetStatus('Границы загружены · '+feats.length+' полигонов');
+  }).catch(function(){
+    _geoSetStatus('Не удалось загрузить границы из BORDERS_URL');
+  });
+}
+// GeoJSON хранит [lon,lat], Яндексу нужно [lat,lon] — переворачиваем
+function flipCoords(rings){
+  return rings.map(function(ring){
+    return ring.map(function(pt){return [pt[1],pt[0]];});
+  });
+}
+
+/* MODALS */
+function openModal(){document.getElementById('modal').classList.add('open');}
+function closeModal(e){if(!e||e.target===document.getElementById('modal'))document.getElementById('modal').classList.remove('open');}
+
+function kpiModal(type){
+  var labels={total:'Квартир по округам',sob:'Собственников по округам',nan:'Нанимателей по округам',cert:'Сертификатов по округам',vyk:'Выкупов по округам'};
+  var colors={total:'#b08d4f',sob:'#3a7d5c',nan:'#5a7088',cert:'#b08d4f',vyk:'#7a6a8f'};
+  var aMap={total:'aT',sob:'aSob',nan:'aNan',cert:'aCert',vyk:'aVyk'};
+  var cntMap={total:'t',sob:'sob',nan:'nan',cert:'cert',vyk:'vyk'};
+  var rm=roundMap(filteredData);
+  var ck=cntMap[type],ak=aMap[type];
+  var sorted=Object.entries(rm).filter(function(e){return e[1][ck]>0;}).sort(function(a,b){return b[1][ck]-a[1][ck];});
+  var total=sorted.reduce(function(s,e){return s+e[1][ck];},0);
+  var totalArea=sorted.reduce(function(s,e){return s+e[1][ak];},0);
+  var color=colors[type];
+  document.getElementById('modal-total').textContent=total;
+  document.getElementById('modal-total').style.color=color;
+  document.getElementById('modal-title').textContent=labels[type]+' · '+totalArea.toFixed(0)+' м²';
+  document.getElementById('modal-body').innerHTML=sorted.map(function(e,i){
+    var v=e[1][ck],pct=total>0?Math.round(v/total*100):0,astr=e[1][ak]>0?e[1][ak].toFixed(0)+' м²':'—';
+    return'<div class="mrow" style="border-left-color:'+color+'" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\');closeModal()">'+
+      '<span class="mrow-rank">'+(i+1)+'</span>'+
+      '<span class="mrow-name">'+e[0]+'</span>'+
+      '<span class="mrow-meta">'+astr+' · '+pct+'%</span>'+
+      '<span class="mrow-val" style="color:'+color+'">'+v+'</span></div>';
+  }).join('');
+  openModal();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ТОП ОКРУГОВ ПО МИГРАЦИИ — три секции: входящие, внутренние, исходящие
+// ════════════════════════════════════════════════════════════════════════
+
+// Нормализация ё→е для корректного сравнения названий округов
+function _normRu(s){return String(s||'').toLowerCase().replace(/ё/g,'е');}
+
+// Определяем округ назначения: сначала из newDistrict, иначе — ищем название
+// известного округа в тексте newAddr (большинство адресов содержат город)
+function _getDstDistrict(r){
+  var explicit=String(r[C.newDistrict]||'').trim();
+  if(explicit)return explicit;
+  var addr=_normRu(String(r[C.newAddr]||''));   // нормализуем ё→е
+  if(!addr)return'';
+  for(var i=0;i<SHEETS.length;i++){
+    var name=_normRu(SHEETS[i].name);            // нормализуем ё→е
+    var esc=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    if(new RegExp('(^|[\\s,.\\-/])'+esc+'($|[\\s,.\\-/])','i').test(addr)){
+      return SHEETS[i].name;   // возвращаем каноническое написание из SHEETS
+    }
+  }
+  return'';
+}
+
+function showMigrationTop(){
+  // Агрегация по строкам с заполненным newAddr
+  var incoming={}, internal={}, outgoing={};
+  var totalMig=0;
+
+  filteredData.forEach(function(r){
+    var dstAddr=String(r[C.newAddr]||'').trim();
+    if(!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+    totalMig++;
+    var srcSheet=r._sheet||'—';
+    // Определяем округ назначения: явный столбец → парсинг из адреса
+    var dstDistrict=_getDstDistrict(r);
+    var a=n(r[C.area]);
+
+    // ── Исходящие (все кто уехал) ────────────────────────────────────
+    if(!outgoing[srcSheet])outgoing[srcSheet]={count:0,area:0,inter:0,intra:0,byDst:{}};
+    outgoing[srcSheet].count++;
+    outgoing[srcSheet].area+=a;
+
+    if(dstDistrict){
+      if(_normRu(dstDistrict)!==_normRu(srcSheet)){
+        // межокружная
+        outgoing[srcSheet].inter++;
+        outgoing[srcSheet].byDst[dstDistrict]=(outgoing[srcSheet].byDst[dstDistrict]||0)+1;
+        // ── Принимающие из других округов ────────────────────────────
+        if(!incoming[dstDistrict])incoming[dstDistrict]={count:0,area:0,bySource:{}};
+        incoming[dstDistrict].count++;
+        incoming[dstDistrict].area+=a;
+        incoming[dstDistrict].bySource[srcSheet]=(incoming[dstDistrict].bySource[srcSheet]||0)+1;
+      }else{
+        // внутренняя
+        outgoing[srcSheet].intra++;
+        if(!internal[srcSheet])internal[srcSheet]={count:0,area:0};
+        internal[srcSheet].count++;
+        internal[srcSheet].area+=a;
+      }
+    }
+  });
+
+  function sortD(obj,key){
+    return Object.entries(obj).sort(function(a,b){return b[1][key]-a[1][key];});
+  }
+  var inArr=sortD(incoming,'count');
+  var intArr=sortD(internal,'count');
+  var outArr=sortD(outgoing,'count');
+
+  // Шапка модала
+  document.getElementById('modal-total').textContent=totalMig.toLocaleString('ru');
+  document.getElementById('modal-total').style.color='var(--gold)';
+  document.getElementById('modal-title').textContent='Топ округов · направления миграции';
+
+  // Helper: строка рейтинга с прогресс-баром
+  function rowHtml(i,name,count,area,sub,max,color){
+    var pct=max>0?Math.round(count/max*100):0;
+    return'<div class="mig-dst-row">'+
+      '<span class="mig-dst-rank">'+(i+1)+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="mig-dst-name" style="color:'+color+'">'+name+'</div>'+
+        (sub?'<div style="font-size:9px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px">'+sub+'</div>':'')+'</div>'+
+      '<span style="font-size:9.5px;color:var(--muted);white-space:nowrap;margin-right:6px">'+area.toFixed(0)+' м²</span>'+
+      '<div class="mig-dst-bar"><div class="mig-dst-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'+
+      '<span class="mig-dst-cnt" style="color:'+color+'">'+count+'</span>'+
+    '</div>';
+  }
+
+  // Helper: секция с заголовком и списком
+  function sectionHtml(icon,title,sub,accentColor,rows,buildRow){
+    if(!rows.length)return'<div style="padding:12px 14px;color:var(--muted);font-size:12px;text-align:center">Нет данных</div>';
+    var total=rows.reduce(function(s,e){return s+e[1].count;},0);
+    var max=rows[0][1].count;
+    return'<div style="background:var(--row-bg);border-radius:14px;padding:14px 14px 8px;margin-bottom:16px;border-left:4px solid '+accentColor+'">'+
+      '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">'+
+        '<span style="font-size:20px;line-height:1">'+icon+'</span>'+
+        '<div style="flex:1">'+
+          '<div style="font-size:12px;font-weight:800;color:var(--ink);letter-spacing:-.01em">'+title+'</div>'+
+          '<div style="font-size:10px;color:var(--muted);font-weight:600;margin-top:1px">'+sub+'</div>'+
+        '</div>'+
+        '<div style="font-size:22px;font-weight:800;color:'+accentColor+';font-variant-numeric:tabular-nums">'+total+'</div>'+
+      '</div>'+
+      rows.map(function(e,i){return buildRow(e,i,max);}).join('')+
+    '</div>';
+  }
+
+  var html='';
+
+  // ── 1. Принимают из других округов ───────────────────────────────
+  html+=sectionHtml('🏘','Принимают из других округов','куда переехало больше всего жителей из других округов','#3a7d5c',inArr,
+    function(e,i,max){
+      var k=e[0],v=e[1];
+      var col=_mapColor(k);
+      var top3=Object.entries(v.bySource).sort(function(a,b){return b[1]-a[1];}).slice(0,4)
+        .map(function(s){return'<span style="background:rgba(58,125,92,.12);color:#3a7d5c;border-radius:4px;padding:1px 5px;font-weight:700">'+s[0]+' '+s[1]+'</span>';}).join(' ');
+      return rowHtml(i,k,v.count,v.area,'← из: '+top3,max,col);
+    });
+
+  // ── 2. Переселение внутри округа ────────────────────────────────
+  html+=sectionHtml('🔄','Переселение внутри округа','переехали в новое жильё в пределах своего округа','var(--gold)',intArr,
+    function(e,i,max){
+      var k=e[0],v=e[1];
+      var col=_mapColor(k);
+      var outv=outgoing[k]||{};
+      var pctIntra=outv.count>0?Math.round(v.count/outv.count*100):0;
+      return rowHtml(i,k,v.count,v.area,pctIntra+'% от всех выбывших из округа',max,col);
+    });
+
+  // ── 3. Откуда уезжают ────────────────────────────────────────────
+  html+=sectionHtml('🚚','Откуда уезжают','округа с наибольшим числом переселяемых (все направления)','var(--neg)',outArr,
+    function(e,i,max){
+      var k=e[0],v=e[1];
+      var col=_mapColor(k);
+      var top3=Object.entries(v.byDst||{}).sort(function(a,b){return b[1]-a[1];}).slice(0,3)
+        .map(function(s){return'<span style="background:rgba(176,90,79,.1);color:var(--neg);border-radius:4px;padding:1px 5px;font-weight:700">'+s[0]+' '+s[1]+'</span>';}).join(' ');
+      var intraTxt=v.intra?'внутри '+v.intra+'  ':'';
+      return rowHtml(i,k,v.count,v.area,intraTxt+(top3?'→ '+top3:''),max,col);
+    });
+
+  document.getElementById('modal-body').innerHTML=html;
+  openModal();
+}
+
+function decModal(key){
+  var cfg=decCfg.filter(function(c){return c.key===key;})[0];if(!cfg)return;
+  var rows=baseFilter().filter(function(r){
+    var dv=lo(r[C.decision]||'');
+    return cfg.filter==='none'?(dv.indexOf('положительн')<0&&dv.indexOf('рассм')<0&&dv.indexOf('приостановк')<0&&dv.indexOf('отказ')<0&&dv.indexOf('отриц')<0):(dv.indexOf(cfg.filter)>=0);
+  });
+  var totalArea=0,totalCit=0;
+  rows.forEach(function(r){totalArea+=n(r[C.area]);totalCit+=n(r[C.citizens]);});
+  rows.sort(function(a,b){return n(b[C.area])-n(a[C.area]);});
+  document.getElementById('modal-total').textContent=rows.length;
+  document.getElementById('modal-total').style.color=cfg.color;
+  document.getElementById('modal-title').textContent=cfg.label+' · '+totalArea.toFixed(0)+' м² · '+totalCit+' граждан';
+  document.getElementById('modal-body').innerHTML=rows.length?rows.map(function(r,i){
+    return'<div class="mrow" style="border-left-color:'+cfg.color+'">'+
+      '<span class="mrow-rank">'+(i+1)+'</span>'+
+      '<span class="mrow-name">'+(r[C.addr]||'—')+'<small>'+(r._sheet||'')+' · кв. '+(r[C.apt]||'—')+'</small></span>'+
+      '<span class="mrow-meta">'+(r[C.citizens]||'—')+' чел.</span>'+
+      '<span class="mrow-val" style="color:'+cfg.color+'">'+n(r[C.area]).toFixed(1)+' м²</span></div>';
+  }).join(''):'<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Нет домов</div>';
+  openModal();
+}
+
+function topModal(label,key){
+  var rm=roundMap(filteredData);
+  var ak=areaKey(key);
+  var srt=Object.entries(rm).filter(function(e){return e[1][key]>0;}).sort(function(a,b){return b[1][key]-a[1][key];});
+  var total=srt.reduce(function(s,e){return s+e[1][key];},0);
+  var totalArea=srt.reduce(function(s,e){return s+e[1][ak];},0);
+  var mx=srt.length?srt[0][1][key]:1;
+  document.getElementById('modal-total').textContent=srt.length;
+  document.getElementById('modal-total').style.color='var(--gold)';
+  document.getElementById('modal-title').textContent=label+' · всего '+total+' · '+totalArea.toFixed(0)+' м²';
+  document.getElementById('modal-body').innerHTML=srt.map(function(e,i){
+    var v=e[1][key],pct=Math.round(v/mx*100),astr=e[1][ak]>0?e[1][ak].toFixed(0)+' м²':'—';
+    return'<div class="mrow" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\');closeModal()">'+
+      '<span class="mrow-rank">'+(i+1)+'</span>'+
+      '<span class="mrow-name">'+e[0]+'</span>'+
+      '<span class="mrow-meta">'+astr+'</span>'+
+      '<span class="mrow-val">'+v+'</span></div>';
+  }).join('');
+  openModal();
+}
+
+/* DATA */
+// Список способов доступа к CSV. Первый — прямой запрос к Google.
+// Остальные — публичные CORS-прокси: нужны, когда страница открыта
+// на GitHub Pages / другом хостинге и браузер блокирует кросс-домен.
+var ENDPOINTS=[
+  function(u){return u;},
+  function(u){return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u);},
+  function(u){return 'https://corsproxy.io/?url='+encodeURIComponent(u);},
+  function(u){return 'https://thingproxy.freeboard.io/fetch/'+u;},
+  function(u){return 'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u);}
+];
+
+// Надёжная загрузка одного листа с повторными попытками и сменой прокси.
+// Возвращает {sheet,name,rows,ok}. ok=false ТОЛЬКО при сетевой/парс-ошибке
+// (тогда лист уходит в повторную загрузку), а не когда у округа просто нет строк.
+function fetchSheet(sh,longMode){
+  var timeoutMs=longMode?45000:26000;
+  var maxAttempts=longMode?10:ENDPOINTS.length+2;
+  return fetchSheetTry(sh,1,timeoutMs,maxAttempts);
+}
+function fetchSheetTry(sh,attempt,timeoutMs,maxAttempts){
+  return new Promise(function(resolve){
+    var base=PUB+'&gid='+sh.gid+'&cachebust='+Date.now()+'_'+attempt;
+    var endpoint=ENDPOINTS[(attempt-1)%ENDPOINTS.length];
+    var url=endpoint(base);
+    var done=false;
+    function retryOrFail(){
+      if(attempt<maxAttempts){
+        setTimeout(function(){
+          fetchSheetTry(sh,attempt+1,timeoutMs,maxAttempts).then(resolve);
+        },400*attempt);
+      }else{
+        resolve({sheet:sh,name:sh.name,rows:[],ok:false});
+      }
+    }
+    var timer=setTimeout(function(){
+      if(done)return;done=true;retryOrFail();
+    },timeoutMs);
+    try{
+      Papa.parse(url,{
+        download:true,header:false,skipEmptyLines:true,
+        complete:function(r){
+          if(done)return;done=true;clearTimeout(timer);
+          // Нет данных или прокси вернул страницу-ошибку (мало колонок,
+          // похоже на HTML) — пробуем следующий способ доступа
+          if(!r||!r.data||!r.data.length){retryOrFail();return;}
+          var head=r.data[0]||[];
+          var looksHtml=head.length<5||String(head[0]||'').toLowerCase().indexOf('<!doctype')>=0||String(head[0]||'').toLowerCase().indexOf('<html')>=0;
+          if(looksHtml){retryOrFail();return;}
+          var rows=[];
+          r.data.slice(1).forEach(function(row){
+            if(row&&row[0]&&String(row[0]).match(/^\d+$/)){row._sheet=sh.name;rows.push(row);}
+          });
+          // Лист получен (даже если у округа 0 записей) — это корректный результат
+          resolve({sheet:sh,name:sh.name,rows:rows,ok:true});
+        },
+        error:function(){
+          if(done)return;done=true;clearTimeout(timer);retryOrFail();
+        }
+      });
+    }catch(e){
+      if(done)return;done=true;clearTimeout(timer);retryOrFail();
+    }
+  });
+}
+
+function reloadAll(){
+  // ── Защита от гонки ─────────────────────────────────────────────────────
+  // Каждый вызов получает уникальный номер поколения.
+  // Все асинхронные коллбэки проверяют: если к моменту их срабатывания
+  // была запущена более новая загрузка — молча выходят, ничего не трогая.
+  _loadGen++;
+  var myGen=_loadGen;
+  function stale(){return _loadGen!==myGen;}
+  // ────────────────────────────────────────────────────────────────────────
+
+  clearInterval(autoT);clearInterval(cdT);secs=7200;
+  // Запоминаем активную вкладку чтобы вернуть её после загрузки
+  var prevActivePage=document.querySelector('.page.active');
+  var prevPageName=prevActivePage?prevActivePage.id.replace('page-',''):'overview';
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  var ld=document.getElementById('loading');ld.style.display='flex';
+
+  // Синхронно чистим глобальное состояние до старта любых запросов
+  allData=[];loaded=0;
+  mapMarkersBuilt=false;
+  selR=null;fState={round:[],dec:[],type:[]};
+  roundColorMap={};
+  // НЕ сбрасываем geocodeCache — адреса уже известны, маркеры появятся мгновенно после загрузки
+  // Сбрасываем геокодер: все ожидающие промисы дропаются через проверку _geoGen
+  _geoGen++;_geoQ=[];_geoBusy=false;_geoTotal=0;_geoDone=0;
+  // НЕ уничтожаем карту — просто чистим слои; ymap, _hlLayer, _markersLayer остаются живы
+  _bordersCache={};_bordersReady=false;_bordersAttempted=false;
+  _searchGroups=[];_mapRoundFilter=[];_markerData=[];
+  // Сбрасываем миграцию
+  _migrationActive=false;_migrationGen++;_lastMigrationData=null;
+  if(_migrationLayer){try{_migrationLayer.removeAll();}catch(e){}}
+  var migBtn=document.getElementById('mig-btn');if(migBtn)migBtn.classList.remove('active');
+  var migCnt=document.getElementById('mig-cnt');if(migCnt)migCnt.style.display='none';
+  if(ymap){
+    try{if(_markersLayer)_markersLayer.removeAll();}catch(e){}
+    try{if(_hlLayer)_hlLayer.removeAll();}catch(e){}
+  }
+
+  Object.keys(charts).forEach(function(k){
+    if(charts[k]){try{charts[k].destroy();}catch(e){}charts[k]=null;}
+  });
+  var fc0=document.getElementById('fcnt');if(fc0){fc0.textContent='';fc0.style.color='var(--gold)';}
+
+  var total=SHEETS.length;
+  var okCount=0,failed=[];
+  document.getElementById('ldtxt').textContent='Загрузка данных...';
+  document.getElementById('pgfill').style.width='0%';
+  document.getElementById('pgfill').style.background='linear-gradient(90deg,var(--gold-soft),var(--gold))';
+
+  var BATCH=6;
+  var batches=[];
+  for(var i=0;i<SHEETS.length;i+=BATCH)batches.push(SHEETS.slice(i,i+BATCH));
+
+  function applyResult(res){
+    if(stale())return; // ← эта загрузка уже отменена
+    if(res.ok){okCount++;res.rows.forEach(function(r){allData.push(r);});}
+    else failed.push(res.sheet);
+    loaded++;
+    document.getElementById('ldtxt').textContent=
+      'Листов: '+loaded+'/'+total+' · округов с данными: '+okCount+' · строк: '+allData.length;
+    document.getElementById('pgfill').style.width=Math.round(loaded/total*100)+'%';
+  }
+
+  var batchIdx=0;
+  function nextBatch(){
+    if(stale())return; // ← отменяем, если успела запуститься новая загрузка
+    if(batchIdx>=batches.length){retryPass();return;}
+    var b=batches[batchIdx++];
+    Promise.all(b.map(function(sh){return fetchSheet(sh,false);})).then(function(results){
+      if(stale())return;
+      results.forEach(applyResult);
+      nextBatch();
+    });
+  }
+
+  // Финальный последовательный проход по не загрузившимся листам
+  function retryPass(){
+    if(stale())return;
+    if(!failed.length){finish();return;}
+    var toRetry=failed.slice();failed=[];
+    var idx=0;
+    function nextR(){
+      if(stale())return;
+      if(idx>=toRetry.length){finish();return;}
+      var sh=toRetry[idx++];
+      document.getElementById('ldtxt').textContent=
+        'Повтор: '+idx+'/'+toRetry.length+' ('+sh.name+') · округов: '+okCount;
+      fetchSheet(sh,true).then(function(res){
+        if(stale())return;
+        if(res.ok){okCount++;res.rows.forEach(function(r){allData.push(r);});}
+        else failed.push(res.sheet);
+        nextR();
+      });
+    }
+    nextR();
+  }
+
+  function finish(){
+    if(stale())return; // ← если успели нажать «Обновить» ещё раз — не рендерим
+    if(!allData.length&&!okCount){
+      document.getElementById('ldtxt').innerHTML=
+        '<b>Данные не загрузились.</b>'+
+        '<span style="font-size:11px;color:var(--muted);display:block;margin-top:8px;line-height:1.6;max-width:520px">'+
+        'Проверьте по пунктам:<br>'+
+        '1. Файл открыт через <b>GitHub&nbsp;Pages</b> (адрес вида <i>username.github.io/…</i>), а не со страницы <i>github.com/…/blob/…</i> и не с <i>raw.githubusercontent.com</i> — там код не исполняется.<br>'+
+        '2. Таблица Google <b>опубликована в интернете</b> (Файл → Доступ → Опубликовать в интернете).<br>'+
+        '3. Прямой доступ и резервные CORS-прокси сейчас недоступны — подождите минуту и нажмите «Обновить».</span>'+
+        '<br><button class="btn-upd" style="margin-top:14px" onclick="reloadAll()">↺ Повторить загрузку</button>';
+      document.getElementById('pgfill').style.background='#b05a4f';
+      return;
+    }
+    filteredData=allData.slice();
+    buildFilterMenus();
+    renderAll();
+    ld.style.display='none';
+    // Восстанавливаем активную вкладку (а не форсим overview)
+    document.getElementById('page-'+prevPageName).classList.add('active');
+    // Активный пункт верхнего меню
+    document.querySelectorAll('.ptab').forEach(function(b){b.classList.remove('active');});
+    var tabs=document.querySelectorAll('.ptab');
+    var tabIdx={'overview':0,'gos':1,'finance':2,'mappage':3}[prevPageName];
+    if(tabs[tabIdx])tabs[tabIdx].classList.add('active');
+    // Если на карте — пересобираем маркеры с новыми данными
+    if(prevPageName==='mappage')setTimeout(renderMapPage,80);
+    document.getElementById('upd-time').textContent=
+      new Date().toLocaleTimeString('ru')+' · округов '+okCount+'/'+total+' · '+allData.length+' строк';
+    var fc=document.getElementById('fcnt');
+    if(fc){
+      if(failed.length){
+        fc.textContent='⚠ Не загрузились '+failed.length+' округов: '+
+          failed.map(function(s){return s.name;}).join(', ')+' — нажмите «Обновить»';
+        fc.style.color='#b05a4f';
+      }else{
+        fc.textContent='✓ Все '+total+' округов загружены';
+        fc.style.color='var(--pos)';
+        setTimeout(function(){
+          if(!stale()&&fc&&fc.textContent.indexOf('✓')===0){fc.textContent='';fc.style.color='var(--gold)';}
+        },6000);
+      }
+    }
+    startAuto();
+    if(mapInited&&ymap&&!mapMarkersBuilt){buildMapMarkers();}
+  }
+
+  nextBatch();
+}
+function updateMskTime(){
+  var now=new Date();
+  var msk=new Date(now.getTime()+now.getTimezoneOffset()*60000+3*3600000);
+  var pad=function(x){return x<10?'0'+x:x;};
+  var el=document.getElementById('msk-time');
+  if(el)el.textContent=pad(msk.getHours())+':'+pad(msk.getMinutes())+':'+pad(msk.getSeconds())+' МСК';
+}
+setInterval(updateMskTime,1000);updateMskTime();
+function startAuto(){clearInterval(autoT);clearInterval(cdT);secs=7200;autoT=setInterval(reloadAll,7200000);cdT=setInterval(function(){secs=Math.max(0,secs-1);var h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60,ts=h>0?(h+'ч '+m+'м'):(m>0?(m+'м'):(s+'с'));document.getElementById('upd-time').textContent='Данные: '+new Date().toLocaleTimeString('ru')+' · обн. через '+ts;},1000);}
+
+function baseFilter(){
+  return allData.filter(function(r){
+    var okR=fState.round.length===0||fState.round.indexOf(r._sheet)>=0;
+    var okD=fState.dec.length===0||fState.dec.indexOf(normDecision(r[C.decision]))>=0;
+    var okT=fState.type.length===0||fState.type.indexOf(normType(r[C.certType]))>=0;
+    return okR&&okD&&okT;
+  });
+}
+function roundMap(d){
+  var rm={};
+  d.forEach(function(r){
+    var k=r._sheet||'—';
+    if(!rm[k])rm[k]={t:0,sob:0,nan:0,cert:0,vyk:0,pos:0,
+      aT:0,aSob:0,aNan:0,aCert:0,aVyk:0,aPos:0,cit:0};
+    var a=n(r[C.area]);
+    rm[k].t++;rm[k].aT+=a;rm[k].cit+=n(r[C.citizens]);
+    var o=normOwner(r[C.owner]);
+    if(o==='Собственник'){rm[k].sob++;rm[k].aSob+=a;}
+    if(o==='Наниматель'){rm[k].nan++;rm[k].aNan+=a;}
+    var nt=normType(r[C.certType]);
+    if(nt==='Сертификат'){rm[k].cert++;rm[k].aCert+=a;}
+    if(nt==='Выкуп'){rm[k].vyk++;rm[k].aVyk+=a;}
+    if(normDecision(r[C.decision])==='Положительное'){rm[k].pos++;rm[k].aPos+=a;}
+  });
+  return rm;
+}
+// какой ключ площади соответствует разделу
+function areaKey(sk){return{t:'aT',sob:'aSob',nan:'aNan',cert:'aCert',vyk:'aVyk',pos:'aPos'}[sk]||'aT';}
+function applyF(){
+  selR=fState.round.length===1?fState.round[0]:null;
+  filteredData=baseFilter();
+  document.getElementById('fcnt').textContent=filteredData.length<allData.length?'▶ '+filteredData.length+' строк':'';
+  renderAll();
+}
+function resetF(){
+  fState={round:[],dec:[],type:[]};selR=null;
+  ['round','dec','type'].forEach(function(k){document.getElementById('fv-'+k).textContent='Все';document.getElementById('ft-'+k).classList.remove('has-val');});
+  buildFilterMenus();
+  filteredData=allData.slice();document.getElementById('fcnt').textContent='';renderAll();
+}
+function selRound(name){
+  var i=fState.round.indexOf(name);
+  if(i>=0)fState.round.splice(i,1);
+  else fState.round.push(name);
+  var lbl=fState.round.length===0?'Все':(fState.round.length===1?fState.round[0]:fState.round.length+' выбр.');
+  document.getElementById('fv-round').textContent=lbl;
+  if(fState.round.length)document.getElementById('ft-round').classList.add('has-val');
+  else document.getElementById('ft-round').classList.remove('has-val');
+  buildFilterMenus();
+  applyF();
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// СВОДКА ДЛЯ ОТЧЁТА — автообновляется из filteredData
+// ────────────────────────────────────────────────────────────────────────
+function _ruPlural(n,f1,f2,f5){
+  var m=Math.abs(n)%100,d=Math.abs(n)%10;
+  if(m>=11&&m<=19)return f5;
+  if(d===1)return f1;
+  if(d>=2&&d<=4)return f2;
+  return f5;
+}
+function _fmtArea(v){
+  return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
+}
+function renderSummaryBox(){
+  var d=filteredData;
+  var cpCnt=0,cpA=0,vyCnt=0,vyA=0,prCnt=0,prA=0,ncCnt=0,ncA=0;
+  d.forEach(function(r){
+    var a=n(r[C.area]),nt=normType(r[C.certType]),nd=normDecision(r[C.decision]),consent=lo(r[C.buyConsent]||'');
+    if(nt==='Сертификат'&&nd==='Положительное'){cpCnt++;cpA+=a;}
+    if(nt==='Выкуп'){vyCnt++;vyA+=a;}
+    if(nt==='Сертификат'&&nd==='На рассмотрении'){prCnt++;prA+=a;}
+    if((nd==='Отрицательное'||nd==='Отказ')&&consent==='да'){ncCnt++;ncA+=a;}
+  });
+  var ttCnt=cpCnt+vyCnt+prCnt+ncCnt,ttA=cpA+vyA+prA+ncA;
+  function setLine(id,cnt,area,w1,w2,w5){
+    var e=document.getElementById(id+'-cnt');if(e)e.textContent=cnt.toLocaleString('ru-RU');
+    var ew=document.getElementById(id+'-word');if(ew)ew.textContent=_ruPlural(cnt,w1,w2,w5);
+    var ea=document.getElementById(id+'-area');if(ea)ea.textContent=_fmtArea(area);
+  }
+  setLine('sr-cp',cpCnt,cpA,'заявление','заявления','заявлений');
+  setLine('sr-vy',vyCnt,vyA,'помещение','помещения','помещений');
+  setLine('sr-pr',prCnt,prA,'заявление','заявления','заявлений');
+  setLine('sr-nc',ncCnt,ncA,'собственник','собственника','собственников');
+  setLine('sr-tt',ttCnt,ttA,'помещение','помещения','помещений');
+  var plain=
+    'Сертификаты (положительное решение): '+cpCnt.toLocaleString('ru-RU')+' '+_ruPlural(cpCnt,'заявление','заявления','заявлений')+' на '+_fmtArea(cpA)+' кв.м\n'+
+    'Выкупов: '+vyCnt.toLocaleString('ru-RU')+' '+_ruPlural(vyCnt,'помещение','помещения','помещений')+' на '+_fmtArea(vyA)+' кв.м\n'+
+    'На рассмотрении: '+prCnt.toLocaleString('ru-RU')+' '+_ruPlural(prCnt,'заявление','заявления','заявлений')+' на '+_fmtArea(prA)+' кв.м\n'+
+    'Согласны на выкуп без сертификата (отказ/отрицательные): '+ncCnt.toLocaleString('ru-RU')+' '+_ruPlural(ncCnt,'собственник','собственника','собственников')+' на '+_fmtArea(ncA)+' кв.м\n'+
+    'ИТОГО: '+ttCnt.toLocaleString('ru-RU')+' '+_ruPlural(ttCnt,'помещение','помещения','помещений')+' на '+_fmtArea(ttA)+' кв.м';
+  var tp=document.getElementById('sum-plain');if(tp)tp.value=plain;
+}
+function copySummary(){
+  var tp=document.getElementById('sum-plain'),text=tp?tp.value:'';
+  var btn=document.getElementById('sum-copy-btn'),icon=document.getElementById('sum-copy-icon'),lbl=document.getElementById('sum-copy-lbl');
+  function ok(){if(btn)btn.classList.add('copied');if(icon)icon.textContent='✓';if(lbl)lbl.textContent='Скопировано';setTimeout(function(){if(btn)btn.classList.remove('copied');if(icon)icon.textContent='⎘';if(lbl)lbl.textContent='Копировать';},2400);}
+  if(navigator.clipboard&&text)navigator.clipboard.writeText(text).then(ok).catch(function(){_fbCopy(text,ok);});
+  else _fbCopy(text,ok);
+}
+function _fbCopy(text,cb){
+  var ta=document.getElementById('sum-plain');if(!ta)return;
+  ta.style.cssText='position:fixed;left:0;top:0;opacity:1;width:200px;height:60px;z-index:9999';
+  ta.select();ta.setSelectionRange(0,99999);
+  try{document.execCommand('copy');cb();}catch(e){}
+  ta.style.cssText='position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none';
+}
+
+function renderAll(){
+  var d=filteredData,area=0,sob=0,nan=0,cert=0,vyk=0,pos=0,proc=0,neg=0,rej=0,none=0;
+  var sobA=0,nanA=0,certA=0,vykA=0;
+  d.forEach(function(r){
+    var a=n(r[C.area]);area+=a;
+    var o=normOwner(r[C.owner]);if(o==='Собственник'){sob++;sobA+=a;}if(o==='Наниматель'){nan++;nanA+=a;}
+    var nt=normType(r[C.certType]);if(nt==='Сертификат'){cert++;certA+=a;}else if(nt==='Выкуп'){vyk++;vykA+=a;}
+    var nd=normDecision(r[C.decision]);
+    if(nd==='Положительное')pos++;else if(nd==='На рассмотрении')proc++;
+    else if(nd==='Отказ')rej++;else if(nd==='Отрицательное')neg++;else none++;
+  });
+  function setT(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
+
+  // Сводка для отчёта (обновляется вместе с данными)
+  try{renderSummaryBox();}catch(e){console.warn('renderSummaryBox error:',e);}
+
+  setT('kv-total',d.length.toLocaleString('ru'));setT('kv-area','Площадь: '+area.toFixed(0)+' м²');
+  setT('kv-sob',sob.toLocaleString('ru'));setT('kv-sob-a','Площадь: '+sobA.toFixed(0)+' м²');setT('kv-sob-s',(d.length>0?Math.round(sob/d.length*100):0)+'% от всех');
+  setT('kv-nan',nan.toLocaleString('ru'));setT('kv-nan-a','Площадь: '+nanA.toFixed(0)+' м²');setT('kv-nan-s',(d.length>0?Math.round(nan/d.length*100):0)+'% от всех');
+  setT('kv-cert',cert.toLocaleString('ru'));setT('kv-cert-a','Площадь: '+certA.toFixed(0)+' м²');setT('kv-cert-s',(d.length>0?Math.round(cert/d.length*100):0)+'% от всех');
+  setT('kv-vyk',vyk.toLocaleString('ru'));setT('kv-vyk-a','Площадь: '+vykA.toFixed(0)+' м²');setT('kv-vyk-s',(d.length>0?Math.round(vyk/d.length*100):0)+'% от всех');
+
+  var decVals={pos:pos,proc:proc,neg:neg,rej:rej,none:none};
+  document.getElementById('dec-row').innerHTML=decCfg.map(function(c){var v=decVals[c.key],pct=d.length>0?Math.round(v/d.length*100):0;
+    return'<div class="dec-card '+c.cls+'" onclick="decModal(\''+c.key+'\')"><div class="dc-label">'+c.label+'</div><div class="dc-val">'+v+'</div><div class="dc-sub">'+pct+'% · нажмите для списка</div><div class="dc-icon">'+c.icon+'</div></div>';}).join('');
+
+  var rm=roundMap(d);
+  function renderTop(cid,sk,label){
+    var srt=Object.entries(rm).sort(function(a,b){return (b[1][sk]-a[1][sk])||a[0].localeCompare(b[0],'ru');}).filter(function(e){return e[1][sk]>0;});
+    var mx=srt.length?srt[0][1][sk]:1;
+    var ak=areaKey(sk);
+    var colMap={t:'#b08d4f',sob:'#3a7d5c',nan:'#5a7088',cert:'#b08d4f',vyk:'#7a6a8f',pos:'#3a7d5c'};
+    var col=colMap[sk]||'#b08d4f';
+    function makeRow(e,i){
+      var astr=e[1][ak]>0?e[1][ak].toFixed(0)+' м²':'';
+      var pct=Math.round(e[1][sk]/mx*100);
+      return'<div class="top-bar-row">'+
+        '<span class="tbr-rank">'+(i+1)+'</span>'+
+        '<span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'">'+e[0]+'</span>'+
+        (astr?'<span class="tbr-area">'+astr+'</span>':'')+
+        '<div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+        '<span class="tbr-cnt">'+e[1][sk]+'</span></div>';
+    }
+    var top3=srt.slice(0,3).map(function(e,i){return makeRow(e,i);}).join('');
+    var moreBtn=srt.length>3?'<div class="top-show-more" onclick="topModal(\''+label+'\',\''+sk+'\')">▼ Показать все ('+srt.length+')</div>':'';
+    document.getElementById(cid).innerHTML=top3+moreBtn;
+  }
+  renderTop('top-total','t','По количеству квартир');
+  renderTop('top-sob','sob','По собственникам');
+  renderTop('top-nan','nan','По нанимателям');
+  renderTop('top-cert','cert','По сертификатам');
+  renderTop('top-vyk','vyk','По выкупу');
+  renderTop('top-pos','pos','По положительным решениям');
+
+  setTimeout(function(){renderCharts(d);},50);
+  renderRegistry();
+  if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
+  if(document.getElementById('page-gos').classList.contains('active'))renderGos();
+  if(document.getElementById('page-mappage').classList.contains('active')&&ymap){
+    setTimeout(drawMapMarkers,30);
+  }
+}
+
+function themeTick(){return document.documentElement.getAttribute('data-theme')==='dark'?'#a8b0c2':'#9097a8';}
+function themeGrid(){return document.documentElement.getAttribute('data-theme')==='dark'?'rgba(255,255,255,.06)':'rgba(26,29,41,.05)';}
+
+function renderCharts(d){
+  if(!d)return;
+  var tick=themeTick(),grid=themeGrid(),F='Inter';
+
+  /* По округам — стек по решениям (все округа, прокрутка) */
+  var rmap={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!rmap[k])rmap[k]={Положительное:0,'На рассмотрении':0,Отрицательное:0,Отказ:0,'Не указано':0,total:0};rmap[k][normDecision(r[C.decision])]++;rmap[k].total++;});
+  var topR=Object.entries(rmap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');});
+  var rl=topR.map(function(e){return e[0];});
+  var decOrder=['Положительное','На рассмотрении','Отрицательное','Отказ','Не указано'];
+  var decCols={'Положительное':'#3a7d5c','На рассмотрении':'#b08d4f','Отрицательное':'#b05a4f','Отказ':'#7a6a8f','Не указано':'#5a7088'};
+  var ds=decOrder.map(function(k){return{label:k,data:topR.map(function(e){return e[1][k];}),backgroundColor:decCols[k],borderRadius:4,borderSkipped:false};});
+  // Динамическая ширина: 75px на округ, минимум 100%
+  var decInner=document.getElementById('c-dec-inner');
+  if(decInner)decInner.style.width=Math.max(rl.length*75,800)+'px';
+  var c1=document.getElementById('c-dec');
+  if(c1){if(charts.dec){charts.dec.destroy();charts.dec=null;}
+    charts.dec=new Chart(c1,{type:'bar',data:{labels:rl,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,
+        onClick:function(evt,els){if(els&&els.length){var lbl=charts.dec.data.labels[els[0].index];if(lbl)selRound(lbl);}},
+        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:12}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
+        scales:{x:{stacked:true,ticks:{color:tick,font:{size:9,family:F},maxRotation:50},grid:{display:false}},y:{stacked:true,ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}}}}});}
+
+  /* Собственники vs Наниматели — все округа, вертикальная прокрутка */
+  var omap={};
+  d.forEach(function(r){var k=r._sheet||'—';if(!omap[k])omap[k]={Собственник:0,Наниматель:0,total:0};var o=normOwner(r[C.owner]);if(o==='Собственник')omap[k].Собственник++;if(o==='Наниматель')omap[k].Наниматель++;omap[k].total++;});
+  var topO=Object.entries(omap).sort(function(a,b){return (b[1].total-a[1].total)||a[0].localeCompare(b[0],'ru');});
+  var ol=topO.map(function(e){return e[0];});
+  // Динамическая высота: 32px на округ, минимум 360px
+  var ownInner=document.getElementById('c-own-inner');
+  if(ownInner)ownInner.style.height=Math.max(ol.length*32,360)+'px';
+  var c2=document.getElementById('c-own');
+  if(c2){if(charts.own){charts.own.destroy();charts.own=null;}
+    charts.own=new Chart(c2,{type:'bar',data:{labels:ol,datasets:[
+      {label:'Собственники',data:topO.map(function(e){return e[1].Собственник;}),backgroundColor:'#b08d4f',borderRadius:4,borderSkipped:false},
+      {label:'Наниматели',data:topO.map(function(e){return e[1].Наниматель;}),backgroundColor:'#5a7088',borderRadius:4,borderSkipped:false}
+    ]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+        onClick:function(evt,els){if(els&&els.length){var lbl=charts.own.data.labels[els[0].index];if(lbl)selRound(lbl);}},
+        plugins:{legend:{labels:{color:tick,font:{size:11,family:F,weight:'600'},usePointStyle:true,pointStyle:'circle',padding:14}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10}},
+        scales:{x:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:F,weight:'700'}},grid:{display:false}}}}});}
+
+  /* Таймлайн: ДНИ или МЕСЯЦЫ + округа в тултипе */
+  var bucketMap={};
+  d.forEach(function(r){
+    var raw=String(r[C.dateApp]||'').trim();if(!raw||raw==='—'||raw==='-')return;
+    var p=raw.split('.');if(p.length<3)return;
+    var dd=p[0].trim().padStart(2,'0'),mo=p[1].trim().padStart(2,'0'),yr=p[2].trim();if(yr.length===2)yr='20'+yr;
+    if(yr.length!==4)return;
+    var key=tlMode==='day'?(yr+'-'+mo+'-'+dd):(yr+'-'+mo);
+    if(!bucketMap[key])bucketMap[key]={cnt:0,rounds:{}};
+    bucketMap[key].cnt++;
+    var rn=r._sheet||'—';bucketMap[key].rounds[rn]=(bucketMap[key].rounds[rn]||0)+1;
+  });
+  var dk=Object.keys(bucketMap).sort();
+  var dv=dk.map(function(k){return bucketMap[k].cnt;});
+  var roundsByDay=dk.map(function(k){
+    return Object.entries(bucketMap[k].rounds).sort(function(a,b){return b[1]-a[1];}).slice(0,6).map(function(e){return e[0]+': '+e[1];});
+  });
+  var mns=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  var dl=dk.map(function(k){var p=k.split('-');return tlMode==='day'?(parseInt(p[2])+' '+(mns[parseInt(p[1])]||p[1])):((mns[parseInt(p[1])]||p[1])+' '+p[0]);});
+  var step=tlMode==='day'?46:90;
+  var inner=document.getElementById('tl-inner');
+  if(inner)inner.style.width=Math.max(dk.length*step,800)+'px';
+  var c3=document.getElementById('c-timeline');
+  if(c3){if(charts.tl){charts.tl.destroy();charts.tl=null;}
+    charts.tl=new Chart(c3,{type:'bar',data:{labels:dl,datasets:[{label:'Заявлений',data:dv,backgroundColor:'#b08d4f',borderRadius:6,borderSkipped:false,maxBarThickness:tlMode==='day'?42:84}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(20,22,30,.95)',titleColor:'#d4b87a',bodyColor:'#fff',padding:14,cornerRadius:10,
+          callbacks:{
+            title:function(items){return items[0].label;},
+            label:function(i){return ' Всего: '+i.parsed.y+' заявлений';},
+            afterBody:function(items){var idx=items[0].dataIndex;var rb=roundsByDay[idx];return rb&&rb.length?['','По округам:'].concat(rb.map(function(s){return '  '+s;})):[];}
+          }}},
+        scales:{x:{ticks:{color:tick,font:{size:9,family:F},maxRotation:60,minRotation:tlMode==='day'?45:0},grid:{display:false}},y:{ticks:{color:tick,font:{size:10,family:F}},grid:{color:grid},beginAtZero:true}},
+        animation:{duration:700}}});}
+}
+function setTlMode(m,btn){
+  tlMode=m;
+  document.getElementById('tl-day').classList.remove('active');
+  document.getElementById('tl-mon').classList.remove('active');
+  btn.classList.add('active');
+  renderCharts(filteredData);
+}
+function tlScroll(dir){
+  var el=document.getElementById('tl-scroll');
+  if(el)el.scrollBy({left:dir*360,behavior:'smooth'});
+}
+
+function renderRegistry(){
+  var d=filteredData.slice();
+  var sort=document.getElementById('reg-sort')?document.getElementById('reg-sort').value:'decision';
+  if(sort==='decision')d.sort(function(a,b){var o={Положительное:1,'На рассмотрении':2,Отказ:3,Отрицательное:4,'Не указано':5};return(o[normDecision(a[C.decision])]||5)-(o[normDecision(b[C.decision])]||5);});
+  else if(sort==='area')d.sort(function(a,b){return n(b[C.area])-n(a[C.area]);});
+  else if(sort==='citizens')d.sort(function(a,b){return n(b[C.citizens])-n(a[C.citizens]);});
+  else if(sort==='round')d.sort(function(a,b){return(a._sheet||'').localeCompare(b._sheet||'','ru');});
+  document.getElementById('reg-title').textContent=selR?'Реестр: '+selR:'Реестр домов';
+  document.getElementById('reg-cnt').textContent=d.length.toLocaleString('ru')+' записей';
+  var sr=!selR;
+  document.getElementById('tbl-registry').innerHTML=
+    '<thead><tr><th>№</th>'+(sr?'<th>Округ</th>':'')+'<th>Г.О/М.О</th><th>Нас. пункт</th><th>Адрес</th><th>Кв.</th><th>Площадь м²</th><th>Граждан</th><th>Тип права</th><th>Тип</th><th>Дата заявл.</th><th>Решение</th><th>Подписано</th><th>Стоимость по оценке ₽</th><th>ДКП/ДДУ</th><th>Оплата Мин-ва</th></tr></thead><tbody>'+
+    d.map(function(r,i){
+      var nd=normDecision(r[C.decision]),ls='';
+      if(nd==='Положительное')ls='border-left:3px solid #3a7d5c';
+      else if(nd==='На рассмотрении')ls='border-left:3px solid #b08d4f';
+      else if(nd==='Отрицательное'||nd==='Отказ')ls='border-left:3px solid #b05a4f';
+      return'<tr style="'+ls+'"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td>'+(sr?'<td style="font-weight:600;white-space:nowrap;color:var(--ink)">'+(r._sheet||'—')+'</td>':'')+'<td>'+(r[C.mo]||'—')+'</td><td>'+(r[C.np]||'—')+'</td><td style="max-width:160px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td><td style="text-align:center">'+(r[C.apt]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+n(r[C.area]).toFixed(2)+'</td><td style="text-align:center;font-weight:700;color:var(--ink)">'+(r[C.citizens]||'—')+'</td><td>'+normOwner(r[C.owner])+'</td><td>'+normType(r[C.certType])+'</td><td style="white-space:nowrap">'+(r[C.dateApp]||'—')+'</td><td>'+bdec(r[C.decision])+'</td><td style="text-align:center">'+(r[C.signed]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+fmtRub(n(r[C.price]))+'</td><td style="text-align:center">'+(r[C.dkp]||'—')+'</td><td style="text-align:center;font-weight:700">'+(r[C.minPay]||'—')+'</td></tr>';
+    }).join('')+'</tbody>';
+}
+
+function renderFinance(){
+  var d=filteredData;
+  var tE=0,tC=0,dkpCnt=0,paidCnt=0,cnt=0,rm={};
+  var totArea=0,evArea=0,cpCnt=0,cpArea=0,paidArea=0;
+  d.forEach(function(r){
+    var ev=n(r[C.price]),cp=n(r[C.contractPrice]),a=n(r[C.area]);tE+=ev;tC+=cp;totArea+=a;
+    if(up(r[C.dkp])==='ДА')dkpCnt++;
+    if(lo(r[C.minPay])==='да'){paidCnt++;paidArea+=a;}
+    if(ev>0){cnt++;evArea+=a;}
+    if(cp>0){cpCnt++;cpArea+=a;}
+    var k=r._sheet||'—';if(!rm[k])rm[k]={eval:0,dkp:0,cnt:0};rm[k].cnt++;rm[k].eval+=ev;rm[k].dkp+=cp;
+  });
+  var nf=function(x){return x.toLocaleString('ru');};
+  document.getElementById('fin-kpi-row').innerHTML=
+    '<div class="fin-kpi"><div class="fk-lbl">Стоимость по оценке (сумма)</div><div class="fk-val">'+fmtMln(tE)+' млн ₽</div><div class="fk-sub">Всего квартир в выборке: '+nf(d.length)+'</div><div class="fk-sub fk-sub2">С оценкой: '+nf(cnt)+' кв. · площадь: '+evArea.toFixed(0)+' м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Цена договора ДКП/ДДУ (сумма)</div><div class="fk-val">'+fmtMln(tC)+' млн ₽</div><div class="fk-sub">Заключено: '+nf(dkpCnt)+' договоров</div><div class="fk-sub fk-sub2">С договором: '+nf(cpCnt)+' кв. · площадь: '+cpArea.toFixed(0)+' м²</div></div>'+
+    '<div class="fin-kpi"><div class="fk-lbl">Оплата Министерства</div><div class="fk-val">'+nf(paidCnt)+'</div><div class="fk-sub">'+(d.length>0?Math.round(paidCnt/d.length*100):0)+'% от всех · всего площадь '+totArea.toFixed(0)+' м²</div><div class="fk-sub fk-sub2">Оплачено: '+nf(paidCnt)+' кв. · площадь: '+paidArea.toFixed(0)+' м²</div></div>';
+  var bC=['#b08d4f','#c9aa70','#a88a5a','#5a7088','#3a7d5c','#7a6a8f','#8a9bb0','#b05a4f','#6c7689','#9097a8'];
+  // Сортировка с детерминированным «довеском» по имени округа —
+  // чтобы при равных суммах порядок не «прыгал» между обновлениями
+  var byE=Object.entries(rm).filter(function(e){return e[1].eval>0;}).sort(function(a,b){return (b[1].eval-a[1].eval)||a[0].localeCompare(b[0],'ru');});
+  var mxE=byE.length?byE[0][1].eval:1;
+  document.getElementById('fin-top-eval').innerHTML=byE.length?byE.map(function(e,i){var pct=Math.round(e[1].eval/mxE*100);
+    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i%bC.length]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].eval)+'</span></div>';}).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Нет данных</div>';
+  var byD=Object.entries(rm).filter(function(e){return e[1].dkp>0;}).sort(function(a,b){return (b[1].dkp-a[1].dkp)||a[0].localeCompare(b[0],'ru');});
+  var mxD=byD.length?byD[0][1].dkp:1;
+  document.getElementById('fin-top-dkp').innerHTML=byD.length?byD.map(function(e,i){var pct=Math.round(e[1].dkp/mxD*100);
+    return'<div class="top-bar-row"><span class="tbr-rank">'+(i+1)+'</span><span class="tbr-name" onclick="selRound(\''+e[0].replace(/'/g,"\\'")+'\')" title="'+e[0]+'" style="width:110px;flex:none">'+e[0]+'</span><div class="tbr-bg"><div class="tbr-fill" style="width:'+pct+'%;background:'+bC[i%bC.length]+'"></div></div><span class="tbr-cnt" style="font-size:11px;width:62px">'+fmtMln(e[1].dkp)+'</span></div>';}).join(''):'<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Нет данных</div>';
+  var top15=Object.entries(rm).sort(function(a,b){return (b[1].eval-a[1].eval)||a[0].localeCompare(b[0],'ru');}).slice(0,15);
+  var tick=themeTick(),grid=themeGrid();
+  var cFin=document.getElementById('c-fin-compare');
+  if(cFin){if(charts.fin){charts.fin.destroy();charts.fin=null;}
+    charts.fin=new Chart(cFin,{type:'bar',data:{labels:top15.map(function(e){return e[0];}),datasets:[
+      {label:'Стоимость по оценке',data:top15.map(function(e){return+(e[1].eval/1e6).toFixed(2);}),backgroundColor:'rgba(176,141,79,.85)',borderRadius:5,borderSkipped:false},
+      {label:'Цена договора ДКП/ДДУ',data:top15.map(function(e){return+(e[1].dkp/1e6).toFixed(2);}),backgroundColor:'rgba(90,112,136,.8)',borderRadius:5,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tick,font:{size:12,family:'Inter',weight:'600'},usePointStyle:true,pointStyle:'circle',padding:16}},tooltip:{backgroundColor:'rgba(20,22,30,.94)',padding:12,cornerRadius:10,callbacks:{label:function(i){return' '+i.parsed.y+' млн ₽';}}}},
+      scales:{x:{ticks:{color:tick,font:{size:10,family:'Inter'},maxRotation:35},grid:{color:grid}},y:{ticks:{color:tick,font:{size:10,family:'Inter'},callback:function(v){return v+' млн';}},grid:{color:grid}}}}});}
+  renderFinRegistry();
+}
+function renderFinRegistry(){
+  var d=filteredData.slice();
+  var sort=document.getElementById('fin-sort')?document.getElementById('fin-sort').value:'price_desc';
+  if(sort==='price_desc')d.sort(function(a,b){return n(b[C.price])-n(a[C.price]);});
+  else if(sort==='price_asc')d.sort(function(a,b){return n(a[C.price])-n(b[C.price]);});
+  else if(sort==='contract_desc')d.sort(function(a,b){return n(b[C.contractPrice])-n(a[C.contractPrice]);});
+  else if(sort==='round')d.sort(function(a,b){return(a._sheet||'').localeCompare(b._sheet||'','ru');});
+  else if(sort==='paid')d=d.filter(function(r){return lo(r[C.minPay])==='да';});
+  document.getElementById('fin-reg-cnt').textContent=d.length+' записей';
+  document.getElementById('tbl-fin').innerHTML=
+    '<thead><tr><th>№</th><th>Округ</th><th>Адрес</th><th>Кв.</th><th>Площадь м²</th><th>Граждан</th><th>Стоимость по оценке ₽</th><th>ДКП/ДДУ</th><th>Цена договора ₽</th><th>Оплата Мин-ва</th><th>Дата оценки</th><th>Дата соглашения</th></tr></thead><tbody>'+
+    d.map(function(r,i){
+      var ev=n(r[C.price]),cp=n(r[C.contractPrice]);
+      var paidVal=String(r[C.minPay]||'').trim();
+      var paidStyle=lo(paidVal)==='да'?'color:#3a7d5c;font-weight:700':'color:#aaa';
+      var diffStyle=cp>0?(cp>=ev?'color:#3a7d5c':'color:#b05a4f'):'';
+      return'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="font-weight:600;white-space:nowrap;color:var(--ink)">'+(r._sheet||'—')+'</td><td style="max-width:160px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td><td style="text-align:center">'+(r[C.apt]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+n(r[C.area]).toFixed(2)+'</td><td style="text-align:center">'+(r[C.citizens]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+(ev>0?new Intl.NumberFormat('ru-RU').format(ev)+' ₽':'—')+'</td><td style="text-align:center">'+(r[C.dkp]||'—')+'</td><td style="text-align:right;font-weight:700;'+diffStyle+'">'+(cp>0?new Intl.NumberFormat('ru-RU').format(cp)+' ₽':'—')+'</td><td style="text-align:center;'+paidStyle+'">'+(paidVal||'—')+'</td><td style="white-space:nowrap">'+(r[18]||'—')+'</td><td style="white-space:nowrap">'+(r[19]||'—')+'</td></tr>';
+    }).join('')+'</tbody>';
+}
+
+// Флаг готовности API Яндекса (выставляется когда API загружен)
+var ymapsApiReady=false;
+if(typeof ymaps!=='undefined'){
+  ymaps.ready(function(){ymapsApiReady=true;});
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// АВТОЗАПУСК. Без этого блока дашборд после открытия/перезагрузки страницы
+// бесконечно висит на «Подключение к данным…», т.к. reloadAll() раньше
+// вызывался ТОЛЬКО по кнопке «Обновить». Запускаем загрузку один раз сами.
+// ─────────────────────────────────────────────────────────────────────────
+var _booted=false;
+function _bootstrap(){
+  if(_booted)return;
+  _booted=true;
+  // Загружаем кеш геокодинга и суточный счётчик из localStorage
+  var cached=_loadGeoCacheFromStorage();
+  _loadDailyCount();
+  if(cached>0)console.info('[geocache] загружено '+cached+' адресов · сегодня использовано '+_todayGeoUsed+'/'+GEO_DAY_LIMIT);
+  try{
+    reloadAll();
+  }catch(e){
+    var lt=document.getElementById('ldtxt');
+    if(lt)lt.innerHTML='Ошибка запуска: '+(e&&e.message?e.message:e)+
+      '<br><button class="btn-upd" style="margin-top:14px" onclick="location.reload()">↺ Перезагрузить страницу</button>';
+  }
+}
+if(document.readyState==='interactive'||document.readyState==='complete'){
+  setTimeout(_bootstrap,30);
+}else{
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(_bootstrap,30);});
+}
+// Подстраховки на случай, если DOMContentLoaded по какой-то причине не сработал
+window.addEventListener('load',function(){setTimeout(_bootstrap,50);});
+setTimeout(_bootstrap,3000);
+</script>
+</body>
+</html>
