@@ -2166,10 +2166,8 @@ function renderMapPage(){
     var needGeo   =groups.filter(function(g){return !g.lat||!g.lon;});
 
     _geoGen++;var myGen=_geoGen;
-    _geoDone=0;_geoTotal=needGeo.length;
 
-    if(needGeo.length>0)_setOverlay(true,'Геокодирование 0 / '+needGeo.length,0);
-
+    // ── showAll: рисует маркеры из groups у которых есть координаты ──────
     function showAll(){
       if(_geoGen!==myGen)return;
       _setOverlay(false);
@@ -2188,39 +2186,45 @@ function renderMapPage(){
           hintContent:g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.'
         },{preset:'islands#circleDotIcon',iconColor:col});
         pm.events.add('click',function(e){e.stopPropagation();openMapModal(g);});
-        // Записываем в плоский массив (добавим в слой через _rebuildMarkersLayer)
         _markerData.push({sheet:g.sheet,addr:g.addr,lat:g.lat,lon:g.lon,pm:pm,group:g,visible:byRound,color:col});
         if(byRound)allCoords.push([g.lat,g.lon]);
       });
-      // Физически добавляем маркеры с учётом миграции
       _rebuildMarkersLayer();
       _fitMap(allCoords);
       _buildColorLegend();
-      // Подсвечиваем: приоритет — локальный фильтр карты, затем глобальный
       var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
       _highlightDistricts(sheetsToHL);
-      // Перерисовываем миграцию если режим активен (источники могли обновиться)
       _refreshMigrationsIfActive();
       var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
       var notFound=needGeo.length-geocoded;
-      var fromCache=withCoords.length;
+      var inQueue=Math.max(0,needGeo.length-Math.min(needGeo.length,50)-geocoded);
       _geoSetStatus(
         '✓ '+_markerData.length+' домов'+
-        (fromCache?' · '+fromCache+' из таблицы':'')+
+        (withCoords.length?' · '+withCoords.length+' из таблицы':'')+
         (geocoded?' · '+geocoded+' геокодировано':'')+
         ' · кеш: '+_geoCacheSize()+' адресов'+
-        (notFound?' · ⚠ '+notFound+' не найдено':'')
+        (notFound>0&&inQueue>0?' · ⏳ '+inQueue+' в очереди':'')
       );
     }
 
-    if(!needGeo.length){showAll();return;}
+    // ── Шаг 1: показываем сразу что есть (таблица + кеш) ─────────────────
+    showAll();
+    if(!needGeo.length)return;
 
-    _geocodeBatch(needGeo,12,80,myGen,function(done,total){
+    // ── Шаг 2: геокодируем max 50 за сессию (не расходуем API)
+    var GEO_LIMIT=50;
+    var toGeo=needGeo.slice(0,GEO_LIMIT);
+    var inQueue=needGeo.length-toGeo.length;
+    var qTxt=inQueue>0?' · ещё '+inQueue+' в очереди':'';
+
+    _setOverlay(true,'Геокодирование 0/'+toGeo.length+qTxt,0);
+
+    _geocodeBatch(toGeo,4,300,myGen,function(done,total){
       if(_geoGen!==myGen)return;
-      _setOverlay(true,'Геокодирование '+done+' / '+total,Math.round(done/total*100));
+      _setOverlay(true,'Геокодирование '+done+'/'+total+qTxt,Math.round(done/total*100));
     }).then(function(results){
       if(_geoGen!==myGen)return;
-      results.forEach(function(c,i){if(c){needGeo[i].lat=c[0];needGeo[i].lon=c[1];}});
+      results.forEach(function(c,i){if(c){toGeo[i].lat=c[0];toGeo[i].lon=c[1];}});
       showAll();
     });
   });
