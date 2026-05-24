@@ -244,7 +244,9 @@ tr:hover td{background:var(--row-bg)}
 
 /* MAP */
 .map-content{padding:0;display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
-/* Кнопка миграции на карте */
+/* Кнопки TOP */
+.btn-mig-top{background:rgba(58,125,92,.12)!important;color:var(--pos)!important;border:1px solid rgba(58,125,92,.28)!important;font-weight:700}
+.btn-mig-top:hover{background:rgba(58,125,92,.20)!important}
 .mig-toggle{display:flex;align-items:center;gap:7px;padding:9px 14px;font-size:11px;font-weight:700;background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink);border-radius:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap}
 .mig-toggle:hover{background:var(--tab-active)}
 .mig-toggle.active{background:rgba(58,125,92,.16);color:var(--pos);border-color:rgba(58,125,92,.35);box-shadow:0 2px 8px rgba(58,125,92,.15)}
@@ -561,6 +563,7 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
     </div>
   </div>
   <button class="btn-rst" onclick="resetF()">↺ Сброс</button>
+  <button class="btn-rst btn-mig-top" onclick="showMigrationTop()" title="Топ округов по направлениям миграции">📊 Топ миграции</button>
   <span id="fcnt"></span>
 </div>
 
@@ -2189,6 +2192,128 @@ function kpiModal(type){
       '<span class="mrow-meta">'+astr+' · '+pct+'%</span>'+
       '<span class="mrow-val" style="color:'+color+'">'+v+'</span></div>';
   }).join('');
+  openModal();
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// ТОП ОКРУГОВ ПО МИГРАЦИИ — три секции: входящие, внутренние, исходящие
+// ════════════════════════════════════════════════════════════════════════
+function showMigrationTop(){
+  // Агрегация по строкам с заполненным newAddr
+  var incoming={}, internal={}, outgoing={};
+  var totalMig=0;
+
+  filteredData.forEach(function(r){
+    var dstAddr=String(r[C.newAddr]||'').trim();
+    if(!dstAddr||dstAddr==='—'||dstAddr==='-')return;
+    totalMig++;
+    var srcSheet=r._sheet||'—';
+    var dstDistrict=String(r[C.newDistrict]||'').trim();
+    var a=n(r[C.area]);
+
+    // ── Исходящие (все кто уехал) ────────────────────────────────────
+    if(!outgoing[srcSheet])outgoing[srcSheet]={count:0,area:0,inter:0,intra:0,byDst:{}};
+    outgoing[srcSheet].count++;
+    outgoing[srcSheet].area+=a;
+
+    if(dstDistrict){
+      if(dstDistrict!==srcSheet){
+        // межокружная
+        outgoing[srcSheet].inter++;
+        outgoing[srcSheet].byDst[dstDistrict]=(outgoing[srcSheet].byDst[dstDistrict]||0)+1;
+        // ── Принимающие из других округов ────────────────────────────
+        if(!incoming[dstDistrict])incoming[dstDistrict]={count:0,area:0,bySource:{}};
+        incoming[dstDistrict].count++;
+        incoming[dstDistrict].area+=a;
+        incoming[dstDistrict].bySource[srcSheet]=(incoming[dstDistrict].bySource[srcSheet]||0)+1;
+      }else{
+        // внутренняя
+        outgoing[srcSheet].intra++;
+        if(!internal[srcSheet])internal[srcSheet]={count:0,area:0};
+        internal[srcSheet].count++;
+        internal[srcSheet].area+=a;
+      }
+    }
+  });
+
+  function sortD(obj,key){
+    return Object.entries(obj).sort(function(a,b){return b[1][key]-a[1][key];});
+  }
+  var inArr=sortD(incoming,'count');
+  var intArr=sortD(internal,'count');
+  var outArr=sortD(outgoing,'count');
+
+  // Шапка модала
+  document.getElementById('modal-total').textContent=totalMig.toLocaleString('ru');
+  document.getElementById('modal-total').style.color='var(--gold)';
+  document.getElementById('modal-title').textContent='Топ округов · направления миграции';
+
+  // Helper: строка рейтинга с прогресс-баром
+  function rowHtml(i,name,count,area,sub,max,color){
+    var pct=max>0?Math.round(count/max*100):0;
+    return'<div class="mig-dst-row">'+
+      '<span class="mig-dst-rank">'+(i+1)+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="mig-dst-name" style="color:'+color+'">'+name+'</div>'+
+        (sub?'<div style="font-size:9px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px">'+sub+'</div>':'')+'</div>'+
+      '<span style="font-size:9.5px;color:var(--muted);white-space:nowrap;margin-right:6px">'+area.toFixed(0)+' м²</span>'+
+      '<div class="mig-dst-bar"><div class="mig-dst-fill" style="width:'+pct+'%;background:'+color+'"></div></div>'+
+      '<span class="mig-dst-cnt" style="color:'+color+'">'+count+'</span>'+
+    '</div>';
+  }
+
+  // Helper: секция с заголовком и списком
+  function sectionHtml(icon,title,sub,accentColor,rows,buildRow){
+    if(!rows.length)return'<div style="padding:12px 14px;color:var(--muted);font-size:12px;text-align:center">Нет данных</div>';
+    var total=rows.reduce(function(s,e){return s+e[1].count;},0);
+    var max=rows[0][1].count;
+    return'<div style="background:var(--row-bg);border-radius:14px;padding:14px 14px 8px;margin-bottom:16px;border-left:4px solid '+accentColor+'">'+
+      '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">'+
+        '<span style="font-size:20px;line-height:1">'+icon+'</span>'+
+        '<div style="flex:1">'+
+          '<div style="font-size:12px;font-weight:800;color:var(--ink);letter-spacing:-.01em">'+title+'</div>'+
+          '<div style="font-size:10px;color:var(--muted);font-weight:600;margin-top:1px">'+sub+'</div>'+
+        '</div>'+
+        '<div style="font-size:22px;font-weight:800;color:'+accentColor+';font-variant-numeric:tabular-nums">'+total+'</div>'+
+      '</div>'+
+      rows.map(function(e,i){return buildRow(e,i,max);}).join('')+
+    '</div>';
+  }
+
+  var html='';
+
+  // ── 1. Принимают из других округов ───────────────────────────────
+  html+=sectionHtml('🏘','Принимают из других округов','куда переехало больше всего жителей из других округов','#3a7d5c',inArr,
+    function(e,i,max){
+      var k=e[0],v=e[1];
+      var col=_mapColor(k);
+      var top3=Object.entries(v.bySource).sort(function(a,b){return b[1]-a[1];}).slice(0,4)
+        .map(function(s){return'<span style="background:rgba(58,125,92,.12);color:#3a7d5c;border-radius:4px;padding:1px 5px;font-weight:700">'+s[0]+' '+s[1]+'</span>';}).join(' ');
+      return rowHtml(i,k,v.count,v.area,'← из: '+top3,max,col);
+    });
+
+  // ── 2. Переселение внутри округа ────────────────────────────────
+  html+=sectionHtml('🔄','Переселение внутри округа','переехали в новое жильё в пределах своего округа','var(--gold)',intArr,
+    function(e,i,max){
+      var k=e[0],v=e[1];
+      var col=_mapColor(k);
+      var outv=outgoing[k]||{};
+      var pctIntra=outv.count>0?Math.round(v.count/outv.count*100):0;
+      return rowHtml(i,k,v.count,v.area,pctIntra+'% от всех выбывших из округа',max,col);
+    });
+
+  // ── 3. Откуда уезжают ────────────────────────────────────────────
+  html+=sectionHtml('🚚','Откуда уезжают','округа с наибольшим числом переселяемых (все направления)','var(--neg)',outArr,
+    function(e,i,max){
+      var k=e[0],v=e[1];
+      var col=_mapColor(k);
+      var top3=Object.entries(v.byDst||{}).sort(function(a,b){return b[1]-a[1];}).slice(0,3)
+        .map(function(s){return'<span style="background:rgba(176,90,79,.1);color:var(--neg);border-radius:4px;padding:1px 5px;font-weight:700">'+s[0]+' '+s[1]+'</span>';}).join(' ');
+      var intraTxt=v.intra?'внутри '+v.intra+'  ':'';
+      return rowHtml(i,k,v.count,v.area,intraTxt+(top3?'→ '+top3:''),max,col);
+    });
+
+  document.getElementById('modal-body').innerHTML=html;
   openModal();
 }
 
