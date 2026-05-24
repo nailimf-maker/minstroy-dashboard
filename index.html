@@ -1596,7 +1596,7 @@ function _buildMigrationData(){
     if(!srcAddr||!dstAddr||dstAddr==='—'||dstAddr==='-')return;
     var srcSheet=r._sheet||'—';
     if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
-    var dstDistrict=String(r[C.newDistrict]||'').trim();   // м.б. пусто — не используем как fallback для ключа
+    var dstDistrict=_getDstDistrict(r);   // newDistrict столбец → парсинг из адреса
     var srcKey=srcSheet+'||'+srcAddr;
     // КЛЮЧ только по нормализованному адресу — иначе "Шатура||адрес" ≠ "Луховицы||адрес"
     // когда newDistrict пуст и fallback — имя исходного округа
@@ -2198,6 +2198,25 @@ function kpiModal(type){
 // ════════════════════════════════════════════════════════════════════════
 // ТОП ОКРУГОВ ПО МИГРАЦИИ — три секции: входящие, внутренние, исходящие
 // ════════════════════════════════════════════════════════════════════════
+
+// Определяем округ назначения: сначала из newDistrict, иначе — ищем название
+// известного округа в тексте newAddr (большинство адресов содержат город)
+function _getDstDistrict(r){
+  var explicit=String(r[C.newDistrict]||'').trim();
+  if(explicit)return explicit;
+  var addr=String(r[C.newAddr]||'').toLowerCase();
+  if(!addr)return'';
+  for(var i=0;i<SHEETS.length;i++){
+    var name=SHEETS[i].name.toLowerCase();
+    // Ищем название как отдельное слово (до/после: пробел, запятая, точка, дефис)
+    var esc=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    if(new RegExp('(^|[\\s,.\\-/])'+esc+'($|[\\s,.\\-/])').test(addr)){
+      return SHEETS[i].name;
+    }
+  }
+  return'';
+}
+
 function showMigrationTop(){
   // Агрегация по строкам с заполненным newAddr
   var incoming={}, internal={}, outgoing={};
@@ -2208,7 +2227,8 @@ function showMigrationTop(){
     if(!dstAddr||dstAddr==='—'||dstAddr==='-')return;
     totalMig++;
     var srcSheet=r._sheet||'—';
-    var dstDistrict=String(r[C.newDistrict]||'').trim();
+    // Определяем округ назначения: явный столбец → парсинг из адреса
+    var dstDistrict=_getDstDistrict(r);
     var a=n(r[C.area]);
 
     // ── Исходящие (все кто уехал) ────────────────────────────────────
