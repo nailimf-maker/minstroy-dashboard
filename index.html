@@ -6,8 +6,7 @@
 <title>Минстрой МО — Программа выдачи сертификатов</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script async src="https://api-maps.yandex.ru/2.1/?apikey=904e9ba6-8848-4b42-a871-82002e05c23a&lang=ru_RU"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -879,8 +878,8 @@ var allData=[],filteredData=[],loaded=0;
 // прекращают работу, если была запущена более новая загрузка.
 // Это единственный правильный способ остановить «гонку» при двойном нажатии «Обновить».
 var _loadGen=0;
-var ymap=null,mapInited=false,yReady=false;  // ymap = L.Map (Leaflet)
-var _tileLayer=null;    // текущий слой тайлов (меняется при смене темы)
+var ymap=null,mapInited=false,yReady=false;
+var _tileLayer=null; // не используется в Яндекс API (для совместимости)
 var geocodeCache={};
 var mapMarkersBuilt=false;
 var roundColorMap={};
@@ -965,9 +964,7 @@ function toggleTheme(){
   setTimeout(function(){
     if(document.getElementById('page-overview').classList.contains('active'))renderCharts(filteredData);
     if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
-    // Переключаем тайлы карты на тёмную/светлую тему
-    _updateMapTiles();
-    if(ymap){try{ymap.invalidateSize();}catch(e){}}
+    if(ymap){try{ymap.container.fitToViewport();}catch(e){}}
   },120);
 }
 
@@ -1254,45 +1251,29 @@ function _dailyLeft(){return Math.max(0,GEO_DAY_LIMIT-_todayGeoUsed);}
 // Загружаем суточный счётчик при старте
 _loadDailyCount();
 
-// Обновляем тайлы карты под тему (светлая/тёмная)
-function _updateMapTiles(){
-  if(!ymap)return;
-  if(_tileLayer)ymap.removeLayer(_tileLayer);
-  var dark=document.documentElement.getAttribute('data-theme')==='dark';
-  _tileLayer=L.tileLayer(
-    dark?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        :'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    {attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, © <a href="https://carto.com/">CARTO</a>',
-     maxZoom:19,subdomains:'abcd'}
-  ).addTo(ymap);
-}
+// Количество записей в кеше
+function _geoCacheSize(){return Object.keys(geocodeCache).length;}
 
-// Геокодирование через Nominatim (OpenStreetMap) — бесплатно, без API-ключа
-// Условия: max 1 req/sec, Attribution OpenStreetMap обязателен (показывается на карте)
+// Геокодирование через Яндекс.Карты API
+// Условия использования п. 5.1.5: кеширование до 30 дней для повышения
+// функциональности Сервиса и только для отображения на Яндекс Картах
 function _geocodeSingle(addr,sheet){
   var key=sheet+'|'+addr;
   if(geocodeCache[key])return Promise.resolve(geocodeCache[key]);
-  var q=encodeURIComponent('Московская область, '+sheet+', '+addr);
-  return fetch(
-    'https://nominatim.openstreetmap.org/search?q='+q+
-    '&format=json&limit=1&countrycodes=ru'+
-    '&viewbox=34.5,57.5,42.0,53.5&bounded=1',
-    {headers:{'Accept-Language':'ru','User-Agent':'MinstroMO_Dashboard_v1'}}
-  )
-  .then(function(r){return r.json();})
-  .then(function(data){
-    if(!data||!data.length)return null;
-    var lat=parseFloat(data[0].lat),lon=parseFloat(data[0].lon);
-    if(lat>50&&lat<60&&lon>30&&lon<45){
-      var c=[lat,lon];
-      geocodeCache[key]=c;
-      _incDailyCount();
-      _markCacheDirty();
-      return c;
-    }
-    return null;
-  })
-  .catch(function(){return null;});
+  var query='Московская область, '+sheet+', '+addr;
+  return ymaps.geocode(query,{results:1,boundedBy:[[53.5,34.5],[57.5,41.0]]})
+    .then(function(res){
+      var obj=res.geoObjects.get(0);
+      if(!obj)return null;
+      var c=obj.geometry.getCoordinates();
+      if(c&&c[0]>50&&c[0]<60&&c[1]>30&&c[1]<45){
+        geocodeCache[key]=c;
+        _incDailyCount();   // суточный счётчик (лимит 1000/день)
+        _markCacheDirty();  // сохраняем в localStorage (TTL 30 дней)
+        return c;
+      }
+      return null;
+    }).catch(function(){return null;});
 }
 function _geocodeBatch(items,batchSize,delayMs,myGen,onProgress){
   return new Promise(function(resolve){
@@ -1597,8 +1578,8 @@ document.addEventListener('click',function(e){
 });
 
 // ── Границы и подсветка округов (convex hull + ymaps.borders fallback) ─────
-var _hlLayer=null;          // L.LayerGroup — слой подсветки (ниже маркеров)
-var _markersLayer=null;     // L.LayerGroup — слой маркеров домов
+var _hlLayer=null;          // ymaps.GeoObjectCollection — слой подсветки (ниже маркеров)
+var _markersLayer=null;     // ymaps.GeoObjectCollection — слой маркеров домов
 var _markerData=[];         // плоский JS-массив маркеров
 var _bordersCache={};       // sheet → [[lat,lon],...] готовые координаты полигонов
 var _bordersReady=false;    // флаг: реальные границы загружены
@@ -1628,13 +1609,30 @@ function _bufferHull(hull,deg){
   });
 }
 
-// Попытка загрузить реальные границы через BORDERS_URL (GeoJSON)
-// В Leaflet координаты в GeoJSON: [lon, lat] → конвертируем в [lat, lon]
+// Попытка загрузить реальные границы через ymaps.borders (Yandex Maps 2.1)
 function _tryLoadRealBorders(){
   if(_bordersAttempted)return;
   _bordersAttempted=true;
-  // ymaps.borders недоступен — используем только GeoJSON из BORDERS_URL
-  // (заменит Circle-подсветку на реальные полигоны если URL задан)
+  if(typeof ymaps==='undefined'||!ymaps.borders)return;
+  ymaps.borders.load('RU-MOS',{lang:'ru',quality:2}).then(function(res){
+    var feats=(res&&res.features)||[];
+    if(!feats.length)return;
+    feats.forEach(function(f){
+      var p=f.properties||{};
+      var nm=(p.name||p.NAME||p.NL_NAME_2||p.NAME_2||'').replace(/городской округ|муниципальный район|г\.\s*/gi,'').trim();
+      if(!nm||!f.geometry)return;
+      var geom=f.geometry,rings=null;
+      if(geom.type==='Polygon')rings=geom.coordinates;
+      else if(geom.type==='MultiPolygon'){
+        var biggest=geom.coordinates.reduce(function(mx,c){return c[0].length>mx[0].length?c:mx;},geom.coordinates[0]);
+        rings=biggest;
+      }
+      if(rings){_bordersCache[nm]=flipCoords(rings);}
+    });
+    _bordersReady=true;
+    var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+    if(sheetsToHL.length)_highlightDistricts(sheetsToHL);
+  }).catch(function(){});
 }
           rings=biggest;
         }
@@ -1660,46 +1658,36 @@ function _matchBorder(sheet){
 // MIGRATION — цветные кривые-стрелки от аварийного дома → новое жильё
 // ════════════════════════════════════════════════════════════════════════
 var _migrationActive=false;
-var _migrationLayer=null;     // L.LayerGroup — слой стрелок и маркеров миграции
+var _migrationLayer=null;     // ymaps.GeoObjectCollection — слой стрелок и маркеров миграции
 var _migrationGen=0;          // защита от гонок при повторном переключении
 var _lastMigrationData=null;  // кеш последней структуры данных
 var _arrowLayoutClass=null;   // кастомная иконка-наконечник стрелки
 var _dstLayoutClass=null;     // кастомная иконка маркера назначения
 
-// Leaflet использует L.divIcon — шаблоны не нужны, создаём иконки inline
+// Регистрируем кастомные SVG-иконки через ymaps.templateLayoutFactory (один раз)
 function _ensureMigLayouts(){
-  // В Leaflet кастомные иконки создаются через L.divIcon при каждом вызове
-  _arrowLayoutClass=true;   // флаг готовности
-  _dstLayoutClass=true;
-}
-
-// Создать иконку-стрелку (Leaflet divIcon)
-function _makeArrowIcon(color,angle){
-  return L.divIcon({
-    html:'<div class="mig-arr-head" style="transform:translate(-50%,-50%) rotate('+angle+'deg);color:'+color+'">'+
-      '<svg viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">'+
-        '<path d="M2 11 L17 11 M11 4 L19 11 L11 18" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'+
-      '</svg></div>',
-    className:'',
-    iconSize:[22,22],iconAnchor:[11,11]
-  });
-}
-
-// Создать иконку нового дома (Leaflet divIcon)
-function _makeDstIcon(color){
-  return L.divIcon({
-    html:'<div class="mig-dst-house" style="color:'+color+'">'+
-      '<svg viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">'+
-        '<rect x="2" y="16" width="26" height="18" rx="1.5" fill="white" stroke="currentColor" stroke-width="2"/>'+
-        '<polygon points="0,17 15,2 30,17" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>'+
-        '<rect x="11" y="22" width="8" height="12" rx="2" fill="currentColor"/>'+
-        '<rect x="3" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
-        '<rect x="21" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
-        '<rect x="20" y="5" width="3" height="7" rx="1" fill="currentColor"/>'+
-      '</svg></div>',
-    className:'',
-    iconSize:[30,34],iconAnchor:[15,34]
-  });
+  if(typeof ymaps==='undefined')return;
+  if(!_arrowLayoutClass){
+    _arrowLayoutClass=ymaps.templateLayoutFactory.createClass(
+      '<div class="mig-arr-head" style="transform:translate(-50%,-50%) rotate({{properties.angle}}deg);color:{{properties.color}}">'+
+        '<svg viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">'+
+          '<path d="M2 11 L17 11 M11 4 L19 11 L11 18" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'+
+        '</svg></div>'
+    );
+  }
+  if(!_dstLayoutClass){
+    _dstLayoutClass=ymaps.templateLayoutFactory.createClass(
+      '<div class="mig-dst-house" style="color:{{properties.color}}">'+
+        '<svg viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">'+
+          '<rect x="2" y="16" width="26" height="18" rx="1.5" fill="white" stroke="currentColor" stroke-width="2"/>'+
+          '<polygon points="0,17 15,2 30,17" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>'+
+          '<rect x="11" y="22" width="8" height="12" rx="2" fill="currentColor"/>'+
+          '<rect x="3" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
+          '<rect x="21" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
+          '<rect x="20" y="5" width="3" height="7" rx="1" fill="currentColor"/>'+
+        '</svg></div>'
+    );
+  }
 }
 
 // Кривая Безье — массив точек между source и destination
@@ -1841,16 +1829,15 @@ function _geocodeMigrationDestinations(data,myGen){
       var slice=needGeo.slice(idx,end);
       idx=end;
       Promise.all(slice.map(function(it){
-        var q=encodeURIComponent('Московская область, '+it.dstDistrict+', '+it.dstAddr);
-        return fetch('https://nominatim.openstreetmap.org/search?q='+q+'&format=json&limit=1&countrycodes=ru',
-          {headers:{'Accept-Language':'ru','User-Agent':'MinstroMO_Dashboard_v1'}})
-          .then(function(r){return r.json();})
-          .then(function(data){
-            if(data&&data.length){
-              var lat=parseFloat(data[0].lat),lon=parseFloat(data[0].lon);
-              if(lat>50&&lat<60&&lon>30&&lon<45){
-                it.dstLat=lat;it.dstLon=lon;
-                geocodeCache['mig|'+_normAddr(it.dstAddr)]=[lat,lon];
+        var q='Московская область, '+it.dstDistrict+', '+it.dstAddr;
+        return ymaps.geocode(q,{results:1,boundedBy:[[53.5,34.5],[57.5,41.0]]})
+          .then(function(res){
+            var obj=res.geoObjects.get(0);
+            if(obj){
+              var c=obj.geometry.getCoordinates();
+              if(c&&c[0]>50&&c[0]<60&&c[1]>30&&c[1]<45){
+                it.dstLat=c[0];it.dstLon=c[1];
+                geocodeCache['mig|'+_normAddr(it.dstAddr)]=c;
                 _incDailyCount();
                 _markCacheDirty();
               }
@@ -1873,7 +1860,7 @@ function _geocodeMigrationDestinations(data,myGen){
 // Отрисовка: веер кривых с переменным изгибом и толщиной + маркеры назначения
 function _drawMigrations(data){
   if(!_migrationLayer)return 0;
-  _migrationLayer.clearLayers();
+  _migrationLayer.removeAll();
   _ensureMigLayouts();
 
   data.pairs.forEach(function(p){
@@ -1883,16 +1870,14 @@ function _drawMigrations(data){
     var sw=Math.max(2,Math.min(7,1.6+p.count*0.22));
     var points=_bezierCurvePoints([p.srcLat,p.srcLon],[dst.dstLat,dst.dstLon],p._dstIdx||0,40);
     // Белая подложка
-    L.polyline(points,{color:'#fff',weight:sw+3,opacity:0.28,interactive:false}).addTo(_migrationLayer);
-    // Основная кривая
-    L.polyline(points,{color:color,weight:sw,opacity:0.90,smoothFactor:1})
-      .bindTooltip(p.srcAddr+' ('+p.srcSheet+') → '+dst.dstAddr+' · '+p.count+' кв.')
-      .addTo(_migrationLayer);
+    _migrationLayer.add(new ymaps.Polyline(points,{},{strokeColor:'#fff',strokeWidth:sw+3,strokeOpacity:0.28}));
+    // Основная цветная кривая
+    _migrationLayer.add(new ymaps.Polyline(points,{hintContent:p.srcAddr+' ('+p.srcSheet+') → '+dst.dstAddr+' · '+p.count+' кв.'},{strokeColor:color,strokeWidth:sw,strokeOpacity:0.90}));
     // Наконечник на 90% кривой
-    if(points.length>3){
+    if(_arrowLayoutClass&&points.length>3){
       var ai=Math.floor(points.length*0.90);
       var angle=_bearingDeg(points[ai-3]||points[ai-1],points[ai]);
-      L.marker(points[ai],{icon:_makeArrowIcon(color,angle),interactive:false}).addTo(_migrationLayer);
+      try{_migrationLayer.add(new ymaps.Placemark(points[ai],{angle:angle,color:color,hintContent:p.srcAddr+' → '+dst.dstAddr+' · '+p.count+' кв.'},{iconLayout:_arrowLayoutClass,iconShape:{type:'Rectangle',coordinates:[[-12,-12],[12,12]]}}));}catch(e){}
     }
   });
 
@@ -1900,10 +1885,11 @@ function _drawMigrations(data){
   dstList.forEach(function(dst){
     var topSheet=Object.entries(dst.byDistrict).sort(function(a,b){return b[1]-a[1];})[0];
     var col=topSheet?_mapColor(topSheet[0]):'#3a7d5c';
-    L.marker([dst.dstLat,dst.dstLon],{icon:_makeDstIcon(col)})
-      .bindTooltip('🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. · нажмите')
-      .on('click',function(){_openDestinationModal(dst);})
-      .addTo(_migrationLayer);
+    try{
+      var pm=new ymaps.Placemark([dst.dstLat,dst.dstLon],{color:col,hintContent:'🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. · нажмите'},{iconLayout:_dstLayoutClass,iconShape:{type:'Rectangle',coordinates:[[-15,-34],[15,0]]}});
+      pm.events.add('click',function(e){e.stopPropagation();_openDestinationModal(dst);});
+      _migrationLayer.add(pm);
+    }catch(e){}
   });
 
   var cnt=document.getElementById('mig-cnt');
@@ -1966,7 +1952,7 @@ function _openDestinationModal(dst){
 // Перестраиваем слой маркеров (Leaflet layerGroup)
 function _rebuildMarkersLayer(){
   if(!_markersLayer||!_markerData.length)return;
-  _markersLayer.clearLayers();
+  _markersLayer.removeAll();
   var migratingSrc={};
   if(_migrationActive){
     filteredData.forEach(function(r){
@@ -1981,7 +1967,7 @@ function _rebuildMarkersLayer(){
     var byRound=!_mapRoundFilter.length||_mapRoundFilter.indexOf(m.sheet)>=0;
     var byMig=!_migrationActive||!!migratingSrc[m.sheet+'||'+_normAddr(m.addr)];
     m.visible=byRound&&byMig;
-    if(m.visible)m.pm.addTo(_markersLayer);
+    if(m.visible)_markersLayer.add(m.pm);
   });
 }
 function _updateMarkerVisibilityForMigration(){_rebuildMarkersLayer();}
@@ -2002,8 +1988,8 @@ function toggleMigration(){
   }
   if(!ymap){_geoSetStatus('Карта не готова');_migrationActive=false;if(btn)btn.classList.remove('active');return;}
   if(!_migrationLayer){
-    _migrationLayer=L.layerGroup();
-    _migrationLayer.addTo(ymap);
+    _migrationLayer=new ymaps.GeoObjectCollection();
+    ymap.geoObjects.add(_migrationLayer);
   }
   _migrationGen++;
   var myGen=_migrationGen;
@@ -2073,7 +2059,7 @@ function _districtGeoFromMarkers(sheet){
 // Главная функция: подсвечивает выбранные округа кольцами
 function _highlightDistricts(sheets){
   if(!ymap||!_hlLayer)return;
-  _hlLayer.clearLayers();
+  _hlLayer.removeAll();
   if(!sheets||!sheets.length)return;
   sheets.forEach(function(sheet){
     var col=_mapColor(sheet);
@@ -2082,10 +2068,7 @@ function _highlightDistricts(sheets){
       var borderCoords=_matchBorder(sheet);
       if(borderCoords){
         try{
-          L.polygon(borderCoords,{
-            fillColor:col,fillOpacity:0.08,
-            color:col,weight:2.5,opacity:0.8
-          }).bindTooltip(sheet).addTo(_hlLayer);
+          _hlLayer.add(new ymaps.Polygon(borderCoords,{hintContent:sheet},{fillColor:col+'26',strokeColor:col,strokeWidth:3,strokeOpacity:0.8,fillOpacity:1,interactivityModel:'default#transparent'}));
           return;
         }catch(e){}
       }
@@ -2094,11 +2077,7 @@ function _highlightDistricts(sheets){
     var info=_districtGeoFromMarkers(sheet);
     if(!info)return;
     try{
-      L.circle(info.center,{
-        radius:info.radius,
-        fillColor:col,fillOpacity:0.08,
-        color:col,weight:2.5,opacity:0.8
-      }).bindTooltip(sheet).addTo(_hlLayer);
+      _hlLayer.add(new ymaps.Circle([info.center,info.radius],{hintContent:sheet},{fillColor:col+'26',strokeColor:col,strokeWidth:3,strokeOpacity:0.8,fillOpacity:1,interactivityModel:'default#transparent'}));
     }catch(e){}
   });
 }
@@ -2107,8 +2086,8 @@ function _highlightDistricts(sheets){
 function _fitMap(coordsArr){
   if(!ymap||!coordsArr||!coordsArr.length)return;
   try{
-    if(coordsArr.length===1){ymap.setView(coordsArr[0],15);}
-    else{ymap.fitBounds(L.latLngBounds(coordsArr),{padding:[50,50],maxZoom:14});}
+    if(coordsArr.length===1){ymap.setCenter(coordsArr[0],15);}
+    else{ymap.setBounds(ymaps.util.bounds.fromPoints(coordsArr),{checkZoomRange:true,zoomMargin:60});}
   }catch(e){}
 }
 
@@ -2135,32 +2114,29 @@ function _setOverlay(show,txt,pct){
 
 // ── Главная функция рендера карты ─────────────────────────────────────────
 function renderMapPage(){
-  if(typeof L==='undefined'){
-    _geoSetStatus('Leaflet не загрузился — проверьте подключение к сети');
+  if(typeof ymaps==='undefined'){
+    _geoSetStatus('Яндекс.Карты не загрузились — проверьте API-ключ и домен в кабинете Яндекса');
     return;
   }
-  // Leaflet синхронный — ready callback не нужен
-  yReady=true;
-  if(!ymap){
-    ymap=L.map('map',{center:[55.55,37.5],zoom:8,zoomControl:true});
-    _updateMapTiles();   // добавляем тайлы (OSM/CartoDB)
-    mapInited=true;
-    loadBorders();
-  }
-  // Пересчёт размера (если карта была скрыта)
-  setTimeout(function(){try{ymap.invalidateSize();}catch(e){}},60);
-  // Создаём layerGroup если нет
-  if(!_hlLayer)       {_hlLayer=L.layerGroup().addTo(ymap);}
-  if(!_markersLayer)  {_markersLayer=L.layerGroup().addTo(ymap);}
-  if(!_migrationLayer){_migrationLayer=L.layerGroup().addTo(ymap);}
-  // Полная очистка
-  _markersLayer.clearLayers();
-  _hlLayer.clearLayers();
-  _markerData=[];
-  if(_migrationLayer)_migrationLayer.clearLayers();
-  clearMapSearch();
-  _searchGroups=[];
-  _mapRoundColors={};_mapRoundIdx=0;
+  ymaps.ready(function(){
+    yReady=true;
+    if(!ymap){
+      ymap=new ymaps.Map('map',{center:[55.55,37.5],zoom:8,controls:['zoomControl','typeSelector','fullscreenControl']},{suppressMapOpenBlock:true});
+      mapInited=true;
+      setTimeout(function(){try{ymap.container.fitToViewport();}catch(e){}},50);
+      _tryLoadRealBorders();
+      loadBorders();
+    }
+    if(!_hlLayer){_hlLayer=new ymaps.GeoObjectCollection();ymap.geoObjects.add(_hlLayer);}
+    if(!_markersLayer){_markersLayer=new ymaps.GeoObjectCollection();ymap.geoObjects.add(_markersLayer);}
+    _markersLayer.removeAll();
+    _hlLayer.removeAll();
+    _markerData=[];
+    if(_migrationLayer)_migrationLayer.removeAll();
+    try{ymap.container.fitToViewport();}catch(e){}
+    clearMapSearch();
+    _searchGroups=[];
+    _mapRoundColors={};_mapRoundIdx=0;
 
     var groups=buildAddressGroups(filteredData);
     if(!groups.length){
@@ -2183,21 +2159,20 @@ function renderMapPage(){
       if(_geoGen!==myGen)return;
       _setOverlay(false);
       if(!_markersLayer){
-        _markersLayer=L.layerGroup();
+        _markersLayer=new ymaps.GeoObjectCollection();
         _markersLayer.addTo(ymap);
       }
-      _markersLayer.clearLayers();
+      _markersLayer.removeAll();
       _markerData=[];
       var allCoords=[];
       groups.forEach(function(g){
         if(!g.lat||!g.lon)return;
         var byRound=!_mapRoundFilter.length||_mapRoundFilter.indexOf(g.sheet)>=0;
         var col=_mapColor(g.sheet);
-        // Leaflet circleMarker — цветная точка по цвету округа
-        var pm=L.circleMarker([g.lat,g.lon],{
-          radius:7,fillColor:col,color:'#fff',weight:1.5,fillOpacity:0.9
-        }).bindTooltip(g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.');
-        pm.on('click',function(){openMapModal(g);});
+        var pm=new ymaps.Placemark([g.lat,g.lon],{sheet:g.sheet,
+          hintContent:g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.'
+        },{preset:'islands#circleDotIcon',iconColor:col});
+        pm.events.add('click',function(e){e.stopPropagation();openMapModal(g);});
         _markerData.push({sheet:g.sheet,addr:g.addr,lat:g.lat,lon:g.lon,pm:pm,group:g,visible:byRound,color:col});
         if(byRound)allCoords.push([g.lat,g.lon]);
       });
@@ -2236,7 +2211,7 @@ function renderMapPage(){
 
     _setOverlay(true,'Геокодирование 0/'+toGeo.length+qTxt,0);
 
-    _geocodeBatch(toGeo,1,1100,myGen,function(done,total){
+    _geocodeBatch(toGeo,4,300,myGen,function(done,total){
       if(_geoGen!==myGen)return;
       _setOverlay(true,'Геокодирование '+done+'/'+total+qTxt,Math.round(done/total*100));
     }).then(function(results){
@@ -2244,6 +2219,7 @@ function renderMapPage(){
       results.forEach(function(c,i){if(c){toGeo[i].lat=c[0];toGeo[i].lon=c[1];}});
       showAll();
     });
+  }); // ymaps.ready
 }
 
 /* Границы городских округов — раскраска палитрой дашборда (Яндекс) */
@@ -3062,6 +3038,10 @@ function renderFinRegistry(){
       return'<tr><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td><td style="font-weight:600;white-space:nowrap;color:var(--ink)">'+(r._sheet||'—')+'</td><td style="max-width:160px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td><td style="text-align:center">'+(r[C.apt]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+n(r[C.area]).toFixed(2)+'</td><td style="text-align:center">'+(r[C.citizens]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+(ev>0?new Intl.NumberFormat('ru-RU').format(ev)+' ₽':'—')+'</td><td style="text-align:center">'+(r[C.dkp]||'—')+'</td><td style="text-align:right;font-weight:700;'+diffStyle+'">'+(cp>0?new Intl.NumberFormat('ru-RU').format(cp)+' ₽':'—')+'</td><td style="text-align:center;'+paidStyle+'">'+(paidVal||'—')+'</td><td style="white-space:nowrap">'+(r[18]||'—')+'</td><td style="white-space:nowrap">'+(r[19]||'—')+'</td></tr>';
     }).join('')+'</tbody>';
 }
+
+// Флаг готовности API Яндекса
+var ymapsApiReady=false;
+if(typeof ymaps!=='undefined'){ymaps.ready(function(){ymapsApiReady=true;});}
 
 // ─────────────────────────────────────────────────────────────────────────
 // АВТОЗАПУСК
