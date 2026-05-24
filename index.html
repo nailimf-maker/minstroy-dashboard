@@ -2072,14 +2072,6 @@ function renderMapPage(){
     _geoSetStatus('Яндекс.Карты не загрузились — проверьте API-ключ');
     return;
   }
-  // КРИТИЧНО: если контейнер карты невидим (display:none или нулевой размер),
-  // Yandex Maps создаст карту с нулевыми тайлами и маркеры будут невидимы.
-  // Откладываем рендер до момента когда контейнер реально получит размер.
-  var mapEl=document.getElementById('map');
-  if(!mapEl||!mapEl.offsetWidth||!mapEl.offsetHeight){
-    setTimeout(renderMapPage,150);
-    return;
-  }
   ymaps.ready(function(){
     yReady=true;
     if(!ymap){
@@ -2088,6 +2080,8 @@ function renderMapPage(){
         controls:['zoomControl','typeSelector','fullscreenControl']
       },{suppressMapOpenBlock:true});
       mapInited=true;
+      // Пересчитываем размер сразу — на случай если контейнер был скрыт
+      setTimeout(function(){try{ymap.container.fitToViewport();}catch(e){}},50);
       _tryLoadRealBorders();
       loadBorders();
     }
@@ -2135,12 +2129,11 @@ function renderMapPage(){
       if(_geoGen!==myGen)return;
       _setOverlay(false);
       if(!_markersLayer){
-        // Защита: пересоздаём слой если он пропал
         _markersLayer=new ymaps.GeoObjectCollection();
         ymap.geoObjects.add(_markersLayer);
       }
       _markersLayer.removeAll();
-      _markerData=[];   // сбрасываем плоский массив
+      _markerData=[];
       var allCoords=[];
       groups.forEach(function(g){
         if(!g.lat||!g.lon)return;
@@ -2777,7 +2770,7 @@ function renderAll(){
   function setT(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
 
   // Сводка для отчёта (обновляется вместе с данными)
-  renderSummaryBox();
+  try{renderSummaryBox();}catch(e){console.warn('renderSummaryBox error:',e);}
 
   setT('kv-total',d.length.toLocaleString('ru'));setT('kv-area','Площадь: '+area.toFixed(0)+' м²');
   setT('kv-sob',sob.toLocaleString('ru'));setT('kv-sob-a','Площадь: '+sobA.toFixed(0)+' м²');setT('kv-sob-s',(d.length>0?Math.round(sob/d.length*100):0)+'% от всех');
