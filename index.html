@@ -1323,18 +1323,14 @@ function resetMapRound(){
 }
 function _applyMapFilter(){
   if(!ymap||!_markersLayer)return;
-  // Если миграция активна — её обновление сделает и видимость, и пересборку стрелок
-  if(_migrationActive){
-    _refreshMigrationsIfActive();
-  }else{
-    _updateMarkerVisibilityForMigration();
-  }
+  _rebuildMarkersLayer();   // физически пересобирает слой с учётом round-фильтра и миграции
   var vis=[];
   _markerData.forEach(function(m){if(m.visible)vis.push([m.lat,m.lon]);});
   _fitMap(vis);
   _geoSetStatus(_mapRoundFilter.length?'Фильтр: '+_mapRoundFilter.join(', ')+' · '+vis.length+' домов':'Все округа · '+_markerData.length+' домов');
   var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
   _highlightDistricts(sheetsToHL);
+  if(_migrationActive)_refreshMigrationsIfActive();
 }
 
 // ── Поиск адреса ───────────────────────────────────────────────────────────
@@ -1819,10 +1815,12 @@ function _openDestinationModal(dst){
   openModal();
 }
 
-// Видимость маркеров с учётом миграции
-// Когда режим ON — показываем только дома у которых в filteredData есть newAddr
-function _updateMarkerVisibilityForMigration(){
-  if(!_markerData.length)return;
+// Перестраиваем слой маркеров: физически добавляем/убираем из коллекции
+// (options.set('visible') ненадёжен в Yandex Maps 2.1)
+function _rebuildMarkersLayer(){
+  if(!_markersLayer||!_markerData.length)return;
+  _markersLayer.removeAll();
+  // Какие дома имеют данные миграции (newAddr заполнен)
   var migratingSrc={};
   if(_migrationActive){
     filteredData.forEach(function(r){
@@ -1830,18 +1828,18 @@ function _updateMarkerVisibilityForMigration(){
       if(!dstAddr||dstAddr==='—'||dstAddr==='-')return;
       var srcSheet=r._sheet||'—';
       if(_mapRoundFilter.length&&_mapRoundFilter.indexOf(srcSheet)<0)return;
-      var srcAddr=String(r[C.addr]||'').trim();
-      migratingSrc[srcSheet+'||'+_normAddr(srcAddr)]=true;
+      migratingSrc[srcSheet+'||'+_normAddr(String(r[C.addr]||''))]=true;
     });
   }
   _markerData.forEach(function(m){
     var byRound=!_mapRoundFilter.length||_mapRoundFilter.indexOf(m.sheet)>=0;
-    var byMig=!_migrationActive||migratingSrc[m.sheet+'||'+_normAddr(m.addr)];
-    var visible=byRound&&byMig;
-    m.visible=visible;
-    try{m.pm.options.set('visible',visible);}catch(e){}
+    var byMig=!_migrationActive||!!migratingSrc[m.sheet+'||'+_normAddr(m.addr)];
+    m.visible=byRound&&byMig;
+    if(m.visible)_markersLayer.add(m.pm);
   });
 }
+// Алиас для обратной совместимости с вызовами в других функциях
+function _updateMarkerVisibilityForMigration(){_rebuildMarkersLayer();}
 
 // Главное переключение режима
 function toggleMigration(){
@@ -2074,18 +2072,18 @@ function renderMapPage(){
       var allCoords=[];
       groups.forEach(function(g){
         if(!g.lat||!g.lon)return;
-        var visible=!_mapRoundFilter.length||_mapRoundFilter.indexOf(g.sheet)>=0;
+        var byRound=!_mapRoundFilter.length||_mapRoundFilter.indexOf(g.sheet)>=0;
         var col=_mapColor(g.sheet);
         var pm=new ymaps.Placemark([g.lat,g.lon],{sheet:g.sheet,
           hintContent:g.addr+' ('+g.sheet+') · '+g.rows.length+' кв.'
         },{preset:'islands#circleDotIcon',iconColor:col});
-        if(!visible)pm.options.set('visible',false);
         pm.events.add('click',function(e){e.stopPropagation();openMapModal(g);});
-        _markersLayer.add(pm);
-        // Параллельно записываем в плоский массив
-        _markerData.push({sheet:g.sheet,addr:g.addr,lat:g.lat,lon:g.lon,pm:pm,group:g,visible:visible,color:col});
-        if(visible)allCoords.push([g.lat,g.lon]);
+        // Записываем в плоский массив (добавим в слой через _rebuildMarkersLayer)
+        _markerData.push({sheet:g.sheet,addr:g.addr,lat:g.lat,lon:g.lon,pm:pm,group:g,visible:byRound,color:col});
+        if(byRound)allCoords.push([g.lat,g.lon]);
       });
+      // Физически добавляем маркеры с учётом миграции
+      _rebuildMarkersLayer();
       _fitMap(allCoords);
       _buildColorLegend();
       // Подсвечиваем: приоритет — локальный фильтр карты, затем глобальный
