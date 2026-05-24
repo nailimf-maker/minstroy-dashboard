@@ -244,7 +244,25 @@ tr:hover td{background:var(--row-bg)}
 
 /* MAP */
 .map-content{padding:0;display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
-/* Кнопки TOP */
+/* СВОДКА ДЛЯ ОТЧЁТА */
+.sum-box{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;padding:22px 26px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
+.sum-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px}
+.sum-title{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:8px}
+.sum-copy{background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink-soft);border-radius:10px;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.sum-copy:hover{color:var(--gold);border-color:rgba(176,141,79,.3);background:var(--gold-tint)}
+.sum-copy.copied{color:var(--pos);border-color:rgba(58,125,92,.35);background:rgba(58,125,92,.10)}
+.sum-lines{display:flex;flex-direction:column;gap:9px}
+.sum-line{display:flex;align-items:baseline;gap:10px;padding:10px 14px;background:var(--row-bg);border-radius:12px;border:1px solid var(--line-soft);border-left:3px solid}
+.sum-lbl{font-size:12px;font-weight:600;color:var(--ink-soft);flex:1;min-width:0}
+.sum-val{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;flex-shrink:0}
+.sum-num{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.sum-area{font-weight:700;font-variant-numeric:tabular-nums}
+.sum-total{background:var(--gold-tint);border-color:rgba(176,141,79,.25)!important}
+.sum-total .sum-lbl{font-size:13px;font-weight:800;color:var(--ink)}
+.sum-total .sum-num{font-size:22px;color:var(--gold)}
+.sum-total .sum-area{color:var(--gold)}
+/* Скрытый textarea для копирования */
+#sum-plain{position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none}
 .btn-mig-top{background:rgba(58,125,92,.12)!important;color:var(--pos)!important;border:1px solid rgba(58,125,92,.28)!important;font-weight:700}
 .btn-mig-top:hover{background:rgba(58,125,92,.20)!important}
 .mig-toggle{display:flex;align-items:center;gap:7px;padding:9px 14px;font-size:11px;font-weight:700;background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink);border-radius:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap}
@@ -588,6 +606,38 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
 <!-- ОБЗОР -->
 <div class="page active" id="page-overview">
 <div class="content">
+  <div class="sum-box">
+    <div class="sum-head">
+      <div class="sum-title">📋 Сводка по сертификатам и выкупам</div>
+      <button class="sum-copy" id="sum-copy-btn" onclick="copySummary()">
+        <span id="sum-copy-icon">⎘</span> <span id="sum-copy-lbl">Копировать</span>
+      </button>
+    </div>
+    <div class="sum-lines">
+      <div class="sum-line" style="border-left-color:var(--pos)">
+        <div class="sum-lbl">Сертификаты (положительное решение)</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--pos)" id="sr-cp-cnt">—</span> <span id="sr-cp-word">заявлений</span> на <span class="sum-area" style="color:var(--pos)" id="sr-cp-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line" style="border-left-color:var(--gold)">
+        <div class="sum-lbl">Выкупов</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--gold)" id="sr-vy-cnt">—</span> <span id="sr-vy-word">помещений</span> на <span class="sum-area" style="color:var(--gold)" id="sr-vy-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line" style="border-left-color:var(--proc)">
+        <div class="sum-lbl">На рассмотрении</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--proc)" id="sr-pr-cnt">—</span> <span id="sr-pr-word">заявлений</span> на <span class="sum-area" style="color:var(--proc)" id="sr-pr-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line" style="border-left-color:var(--neg)">
+        <div class="sum-lbl">Согласны на выкуп без сертификата (отказ/отрицательные)</div>
+        <div class="sum-val"><span class="sum-num" style="color:var(--neg)" id="sr-nc-cnt">—</span> <span id="sr-nc-word">собственников</span> на <span class="sum-area" style="color:var(--neg)" id="sr-nc-area">—</span> кв.м</div>
+      </div>
+      <div class="sum-line sum-total">
+        <div class="sum-lbl">ИТОГО</div>
+        <div class="sum-val"><span class="sum-num" id="sr-tt-cnt">—</span> <span id="sr-tt-word">помещений</span> на <span class="sum-area" id="sr-tt-area">—</span> кв.м</div>
+      </div>
+    </div>
+    <textarea id="sum-plain" readonly></textarea>
+  </div>
+
   <div class="kpi-hero">
     <div class="kpi-h" onclick="kpiModal('total')"><div class="kh-lbl">Всего квартир</div><div class="kh-val" id="kv-total">—</div><div class="kh-area" id="kv-area">—</div><div class="kh-hint">▼ список округов</div></div>
     <div class="kpi-h" onclick="kpiModal('sob')"><div class="kh-lbl">Собственники</div><div class="kh-val" id="kv-sob">—</div><div class="kh-area" id="kv-sob-a">—</div><div class="kh-sub" id="kv-sob-s">—</div><div class="kh-hint">▼ список округов</div></div>
@@ -2656,6 +2706,63 @@ function selRound(name){
   applyF();
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// СВОДКА ДЛЯ ОТЧЁТА — автообновляется из filteredData
+// ────────────────────────────────────────────────────────────────────────
+function _ruPlural(n,f1,f2,f5){
+  var m=Math.abs(n)%100,d=Math.abs(n)%10;
+  if(m>=11&&m<=19)return f5;
+  if(d===1)return f1;
+  if(d>=2&&d<=4)return f2;
+  return f5;
+}
+function _fmtArea(v){
+  return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
+}
+function renderSummaryBox(){
+  var d=filteredData;
+  var cpCnt=0,cpA=0,vyCnt=0,vyA=0,prCnt=0,prA=0,ncCnt=0,ncA=0;
+  d.forEach(function(r){
+    var a=n(r[C.area]),nt=normType(r[C.certType]),nd=normDecision(r[C.decision]),consent=lo(r[C.buyConsent]||'');
+    if(nt==='Сертификат'&&nd==='Положительное'){cpCnt++;cpA+=a;}
+    if(nt==='Выкуп'){vyCnt++;vyA+=a;}
+    if(nt==='Сертификат'&&nd==='На рассмотрении'){prCnt++;prA+=a;}
+    if((nd==='Отрицательное'||nd==='Отказ')&&consent==='да'){ncCnt++;ncA+=a;}
+  });
+  var ttCnt=cpCnt+vyCnt+prCnt+ncCnt,ttA=cpA+vyA+prA+ncA;
+  function setLine(id,cnt,area,w1,w2,w5){
+    var e=document.getElementById(id+'-cnt');if(e)e.textContent=cnt.toLocaleString('ru-RU');
+    var ew=document.getElementById(id+'-word');if(ew)ew.textContent=_ruPlural(cnt,w1,w2,w5);
+    var ea=document.getElementById(id+'-area');if(ea)ea.textContent=_fmtArea(area);
+  }
+  setLine('sr-cp',cpCnt,cpA,'заявление','заявления','заявлений');
+  setLine('sr-vy',vyCnt,vyA,'помещение','помещения','помещений');
+  setLine('sr-pr',prCnt,prA,'заявление','заявления','заявлений');
+  setLine('sr-nc',ncCnt,ncA,'собственник','собственника','собственников');
+  setLine('sr-tt',ttCnt,ttA,'помещение','помещения','помещений');
+  var plain=
+    'Сертификаты (положительное решение): '+cpCnt.toLocaleString('ru-RU')+' '+_ruPlural(cpCnt,'заявление','заявления','заявлений')+' на '+_fmtArea(cpA)+' кв.м\n'+
+    'Выкупов: '+vyCnt.toLocaleString('ru-RU')+' '+_ruPlural(vyCnt,'помещение','помещения','помещений')+' на '+_fmtArea(vyA)+' кв.м\n'+
+    'На рассмотрении: '+prCnt.toLocaleString('ru-RU')+' '+_ruPlural(prCnt,'заявление','заявления','заявлений')+' на '+_fmtArea(prA)+' кв.м\n'+
+    'Согласны на выкуп без сертификата (отказ/отрицательные): '+ncCnt.toLocaleString('ru-RU')+' '+_ruPlural(ncCnt,'собственник','собственника','собственников')+' на '+_fmtArea(ncA)+' кв.м\n'+
+    'ИТОГО: '+ttCnt.toLocaleString('ru-RU')+' '+_ruPlural(ttCnt,'помещение','помещения','помещений')+' на '+_fmtArea(ttA)+' кв.м';
+  var tp=document.getElementById('sum-plain');if(tp)tp.value=plain;
+}
+function copySummary(){
+  var tp=document.getElementById('sum-plain'),text=tp?tp.value:'';
+  var btn=document.getElementById('sum-copy-btn'),icon=document.getElementById('sum-copy-icon'),lbl=document.getElementById('sum-copy-lbl');
+  function ok(){if(btn)btn.classList.add('copied');if(icon)icon.textContent='✓';if(lbl)lbl.textContent='Скопировано';setTimeout(function(){if(btn)btn.classList.remove('copied');if(icon)icon.textContent='⎘';if(lbl)lbl.textContent='Копировать';},2400);}
+  if(navigator.clipboard&&text)navigator.clipboard.writeText(text).then(ok).catch(function(){_fbCopy(text,ok);});
+  else _fbCopy(text,ok);
+}
+function _fbCopy(text,cb){
+  var ta=document.getElementById('sum-plain');if(!ta)return;
+  ta.style.cssText='position:fixed;left:0;top:0;opacity:1;width:200px;height:60px;z-index:9999';
+  ta.select();ta.setSelectionRange(0,99999);
+  try{document.execCommand('copy');cb();}catch(e){}
+  ta.style.cssText='position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none';
+}
+
 function renderAll(){
   var d=filteredData,area=0,sob=0,nan=0,cert=0,vyk=0,pos=0,proc=0,neg=0,rej=0,none=0;
   var sobA=0,nanA=0,certA=0,vykA=0;
@@ -2668,6 +2775,9 @@ function renderAll(){
     else if(nd==='Отказ')rej++;else if(nd==='Отрицательное')neg++;else none++;
   });
   function setT(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
+
+  // Сводка для отчёта (обновляется вместе с данными)
+  renderSummaryBox();
 
   setT('kv-total',d.length.toLocaleString('ru'));setT('kv-area','Площадь: '+area.toFixed(0)+' м²');
   setT('kv-sob',sob.toLocaleString('ru'));setT('kv-sob-a','Площадь: '+sobA.toFixed(0)+' м²');setT('kv-sob-s',(d.length>0?Math.round(sob/d.length*100):0)+'% от всех');
