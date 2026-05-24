@@ -244,41 +244,6 @@ tr:hover td{background:var(--row-bg)}
 
 /* MAP */
 .map-content{padding:0;display:flex;flex-direction:column;gap:0;position:relative;z-index:1}
-/* PRIORITY HERO — 4 главные карточки с полной структурой */
-.priority-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.prio{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:18px;padding:18px 18px 14px;cursor:pointer;transition:all .35s cubic-bezier(.4,0,.2,1);box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3);position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px;min-height:280px}
-.prio::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:currentColor;opacity:.85}
-.prio:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift)}
-.prio-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-.prio-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);line-height:1.35;flex:1}
-.prio-badge{font-size:14px;font-weight:800;width:28px;height:28px;border-radius:8px;background:currentColor;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.85}
-.prio-pos .prio-badge{color:#fff;background:var(--pos)}
-.prio-proc .prio-badge{color:#fff;background:var(--proc)}
-.prio-vyk .prio-badge{color:#fff;background:var(--gold)}
-.prio-neg .prio-badge{color:#fff;background:var(--neg)}
-.prio-val{font-size:42px;font-weight:800;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
-.prio-cap{font-size:11px;color:var(--ink-soft);font-weight:600;margin-top:-4px}
-.prio-cap span{color:var(--ink);font-weight:700}
-.prio-split{background:var(--row-bg);border-radius:11px;padding:9px 11px;display:flex;flex-direction:column;gap:5px;border:1px solid var(--line-soft)}
-.prio-split-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;font-weight:600;gap:6px}
-.prio-split-lbl{color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.prio-split-val{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.prio-top{margin-top:auto;padding-top:8px;border-top:1px dashed var(--line)}
-.prio-top-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-.prio-top-list{font-size:11px;font-weight:600;color:var(--ink-soft);line-height:1.55}
-.prio-top-list .pt-row{display:flex;justify-content:space-between;gap:8px}
-.prio-top-list .pt-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.prio-top-list .pt-cnt{color:currentColor;font-weight:800;flex-shrink:0;font-variant-numeric:tabular-nums}
-.prio-pos .prio-top-list .pt-cnt{color:var(--pos)}
-.prio-proc .prio-top-list .pt-cnt{color:var(--proc)}
-.prio-vyk .prio-top-list .pt-cnt{color:var(--gold)}
-.prio-neg .prio-top-list .pt-cnt{color:var(--neg)}
-.prio-pos{color:var(--pos)}
-.prio-proc{color:var(--proc)}
-.prio-vyk{color:var(--gold)}
-.prio-neg{color:var(--neg)}
-.btn-top{background:var(--gold-tint)!important;color:var(--gold)!important;border:1px solid rgba(176,141,79,.3)!important;font-weight:700}
-.btn-top:hover{background:rgba(176,141,79,.18)!important}
 /* Кнопка миграции на карте */
 .mig-toggle{display:flex;align-items:center;gap:7px;padding:9px 14px;font-size:11px;font-weight:700;background:var(--tab-bg);border:1px solid var(--glass-border);color:var(--ink);border-radius:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;white-space:nowrap}
 .mig-toggle:hover{background:var(--tab-active)}
@@ -294,18 +259,6 @@ tr:hover td{background:var(--row-bg)}
 .chart-scroll-v::-webkit-scrollbar{width:7px}
 .chart-scroll-v::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
 .chart-inner-v{width:100%;min-height:360px}
-/* TOP modal sections */
-.tcm-section{margin-bottom:20px}
-.tcm-section:last-child{margin-bottom:0}
-.tcm-section-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 14px;background:var(--row-bg);border-radius:11px;border-left:3px solid currentColor}
-.tcm-section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;flex:1}
-.tcm-section-total{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
-.tcm-row{display:grid;grid-template-columns:24px 1fr auto auto;align-items:center;gap:10px;padding:7px 12px;font-size:11.5px}
-.tcm-row:nth-child(odd){background:rgba(128,128,128,.04)}
-.tcm-rank{font-size:10px;color:var(--muted);font-weight:700;text-align:right}
-.tcm-name{font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tcm-area{color:var(--ink-soft);font-weight:600;font-size:10px;white-space:nowrap}
-.tcm-cnt{font-weight:800;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .map-toolbar{background:var(--glass-strong);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .map-lbl{font-size:13px;font-weight:700;color:var(--ink);flex:1}
 /* Строка поиска адреса */
@@ -471,10 +424,6 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
   .content{padding:14px;gap:16px}
 
   /* KPI */
-  .priority-row{grid-template-columns:repeat(2,1fr);gap:10px}
-  .prio{padding:14px 13px;min-height:auto}
-  .prio-val{font-size:30px}
-  .prio-lbl{font-size:10px}
   .kpi-hero{grid-template-columns:repeat(2,1fr);gap:10px}
   .kh-val{font-size:28px}
   .kpi-h{padding:18px 14px}
@@ -597,7 +546,6 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
     </div>
   </div>
   <button class="btn-rst" onclick="resetF()">↺ Сброс</button>
-  <button class="btn-rst btn-top" onclick="topByCategoryModal()" title="Топ округов по всем категориям">📊 Топ по округам</button>
   <span id="fcnt"></span>
 </div>
 
@@ -622,101 +570,6 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
 <!-- ОБЗОР -->
 <div class="page active" id="page-overview">
 <div class="content">
-  <div class="sect-lbl">Главные показатели · сертификаты и выкупы · клик по карточке — детали</div>
-  <div class="priority-row">
-    <div class="prio prio-pos" onclick="prioModal('certPos')">
-      <div class="prio-hdr">
-        <div class="prio-lbl">Сертификаты<br>(Положительные)</div>
-        <div class="prio-badge">✓</div>
-      </div>
-      <div class="prio-val" id="pv-certPos">—</div>
-      <div class="prio-cap">заявок · <span id="pv-certPos-area">—</span></div>
-      <div class="prio-split">
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">Собственники</span>
-          <span class="prio-split-val" id="pv-certPos-sob">—</span>
-        </div>
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">Наниматели</span>
-          <span class="prio-split-val" id="pv-certPos-nan">—</span>
-        </div>
-      </div>
-      <div class="prio-top">
-        <div class="prio-top-lbl">Топ округов</div>
-        <div class="prio-top-list" id="pv-certPos-top">—</div>
-      </div>
-    </div>
-
-    <div class="prio prio-proc" onclick="prioModal('certProc')">
-      <div class="prio-hdr">
-        <div class="prio-lbl">Сертификаты<br>(На рассмотрении)</div>
-        <div class="prio-badge">⏳</div>
-      </div>
-      <div class="prio-val" id="pv-certProc">—</div>
-      <div class="prio-cap">заявок · <span id="pv-certProc-area">—</span></div>
-      <div class="prio-split">
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">Собственники</span>
-          <span class="prio-split-val" id="pv-certProc-sob">—</span>
-        </div>
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">Наниматели</span>
-          <span class="prio-split-val" id="pv-certProc-nan">—</span>
-        </div>
-      </div>
-      <div class="prio-top">
-        <div class="prio-top-lbl">Топ округов</div>
-        <div class="prio-top-list" id="pv-certProc-top">—</div>
-      </div>
-    </div>
-
-    <div class="prio prio-vyk" onclick="prioModal('vyk')">
-      <div class="prio-hdr">
-        <div class="prio-lbl">Выкупы</div>
-        <div class="prio-badge">₽</div>
-      </div>
-      <div class="prio-val" id="pv-vyk">—</div>
-      <div class="prio-cap">заявок · <span id="pv-vyk-area">—</span></div>
-      <div class="prio-split">
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">Только собственники</span>
-          <span class="prio-split-val" id="pv-vyk-sob">—</span>
-        </div>
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">Заявление не подавалось</span>
-          <span class="prio-split-val" id="pv-vyk-direct">—</span>
-        </div>
-      </div>
-      <div class="prio-top">
-        <div class="prio-top-lbl">Топ округов</div>
-        <div class="prio-top-list" id="pv-vyk-top">—</div>
-      </div>
-    </div>
-
-    <div class="prio prio-neg" onclick="prioModal('certNeg')">
-      <div class="prio-hdr">
-        <div class="prio-lbl">Выкупы<br>(отрицательные сертификаты)</div>
-        <div class="prio-badge">↺</div>
-      </div>
-      <div class="prio-val" id="pv-certNeg">—</div>
-      <div class="prio-cap">заявок · <span id="pv-certNeg-area">—</span></div>
-      <div class="prio-split">
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">К переводу в выкуп</span>
-          <span class="prio-split-val" id="pv-certNeg-sob">—</span>
-        </div>
-        <div class="prio-split-row">
-          <span class="prio-split-lbl">Согласие «да»</span>
-          <span class="prio-split-val" id="pv-certNeg-cons">—</span>
-        </div>
-      </div>
-      <div class="prio-top">
-        <div class="prio-top-lbl">Топ округов</div>
-        <div class="prio-top-list" id="pv-certNeg-top">—</div>
-      </div>
-    </div>
-  </div>
-
   <div class="kpi-hero">
     <div class="kpi-h" onclick="kpiModal('total')"><div class="kh-lbl">Всего квартир</div><div class="kh-val" id="kv-total">—</div><div class="kh-area" id="kv-area">—</div><div class="kh-hint">▼ список округов</div></div>
     <div class="kpi-h" onclick="kpiModal('sob')"><div class="kh-lbl">Собственники</div><div class="kh-val" id="kv-sob">—</div><div class="kh-area" id="kv-sob-a">—</div><div class="kh-sub" id="kv-sob-s">—</div><div class="kh-hint">▼ список округов</div></div>
@@ -2129,69 +1982,6 @@ function kpiModal(type){
   openModal();
 }
 
-function prioModal(key){
-  var p=_computePrio(key);if(!p)return;
-  var cfg=p.cfg,col=cfg.color;
-  document.getElementById('modal-total').textContent=p.total.toLocaleString('ru');
-  document.getElementById('modal-total').style.color=col;
-  document.getElementById('modal-title').textContent=cfg.title+' · '+p.totalA.toFixed(0)+' м²';
-  // Сначала — топ по округам (что просил пользователь)
-  var html='<div style="background:var(--row-bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;border-left:3px solid '+col+'">'+
-    '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Топ округов</div>';
-  if(p.top.length){
-    html+=p.top.map(function(r,i){
-      var splitTxt=(key==='certPos'||key==='certProc')?
-        (' · собств. '+r.sob+' · наним. '+r.nan):
-        (' · '+r.area.toFixed(0)+' м²');
-      return'<div class="tcm-row"><span class="tcm-rank">'+(i+1)+'</span>'+
-        '<span class="tcm-name">'+r.sheet+'</span>'+
-        '<span class="tcm-area">'+r.area.toFixed(0)+' м²'+splitTxt+'</span>'+
-        '<span class="tcm-cnt" style="color:'+col+'">'+r.cnt+'</span></div>';
-    }).join('');
-  }else{
-    html+='<div style="color:var(--muted);font-size:12px;text-align:center;padding:6px">Нет данных</div>';
-  }
-  html+='</div>';
-  // Затем — список всех заявок этой категории
-  html+='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;padding-left:2px">Список заявок · '+p.total+' квартир</div>';
-  var sorted=p.rows.slice().sort(function(a,b){return n(b[C.area])-n(a[C.area]);});
-  html+=sorted.map(function(r,i){
-    return'<div class="mrow" style="border-left-color:'+col+'">'+
-      '<span class="mrow-rank">'+(i+1)+'</span>'+
-      '<span class="mrow-name">'+(r[C.addr]||'—')+'<small>'+(r._sheet||'')+' · кв. '+(r[C.apt]||'—')+' · '+normOwner(r[C.owner])+'</small></span>'+
-      '<span class="mrow-meta">'+(r[C.citizens]||'—')+' чел.</span>'+
-      '<span class="mrow-val" style="color:'+col+'">'+n(r[C.area]).toFixed(1)+' м²</span></div>';
-  }).join('')||'<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Заявок не найдено в текущей выборке</div>';
-  document.getElementById('modal-body').innerHTML=html;
-  openModal();
-}
-
-// Топ всех категорий — единое модальное окно
-function topByCategoryModal(){
-  var keys=['certPos','certProc','vyk','certNeg'];
-  var total=keys.reduce(function(s,k){var p=_computePrio(k);return s+(p?p.total:0);},0);
-  document.getElementById('modal-total').textContent=total.toLocaleString('ru');
-  document.getElementById('modal-total').style.color='var(--gold)';
-  document.getElementById('modal-title').textContent='Топ по округам · все 4 категории';
-  var html=keys.map(function(k){
-    var p=_computePrio(k);if(!p)return'';
-    var col=p.cfg.color;
-    var rows=p.top.map(function(r,i){
-      return'<div class="tcm-row"><span class="tcm-rank">'+(i+1)+'</span>'+
-        '<span class="tcm-name">'+r.sheet+'</span>'+
-        '<span class="tcm-area">'+r.area.toFixed(0)+' м²</span>'+
-        '<span class="tcm-cnt" style="color:'+col+'">'+r.cnt+'</span></div>';
-    }).join('')||'<div style="padding:10px 14px;color:var(--muted);font-size:11px">нет данных</div>';
-    return'<div class="tcm-section" style="color:'+col+'">'+
-      '<div class="tcm-section-hdr">'+
-        '<div class="tcm-section-title">'+p.cfg.title+'</div>'+
-        '<div class="tcm-section-total">'+p.total+'</div>'+
-      '</div>'+rows+'</div>';
-  }).join('');
-  document.getElementById('modal-body').innerHTML=html;
-  openModal();
-}
-
 function decModal(key){
   var cfg=decCfg.filter(function(c){return c.key===key;})[0];if(!cfg)return;
   var rows=baseFilter().filter(function(r){
@@ -2509,63 +2299,6 @@ function selRound(name){
   applyF();
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Конфигурация 4 главных категорий (priority)
-// ────────────────────────────────────────────────────────────────────────
-// 1. Сертификаты (Положительные)   — Сертификат + Решение=Положительное (собств. ИЛИ нанимат.)
-// 2. Сертификаты (На рассмотрении) — Сертификат + Решение=На рассмотрении (собств. ИЛИ нанимат.)
-// 3. Выкупы                        — все выкупы (только собственники)
-//      a) certType=Выкуп (заявление на сертификат не подавалось)
-//      b) certType=Сертификат + decision=Отрицательное + buyConsent=да
-// 4. Выкупы (отрицательные сертификаты) — только подтип b) из №3
-// ────────────────────────────────────────────────────────────────────────
-var _PRIO_CFG={
-  certPos:{title:'Сертификаты (Положительные)',color:'#3a7d5c',cls:'prio-pos',
-    filter:function(r){return normType(r[C.certType])==='Сертификат'&&normDecision(r[C.decision])==='Положительное';}},
-  certProc:{title:'Сертификаты (На рассмотрении)',color:'#b08d4f',cls:'prio-proc',
-    filter:function(r){return normType(r[C.certType])==='Сертификат'&&normDecision(r[C.decision])==='На рассмотрении';}},
-  vyk:{title:'Выкупы (все, только собственники)',color:'#d6a85a',cls:'prio-vyk',
-    filter:function(r){
-      if(normOwner(r[C.owner])!=='Собственник')return false;
-      var nt=normType(r[C.certType]),nd=normDecision(r[C.decision]);
-      if(nt==='Выкуп')return true;
-      if(nt==='Сертификат'&&nd==='Отрицательное'&&lo(r[C.buyConsent])==='да')return true;
-      return false;
-    }},
-  certNeg:{title:'Выкупы из отрицательных сертификатов',color:'#b05a4f',cls:'prio-neg',
-    filter:function(r){return normOwner(r[C.owner])==='Собственник'&&normType(r[C.certType])==='Сертификат'&&normDecision(r[C.decision])==='Отрицательное'&&lo(r[C.buyConsent])==='да';}}
-};
-
-// Агрегация по категории: возвращает строки, счётчики, разбивку, топ округов
-function _computePrio(key){
-  var cfg=_PRIO_CFG[key];if(!cfg)return null;
-  var rows=filteredData.filter(cfg.filter);
-  var sob=0,sobA=0,nan=0,nanA=0,totalA=0;
-  var direct=0,directA=0,fromNeg=0,fromNegA=0;   // только для vyk
-  var byRound={};
-  rows.forEach(function(r){
-    var a=n(r[C.area]);
-    var o=normOwner(r[C.owner]);
-    totalA+=a;
-    if(o==='Собственник'){sob++;sobA+=a;}
-    if(o==='Наниматель'){nan++;nanA+=a;}
-    // Подсчёт двух подтипов выкупа
-    if(key==='vyk'){
-      var nt=normType(r[C.certType]);
-      if(nt==='Выкуп'){direct++;directA+=a;}
-      else if(nt==='Сертификат'){fromNeg++;fromNegA+=a;}
-    }
-    var sh=r._sheet||'—';
-    if(!byRound[sh])byRound[sh]={sheet:sh,cnt:0,area:0,sob:0,nan:0};
-    byRound[sh].cnt++;byRound[sh].area+=a;
-    if(o==='Собственник')byRound[sh].sob++;
-    if(o==='Наниматель')byRound[sh].nan++;
-  });
-  var top=Object.values(byRound).sort(function(a,b){return b.cnt-a.cnt||a.sheet.localeCompare(b.sheet,'ru');});
-  return{rows:rows,total:rows.length,totalA:totalA,sob:sob,sobA:sobA,nan:nan,nanA:nanA,
-    direct:direct,directA:directA,fromNeg:fromNeg,fromNegA:fromNegA,top:top,cfg:cfg};
-}
-
 function renderAll(){
   var d=filteredData,area=0,sob=0,nan=0,cert=0,vyk=0,pos=0,proc=0,neg=0,rej=0,none=0;
   var sobA=0,nanA=0,certA=0,vykA=0;
@@ -2578,32 +2311,6 @@ function renderAll(){
     else if(nd==='Отказ')rej++;else if(nd==='Отрицательное')neg++;else none++;
   });
   function setT(id,v){var el=document.getElementById(id);if(el)el.innerHTML=v;}
-
-  // ── 4 главные карточки ────────────────────────────────────────────────
-  function renderPrioCard(key){
-    var p=_computePrio(key);if(!p)return;
-    setT('pv-'+key,p.total.toLocaleString('ru'));
-    setT('pv-'+key+'-area',p.totalA.toFixed(0)+' м²');
-    if(key==='certPos'||key==='certProc'){
-      setT('pv-'+key+'-sob',p.sob+' · '+p.sobA.toFixed(0)+' м²');
-      setT('pv-'+key+'-nan',p.nan+' · '+p.nanA.toFixed(0)+' м²');
-    }else if(key==='vyk'){
-      setT('pv-vyk-sob',p.total+' заявок · '+p.totalA.toFixed(0)+' м²');
-      setT('pv-vyk-direct',p.direct+' · '+p.directA.toFixed(0)+' м²');
-    }else if(key==='certNeg'){
-      setT('pv-certNeg-sob',p.total+' заявок · '+p.totalA.toFixed(0)+' м²');
-      setT('pv-certNeg-cons',p.total+' (отриц.+согласие да)');
-    }
-    // Топ-5 округов внизу карточки
-    var topHtml=p.top.slice(0,5).map(function(r){
-      return'<div class="pt-row"><span class="pt-name">'+r.sheet+'</span><span class="pt-cnt">'+r.cnt+'</span></div>';
-    }).join('');
-    setT('pv-'+key+'-top',topHtml||'<span style="color:var(--muted)">нет данных</span>');
-  }
-  renderPrioCard('certPos');
-  renderPrioCard('certProc');
-  renderPrioCard('vyk');
-  renderPrioCard('certNeg');
 
   setT('kv-total',d.length.toLocaleString('ru'));setT('kv-area','Площадь: '+area.toFixed(0)+' м²');
   setT('kv-sob',sob.toLocaleString('ru'));setT('kv-sob-a','Площадь: '+sobA.toFixed(0)+' м²');setT('kv-sob-s',(d.length>0?Math.round(sob/d.length*100):0)+'% от всех');
