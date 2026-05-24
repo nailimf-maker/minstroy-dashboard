@@ -2199,19 +2199,21 @@ function kpiModal(type){
 // ТОП ОКРУГОВ ПО МИГРАЦИИ — три секции: входящие, внутренние, исходящие
 // ════════════════════════════════════════════════════════════════════════
 
+// Нормализация ё→е для корректного сравнения названий округов
+function _normRu(s){return String(s||'').toLowerCase().replace(/ё/g,'е');}
+
 // Определяем округ назначения: сначала из newDistrict, иначе — ищем название
 // известного округа в тексте newAddr (большинство адресов содержат город)
 function _getDstDistrict(r){
   var explicit=String(r[C.newDistrict]||'').trim();
   if(explicit)return explicit;
-  var addr=String(r[C.newAddr]||'').toLowerCase();
+  var addr=_normRu(String(r[C.newAddr]||''));   // нормализуем ё→е
   if(!addr)return'';
   for(var i=0;i<SHEETS.length;i++){
-    var name=SHEETS[i].name.toLowerCase();
-    // Ищем название как отдельное слово (до/после: пробел, запятая, точка, дефис)
+    var name=_normRu(SHEETS[i].name);            // нормализуем ё→е
     var esc=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    if(new RegExp('(^|[\\s,.\\-/])'+esc+'($|[\\s,.\\-/])').test(addr)){
-      return SHEETS[i].name;
+    if(new RegExp('(^|[\\s,.\\-/])'+esc+'($|[\\s,.\\-/])','i').test(addr)){
+      return SHEETS[i].name;   // возвращаем каноническое написание из SHEETS
     }
   }
   return'';
@@ -2237,7 +2239,7 @@ function showMigrationTop(){
     outgoing[srcSheet].area+=a;
 
     if(dstDistrict){
-      if(dstDistrict!==srcSheet){
+      if(_normRu(dstDistrict)!==_normRu(srcSheet)){
         // межокружная
         outgoing[srcSheet].inter++;
         outgoing[srcSheet].byDst[dstDistrict]=(outgoing[srcSheet].byDst[dstDistrict]||0)+1;
