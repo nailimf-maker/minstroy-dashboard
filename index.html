@@ -1173,6 +1173,46 @@ var _geoQ=[];var _geoBusy=false;var _geoTotal=0;var _geoDone=0;var _geoGen=0;
 function _geoSetStatus(txt){
   var el=document.getElementById('geost');if(el)el.textContent=txt;
 }
+// ────────────────────────────────────────────────────────────────────────
+// ПОСТОЯННЫЙ КЕШ ГЕОКОДИНГА (localStorage)
+// При каждом успешном геокоде пишем в localStorage.
+// При следующем открытии страницы загружаем — API больше не вызывается.
+// ────────────────────────────────────────────────────────────────────────
+var GEO_CACHE_KEY='minstroy_geocache_v2';
+var _geoCacheDirty=false;
+
+function _loadGeoCacheFromStorage(){
+  try{
+    var s=localStorage.getItem(GEO_CACHE_KEY);
+    if(!s)return 0;
+    var loaded=JSON.parse(s);
+    var cnt=0;
+    Object.keys(loaded).forEach(function(k){
+      if(!geocodeCache[k]){geocodeCache[k]=loaded[k];cnt++;}
+    });
+    return cnt;
+  }catch(e){return 0;}
+}
+
+// Отложенная запись (debounce 1.5с — не пишем на каждый ответ геокодера)
+function _markCacheDirty(){
+  if(_geoCacheDirty)return;
+  _geoCacheDirty=true;
+  setTimeout(_flushGeoCache,1500);
+}
+function _flushGeoCache(){
+  _geoCacheDirty=false;
+  try{
+    localStorage.setItem(GEO_CACHE_KEY,JSON.stringify(geocodeCache));
+  }catch(e){
+    // localStorage переполнен или приватный режим — просто игнорируем
+    console.warn('[geocache] flush failed:',e.message);
+  }
+}
+
+// Количество записей в кеше
+function _geoCacheSize(){return Object.keys(geocodeCache).length;}
+
 function _geocodeSingle(addr,sheet){
   var key=sheet+'|'+addr;
   if(geocodeCache[key])return Promise.resolve(geocodeCache[key]);
@@ -1182,7 +1222,11 @@ function _geocodeSingle(addr,sheet){
       var obj=res.geoObjects.get(0);
       if(!obj)return null;
       var c=obj.geometry.getCoordinates();
-      if(c&&c[0]>53&&c[0]<58&&c[1]>34&&c[1]<42){geocodeCache[key]=c;return c;}
+      if(c&&c[0]>50&&c[0]<60&&c[1]>30&&c[1]<45){
+        geocodeCache[key]=c;
+        _markCacheDirty();   // ← сохраняем в localStorage
+        return c;
+      }
       return null;
     }).catch(function(){return null;});
 }
@@ -1752,6 +1796,7 @@ function _geocodeMigrationDestinations(data,myGen){
               if(c&&c[0]>53&&c[0]<58&&c[1]>34&&c[1]<42){
                 it.dstLat=c[0];it.dstLon=c[1];
                 geocodeCache['mig|'+_normAddr(it.dstAddr)]=c;
+                _markCacheDirty();   // ← сохраняем адреса нового жилья
               }
             }
           })
@@ -2158,7 +2203,14 @@ function renderMapPage(){
       _refreshMigrationsIfActive();
       var geocoded=needGeo.filter(function(g){return g.lat&&g.lon;}).length;
       var notFound=needGeo.length-geocoded;
-      _geoSetStatus('✓ '+_markerData.length+' домов · '+withCoords.length+' из таблицы · '+geocoded+' геокодировано'+(notFound?' · ⚠ '+notFound+' не найдено':''));
+      var fromCache=withCoords.length;
+      _geoSetStatus(
+        '✓ '+_markerData.length+' домов'+
+        (fromCache?' · '+fromCache+' из таблицы':'')+
+        (geocoded?' · '+geocoded+' геокодировано':'')+
+        ' · кеш: '+_geoCacheSize()+' адресов'+
+        (notFound?' · ⚠ '+notFound+' не найдено':'')
+      );
     }
 
     if(!needGeo.length){showAll();return;}
@@ -3006,6 +3058,9 @@ var _booted=false;
 function _bootstrap(){
   if(_booted)return;
   _booted=true;
+  // Загружаем кеш геокодинга из localStorage — API не расходуется
+  var cached=_loadGeoCacheFromStorage();
+  if(cached>0)console.info('[geocache] загружено из localStorage: '+cached+' адресов');
   try{
     reloadAll();
   }catch(e){
