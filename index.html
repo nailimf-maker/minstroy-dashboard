@@ -1175,26 +1175,38 @@ function _geoSetStatus(txt){
 }
 // ────────────────────────────────────────────────────────────────────────
 // ПОСТОЯННЫЙ КЕШ ГЕОКОДИНГА (localStorage)
-// При каждом успешном геокоде пишем в localStorage.
-// При следующем открытии страницы загружаем — API больше не вызывается.
+// Условия использования API Яндекс Карт, раздел 5.1.5:
+// «кэширование результатов... исключительно для улучшения
+//  функциональности Сервисов... на срок не более 30 дней»
+// Каждая запись хранится с меткой времени; записи старше 30 дней удаляются.
 // ────────────────────────────────────────────────────────────────────────
-var GEO_CACHE_KEY='minstroy_geocache_v2';
+var GEO_CACHE_KEY='minstroy_geocache_v3';  // v3 = формат с TTL
+var GEO_CACHE_TTL=30*24*60*60*1000;        // 30 дней в мс (согл. п. 5.1.5)
 var _geoCacheDirty=false;
 
+// Загружаем кеш; фильтруем записи старше 30 дней
 function _loadGeoCacheFromStorage(){
+  var now=Date.now();
   try{
     var s=localStorage.getItem(GEO_CACHE_KEY);
     if(!s)return 0;
     var loaded=JSON.parse(s);
-    var cnt=0;
+    var cnt=0,expired=0;
     Object.keys(loaded).forEach(function(k){
-      if(!geocodeCache[k]){geocodeCache[k]=loaded[k];cnt++;}
+      var entry=loaded[k];
+      // Поддержка старого формата v2 (просто массив без TTL)
+      var coords=Array.isArray(entry)?entry:entry.c;
+      var ts=Array.isArray(entry)?0:(entry.t||0);
+      // Удаляем записи старше 30 дней
+      if(ts>0&&now-ts>GEO_CACHE_TTL){expired++;return;}
+      if(!geocodeCache[k]){geocodeCache[k]=coords;cnt++;}
     });
+    if(expired>0)console.info('[geocache] удалено записей (>30 дней): '+expired);
     return cnt;
   }catch(e){return 0;}
 }
 
-// Отложенная запись (debounce 1.5с — не пишем на каждый ответ геокодера)
+// Отложенная запись — каждая запись получает текущую метку времени
 function _markCacheDirty(){
   if(_geoCacheDirty)return;
   _geoCacheDirty=true;
@@ -1202,10 +1214,14 @@ function _markCacheDirty(){
 }
 function _flushGeoCache(){
   _geoCacheDirty=false;
+  var now=Date.now();
+  var toSave={};
+  Object.keys(geocodeCache).forEach(function(k){
+    toSave[k]={c:geocodeCache[k],t:now};
+  });
   try{
-    localStorage.setItem(GEO_CACHE_KEY,JSON.stringify(geocodeCache));
+    localStorage.setItem(GEO_CACHE_KEY,JSON.stringify(toSave));
   }catch(e){
-    // localStorage переполнен или приватный режим — просто игнорируем
     console.warn('[geocache] flush failed:',e.message);
   }
 }
