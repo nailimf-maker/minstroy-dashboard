@@ -580,6 +580,15 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
       <div class="filt-list" id="fl-type"></div>
     </div>
   </div>
+  <div class="filt-tab">
+    <button class="filt-trigger" id="ft-subprog" onclick="toggleFilt('subprog',event)">
+      <span class="filt-lbl">Подпрограмма</span><span class="filt-val" id="fv-subprog">Все</span><span class="filt-caret">▼</span>
+    </button>
+    <div class="filt-menu" id="fm-subprog">
+      <input class="filt-search" id="fs-subprog" placeholder="Поиск подпрограммы..." oninput="filtSearch('subprog')" onclick="event.stopPropagation()">
+      <div class="filt-list" id="fl-subprog"></div>
+    </div>
+  </div>
   <button class="btn-rst" onclick="resetF()">↺ Сброс</button>
   <button class="btn-rst btn-mig-top" onclick="showMigrationTop()" title="Топ округов по направлениям миграции">📊 Топ миграции</button>
   <span id="fcnt"></span>
@@ -879,6 +888,7 @@ var allData=[],filteredData=[],loaded=0;
 // Это единственный правильный способ остановить «гонку» при двойном нажатии «Обновить».
 var _loadGen=0;
 var ymap=null,mapInited=false,yReady=false;
+var _tileLayer=null; // не используется в Яндекс API (для совместимости)
 var geocodeCache={};
 var mapMarkersBuilt=false;
 var roundColorMap={};
@@ -938,7 +948,7 @@ var ROUND_CENTERS={
 };
 var charts={dec:null,own:null,tl:null,fin:null};
 var selR=null;
-var fState={round:[],dec:[],type:[]};
+var fState={round:[],dec:[],type:[],subprog:[]};
 var tlMode='day';
 // ⬇⬇⬇ ВСТАВЬТЕ СЮДА ССЫЛКУ НА GeoJSON С ГРАНИЦАМИ ГОРОДСКИХ ОКРУГОВ МО ⬇⬇⬇
 // Файл должен содержать поля свойств с названием округа (name / NAME / NL_NAME_2 и т.п.)
@@ -963,7 +973,6 @@ function toggleTheme(){
   setTimeout(function(){
     if(document.getElementById('page-overview').classList.contains('active'))renderCharts(filteredData);
     if(document.getElementById('page-finance').classList.contains('active'))renderFinance();
-    // Обновляем карту: пересчитываем размер контейнера после смены фильтра тайлов
     if(ymap){try{ymap.container.fitToViewport();}catch(e){}}
   },120);
 }
@@ -982,6 +991,11 @@ function buildFilterMenus(){
   var tl=Object.keys(types).sort();
   document.getElementById('fl-type').innerHTML='<div class="filt-opt'+(fState.type.length===0?' sel':'')+'" onclick="pickFilt(\'type\',\'\')">Все типы</div>'+
     tl.map(function(x){return'<div class="filt-opt'+(fState.type.indexOf(x)>=0?' sel':'')+'" onclick="pickFilt(\'type\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.type.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
+  // Подпрограмма — берём непустые значения из столбца subprog
+  var sps={};allData.forEach(function(r){var v=String(r[C.subprog]||'').trim();if(v&&v!=='—'&&v!=='-')sps[v]=1;});
+  var spl=Object.keys(sps).sort(function(a,b){return a.localeCompare(b,'ru',{numeric:true});});
+  document.getElementById('fl-subprog').innerHTML='<div class="filt-opt'+(fState.subprog.length===0?' sel':'')+'" onclick="pickFilt(\'subprog\',\'\')">Все подпрограммы</div>'+
+    spl.map(function(x){return'<div class="filt-opt'+(fState.subprog.indexOf(x)>=0?' sel':'')+'" data-v="'+x.toLowerCase()+'" onclick="pickFilt(\'subprog\',\''+x.replace(/'/g,"\\'")+'\')">'+(fState.subprog.indexOf(x)>=0?'✓ ':'')+x+'</div>';}).join('');
 }
 function toggleFilt(k,e){
   if(e)e.stopPropagation();
@@ -1226,12 +1240,12 @@ function _flushGeoCache(){
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Суточный счётчик API-запросов геокодера (лимит Яндекс = 1000/сутки)
+// Количество записей в кеше
+function _geoCacheSize(){return Object.keys(geocodeCache).length;}
 // ────────────────────────────────────────────────────────────────────────
 var GEO_DAILY_KEY='minstroy_geocache_daily_v1';
 var _todayGeoUsed=0;
-var GEO_DAY_LIMIT=950;   // оставляем 50 запросов буфером
+var GEO_DAY_LIMIT=800;   // буфер 200 от лимита Яндекс 1000/сутки
 
 function _loadDailyCount(){
   var today=new Date().toISOString().slice(0,10);
@@ -1241,6 +1255,7 @@ function _loadDailyCount(){
   }catch(e){}
   _todayGeoUsed=0;
 }
+// СРАЗУ пишем в localStorage — без debounce, чтобы счётчик не отставал
 function _incDailyCount(){
   _todayGeoUsed++;
   var today=new Date().toISOString().slice(0,10);
@@ -1254,9 +1269,19 @@ _loadDailyCount();
 // Количество записей в кеше
 function _geoCacheSize(){return Object.keys(geocodeCache).length;}
 
+// Геокодирование через Яндекс.Карты API
+// Условия: п. 5.1.5 — кеш 30 дней, п. 6.6.2 — лимит 1000/сутки
+// СТРОГО: счётчик инкрементируется ДО запроса; если лимит превышен — не вызываем API
 function _geocodeSingle(addr,sheet){
   var key=sheet+'|'+addr;
   if(geocodeCache[key])return Promise.resolve(geocodeCache[key]);
+
+  // Pre-flight: отказываем без вызова API если лимит превышен
+  if(_todayGeoUsed>=GEO_DAY_LIMIT)return Promise.resolve(null);
+
+  // Считаем запрос ДО его отправки (успех или провал — счётчик растёт)
+  _incDailyCount();
+
   var query='Московская область, '+sheet+', '+addr;
   return ymaps.geocode(query,{results:1,boundedBy:[[53.5,34.5],[57.5,41.0]]})
     .then(function(res){
@@ -1265,8 +1290,7 @@ function _geocodeSingle(addr,sheet){
       var c=obj.geometry.getCoordinates();
       if(c&&c[0]>50&&c[0]<60&&c[1]>30&&c[1]<45){
         geocodeCache[key]=c;
-        _incDailyCount();    // считаем API-запрос
-        _markCacheDirty();   // сохраняем в localStorage
+        _markCacheDirty();   // сохраняем в localStorage (TTL 30 дней)
         return c;
       }
       return null;
@@ -1550,7 +1574,7 @@ function selectSearchResult(i){
   var sx=document.getElementById('map-sx');if(sx)sx.style.display='block';
   // Центрируем карту и открываем модал
   if(ymap&&g.lat&&g.lon){
-    ymap.setCenter([g.lat,g.lon],16,{duration:500});
+    ymap.setView([g.lat,g.lon],16);
     setTimeout(function(){openMapModal(g);},520);
   }
   // Подсвечиваем округ адреса
@@ -1577,7 +1601,7 @@ document.addEventListener('click',function(e){
 // ── Границы и подсветка округов (convex hull + ymaps.borders fallback) ─────
 var _hlLayer=null;          // ymaps.GeoObjectCollection — слой подсветки (ниже маркеров)
 var _markersLayer=null;     // ymaps.GeoObjectCollection — слой маркеров домов
-var _markerData=[];         // плоский JS-массив маркеров — НЕ зависит от внутренностей Yandex
+var _markerData=[];         // плоский JS-массив маркеров
 var _bordersCache={};       // sheet → [[lat,lon],...] готовые координаты полигонов
 var _bordersReady=false;    // флаг: реальные границы загружены
 var _bordersAttempted=false;
@@ -1607,25 +1631,30 @@ function _bufferHull(hull,deg){
 }
 
 // Попытка загрузить реальные границы через ymaps.borders (Yandex Maps 2.1)
-// Вызывается один раз при инициализации карты
 function _tryLoadRealBorders(){
   if(_bordersAttempted)return;
   _bordersAttempted=true;
-  if(typeof ymaps==='undefined'||!ymaps.borders){return;}
-  ymaps.borders.load('RU-MOS',{lang:'ru',quality:2})
-    .then(function(res){
-      var feats=(res&&res.features)||[];
-      if(!feats.length)return;
-      feats.forEach(function(f){
-        var p=f.properties||{};
-        var nm=(p.name||p.NAME||p.NL_NAME_2||p.NAME_2||'').replace(/городской округ|муниципальный район|г\.\s*/gi,'').trim();
-        if(!nm||!f.geometry)return;
-        var geom=f.geometry;
-        var rings=null;
-        if(geom.type==='Polygon')rings=geom.coordinates;
-        else if(geom.type==='MultiPolygon'){
-          // Берём крупнейший контур
-          var biggest=geom.coordinates.reduce(function(mx,c){return c[0].length>mx[0].length?c:mx;},geom.coordinates[0]);
+  if(typeof ymaps==='undefined'||!ymaps.borders)return;
+  ymaps.borders.load('RU-MOS',{lang:'ru',quality:2}).then(function(res){
+    var feats=(res&&res.features)||[];
+    if(!feats.length)return;
+    feats.forEach(function(f){
+      var p=f.properties||{};
+      var nm=(p.name||p.NAME||p.NL_NAME_2||p.NAME_2||'').replace(/городской округ|муниципальный район|г\.\s*/gi,'').trim();
+      if(!nm||!f.geometry)return;
+      var geom=f.geometry,rings=null;
+      if(geom.type==='Polygon')rings=geom.coordinates;
+      else if(geom.type==='MultiPolygon'){
+        var biggest=geom.coordinates.reduce(function(mx,c){return c[0].length>mx[0].length?c:mx;},geom.coordinates[0]);
+        rings=biggest;
+      }
+      if(rings){_bordersCache[nm]=flipCoords(rings);}
+    });
+    _bordersReady=true;
+    var sheetsToHL=_mapRoundFilter.length?_mapRoundFilter:fState.round;
+    if(sheetsToHL.length)_highlightDistricts(sheetsToHL);
+  }).catch(function(){});
+}
           rings=biggest;
         }
         if(rings){_bordersCache[nm]=flipCoords(rings);}
@@ -1650,13 +1679,13 @@ function _matchBorder(sheet){
 // MIGRATION — цветные кривые-стрелки от аварийного дома → новое жильё
 // ════════════════════════════════════════════════════════════════════════
 var _migrationActive=false;
-var _migrationLayer=null;     // ymaps.GeoObjectCollection — слой стрелок и маркеров
+var _migrationLayer=null;     // ymaps.GeoObjectCollection — слой стрелок и маркеров миграции
 var _migrationGen=0;          // защита от гонок при повторном переключении
 var _lastMigrationData=null;  // кеш последней структуры данных
 var _arrowLayoutClass=null;   // кастомная иконка-наконечник стрелки
 var _dstLayoutClass=null;     // кастомная иконка маркера назначения
 
-// Регистрируем кастомные SVG-иконки (один раз после готовности ymaps)
+// Регистрируем кастомные SVG-иконки через ymaps.templateLayoutFactory (один раз)
 function _ensureMigLayouts(){
   if(typeof ymaps==='undefined')return;
   if(!_arrowLayoutClass){
@@ -1664,28 +1693,20 @@ function _ensureMigLayouts(){
       '<div class="mig-arr-head" style="transform:translate(-50%,-50%) rotate({{properties.angle}}deg);color:{{properties.color}}">'+
         '<svg viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">'+
           '<path d="M2 11 L17 11 M11 4 L19 11 L11 18" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'+
-        '</svg>'+
-      '</div>'
+        '</svg></div>'
     );
   }
   if(!_dstLayoutClass){
     _dstLayoutClass=ymaps.templateLayoutFactory.createClass(
       '<div class="mig-dst-house" style="color:{{properties.color}}">'+
         '<svg viewBox="0 0 30 34" xmlns="http://www.w3.org/2000/svg">'+
-          // Тело дома — белое с цветной обводкой
           '<rect x="2" y="16" width="26" height="18" rx="1.5" fill="white" stroke="currentColor" stroke-width="2"/>'+
-          // Крыша — закрашенный треугольник цветом округа
           '<polygon points="0,17 15,2 30,17" fill="currentColor" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>'+
-          // Дверь
           '<rect x="11" y="22" width="8" height="12" rx="2" fill="currentColor"/>'+
-          // Окно левое
           '<rect x="3" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
-          // Окно правое
           '<rect x="21" y="19" width="6" height="5" rx="1" fill="currentColor" opacity="0.55"/>'+
-          // Маленькая труба
           '<rect x="20" y="5" width="3" height="7" rx="1" fill="currentColor"/>'+
-        '</svg>'+
-      '</div>'
+        '</svg></div>'
     );
   }
 }
@@ -1829,16 +1850,18 @@ function _geocodeMigrationDestinations(data,myGen){
       var slice=needGeo.slice(idx,end);
       idx=end;
       Promise.all(slice.map(function(it){
+        // Pre-flight: проверяем лимит перед КАЖДЫМ запросом
+        if(_todayGeoUsed>=GEO_DAY_LIMIT)return Promise.resolve();
+        _incDailyCount();   // считаем ДО запроса
         var q='Московская область, '+it.dstDistrict+', '+it.dstAddr;
         return ymaps.geocode(q,{results:1,boundedBy:[[53.5,34.5],[57.5,41.0]]})
           .then(function(res){
             var obj=res.geoObjects.get(0);
             if(obj){
               var c=obj.geometry.getCoordinates();
-              if(c&&c[0]>53&&c[0]<58&&c[1]>34&&c[1]<42){
+              if(c&&c[0]>50&&c[0]<60&&c[1]>30&&c[1]<45){
                 it.dstLat=c[0];it.dstLon=c[1];
                 geocodeCache['mig|'+_normAddr(it.dstAddr)]=c;
-                _incDailyCount();    // считаем API-запрос
                 _markCacheDirty();
               }
             }
@@ -1863,63 +1886,37 @@ function _drawMigrations(data){
   _migrationLayer.removeAll();
   _ensureMigLayouts();
 
-  // Рисуем кривые — веер с вариацией изгиба по _dstIdx
   data.pairs.forEach(function(p){
     var dst=p.dst;
     if(!dst.dstLat||!dst.dstLon)return;
     var color=_mapColor(p.srcSheet);
-    // Толщина 2–7px пропорционально числу квартир
     var sw=Math.max(2,Math.min(7,1.6+p.count*0.22));
     var points=_bezierCurvePoints([p.srcLat,p.srcLon],[dst.dstLat,dst.dstLon],p._dstIdx||0,40);
-    // Подложка (читаемость на любом фоне карты)
-    _migrationLayer.add(new ymaps.Polyline(points,{},{
-      strokeColor:'#fff',strokeWidth:sw+3,strokeOpacity:0.28
-    }));
+    // Белая подложка
+    _migrationLayer.add(new ymaps.Polyline(points,{},{strokeColor:'#fff',strokeWidth:sw+3,strokeOpacity:0.28}));
     // Основная цветная кривая
-    _migrationLayer.add(new ymaps.Polyline(points,{
-      hintContent:p.srcAddr+' ('+p.srcSheet+') → '+dst.dstAddr+' · '+p.count+' кв.'
-    },{
-      strokeColor:color,strokeWidth:sw,strokeOpacity:0.90
-    }));
-    // Наконечник стрелки на 90% кривой — не перекрывает белый маркер назначения
+    _migrationLayer.add(new ymaps.Polyline(points,{hintContent:p.srcAddr+' ('+p.srcSheet+') → '+dst.dstAddr+' · '+p.count+' кв.'},{strokeColor:color,strokeWidth:sw,strokeOpacity:0.90}));
+    // Наконечник на 90% кривой
     if(_arrowLayoutClass&&points.length>3){
-      var lastIdx=Math.floor(points.length*0.90);
-      var angle=_bearingDeg(points[lastIdx-3]||points[lastIdx-1],points[lastIdx]);
-      try{
-        _migrationLayer.add(new ymaps.Placemark(points[lastIdx],{
-          angle:angle,color:color,
-          hintContent:p.srcAddr+' → '+dst.dstAddr+' · '+p.count+' кв.'
-        },{
-          iconLayout:_arrowLayoutClass,
-          iconShape:{type:'Rectangle',coordinates:[[-12,-12],[12,12]]}
-        }));
-      }catch(e){}
+      var ai=Math.floor(points.length*0.90);
+      var angle=_bearingDeg(points[ai-3]||points[ai-1],points[ai]);
+      try{_migrationLayer.add(new ymaps.Placemark(points[ai],{angle:angle,color:color,hintContent:p.srcAddr+' → '+dst.dstAddr+' · '+p.count+' кв.'},{iconLayout:_arrowLayoutClass,iconShape:{type:'Rectangle',coordinates:[[-12,-12],[12,12]]}}));}catch(e){}
     }
   });
 
-  // Маркеры назначения — один на уникальный адрес (белый кружок с цветной обводкой)
   var dstList=Object.values(data.destinations).filter(function(d){return d.dstLat&&d.dstLon;});
   dstList.forEach(function(dst){
     var topSheet=Object.entries(dst.byDistrict).sort(function(a,b){return b[1]-a[1];})[0];
     var col=topSheet?_mapColor(topSheet[0]):'#3a7d5c';
     try{
-      var pm=new ymaps.Placemark([dst.dstLat,dst.dstLon],{
-        color:col,
-        hintContent:'🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. · '+Object.keys(dst.byDistrict).length+' округов · нажмите для деталей'
-      },{
-        iconLayout:_dstLayoutClass,
-        iconShape:{type:'Rectangle',coordinates:[[-15,-34],[15,0]]}
-      });
+      var pm=new ymaps.Placemark([dst.dstLat,dst.dstLon],{color:col,hintContent:'🏘 '+dst.dstAddr+' · '+dst.totalApts+' кв. · нажмите'},{iconLayout:_dstLayoutClass,iconShape:{type:'Rectangle',coordinates:[[-15,-34],[15,0]]}});
       pm.events.add('click',function(e){e.stopPropagation();_openDestinationModal(dst);});
       _migrationLayer.add(pm);
     }catch(e){}
   });
 
   var cnt=document.getElementById('mig-cnt');
-  if(cnt){
-    if(dstList.length>0){cnt.textContent=dstList.length;cnt.style.display='inline-block';}
-    else cnt.style.display='none';
-  }
+  if(cnt){if(dstList.length>0){cnt.textContent=dstList.length;cnt.style.display='inline-block';}else cnt.style.display='none';}
   return dstList.length;
 }
 
@@ -1975,12 +1972,10 @@ function _openDestinationModal(dst){
   openModal();
 }
 
-// Перестраиваем слой маркеров: физически добавляем/убираем из коллекции
-// (options.set('visible') ненадёжен в Yandex Maps 2.1)
+// Перестраиваем слой маркеров (Leaflet layerGroup)
 function _rebuildMarkersLayer(){
   if(!_markersLayer||!_markerData.length)return;
   _markersLayer.removeAll();
-  // Какие дома имеют данные миграции (newAddr заполнен)
   var migratingSrc={};
   if(_migrationActive){
     filteredData.forEach(function(r){
@@ -1998,7 +1993,6 @@ function _rebuildMarkersLayer(){
     if(m.visible)_markersLayer.add(m.pm);
   });
 }
-// Алиас для обратной совместимости с вызовами в других функциях
 function _updateMarkerVisibilityForMigration(){_rebuildMarkersLayer();}
 
 // Главное переключение режима
@@ -2092,34 +2086,21 @@ function _highlightDistricts(sheets){
   if(!sheets||!sheets.length)return;
   sheets.forEach(function(sheet){
     var col=_mapColor(sheet);
-    // Приоритет 1: реальные границы из ymaps.borders / BORDERS_URL
+    // Borders GeoJSON (если BORDERS_URL задан)
     if(_bordersReady){
       var borderCoords=_matchBorder(sheet);
       if(borderCoords){
         try{
-          var poly=new ymaps.Polygon(borderCoords,{hintContent:sheet},{
-            fillColor:col+'26',strokeColor:col,strokeWidth:3,
-            strokeOpacity:0.8,fillOpacity:1,
-            interactivityModel:'default#transparent'
-          });
-          _hlLayer.add(poly);
+          _hlLayer.add(new ymaps.Polygon(borderCoords,{hintContent:sheet},{fillColor:col+'26',strokeColor:col,strokeWidth:3,strokeOpacity:0.8,fillOpacity:1,interactivityModel:'default#transparent'}));
           return;
         }catch(e){}
       }
     }
-    // Приоритет 2: Circle вокруг центроида маркеров (всегда работает в Yandex Maps)
+    // Fallback: Circle вокруг центроида маркеров
     var info=_districtGeoFromMarkers(sheet);
     if(!info)return;
     try{
-      var circle=new ymaps.Circle([info.center,info.radius],{hintContent:sheet},{
-        fillColor:col+'26',
-        strokeColor:col,
-        strokeWidth:3,
-        strokeOpacity:0.8,
-        fillOpacity:1,
-        interactivityModel:'default#transparent'
-      });
-      _hlLayer.add(circle);
+      _hlLayer.add(new ymaps.Circle([info.center,info.radius],{hintContent:sheet},{fillColor:col+'26',strokeColor:col,strokeWidth:3,strokeOpacity:0.8,fillOpacity:1,interactivityModel:'default#transparent'}));
     }catch(e){}
   });
 }
@@ -2157,39 +2138,25 @@ function _setOverlay(show,txt,pct){
 // ── Главная функция рендера карты ─────────────────────────────────────────
 function renderMapPage(){
   if(typeof ymaps==='undefined'){
-    _geoSetStatus('Яндекс.Карты не загрузились — проверьте API-ключ');
+    _geoSetStatus('Яндекс.Карты не загрузились — проверьте API-ключ и домен в кабинете Яндекса');
     return;
   }
   ymaps.ready(function(){
     yReady=true;
     if(!ymap){
-      ymap=new ymaps.Map('map',{
-        center:[55.55,37.5],zoom:8,
-        controls:['zoomControl','typeSelector','fullscreenControl']
-      },{suppressMapOpenBlock:true});
+      ymap=new ymaps.Map('map',{center:[55.55,37.5],zoom:8,controls:['zoomControl','typeSelector','fullscreenControl']},{suppressMapOpenBlock:true});
       mapInited=true;
-      // Пересчитываем размер сразу — на случай если контейнер был скрыт
       setTimeout(function(){try{ymap.container.fitToViewport();}catch(e){}},50);
       _tryLoadRealBorders();
       loadBorders();
     }
-    // Защитное пересоздание слоёв если их нет
-    if(!_hlLayer){
-      _hlLayer=new ymaps.GeoObjectCollection();
-      ymap.geoObjects.add(_hlLayer);
-    }
-    if(!_markersLayer){
-      _markersLayer=new ymaps.GeoObjectCollection();
-      ymap.geoObjects.add(_markersLayer);
-    }
-    // Полная очистка перед рендером
+    if(!_hlLayer){_hlLayer=new ymaps.GeoObjectCollection();ymap.geoObjects.add(_hlLayer);}
+    if(!_markersLayer){_markersLayer=new ymaps.GeoObjectCollection();ymap.geoObjects.add(_markersLayer);}
     _markersLayer.removeAll();
     _hlLayer.removeAll();
     _markerData=[];
     if(_migrationLayer)_migrationLayer.removeAll();
-    // Принудительный пересчёт размера контейнера (на случай если карта была скрыта)
     try{ymap.container.fitToViewport();}catch(e){}
-    // Сбрасываем поиск
     clearMapSearch();
     _searchGroups=[];
     _mapRoundColors={};_mapRoundIdx=0;
@@ -2216,7 +2183,7 @@ function renderMapPage(){
       _setOverlay(false);
       if(!_markersLayer){
         _markersLayer=new ymaps.GeoObjectCollection();
-        ymap.geoObjects.add(_markersLayer);
+        _markersLayer.addTo(ymap);
       }
       _markersLayer.removeAll();
       _markerData=[];
@@ -2261,7 +2228,7 @@ function renderMapPage(){
     var qTxt=overLimit>0?' · лимит API: ещё '+overLimit+' завтра':'';
 
     if(toGeo.length===0){
-      _geoSetStatus('⚠ Суточный лимит API исчерпан ('+GEO_DAY_LIMIT+'/сутки) · завтра геокодирование продолжится автоматически');
+      _geoSetStatus('⚠ Суточный лимит API исчерпан (использовано '+_todayGeoUsed+'/'+GEO_DAY_LIMIT+') · завтра геокодирование продолжится. Уже найденные адреса показаны.');
       return;
     }
 
@@ -2275,7 +2242,7 @@ function renderMapPage(){
       results.forEach(function(c,i){if(c){toGeo[i].lat=c[0];toGeo[i].lon=c[1];}});
       showAll();
     });
-  });
+  }); // ymaps.ready
 }
 
 /* Границы городских округов — раскраска палитрой дашборда (Яндекс) */
@@ -2545,8 +2512,10 @@ var ENDPOINTS=[
 // Возвращает {sheet,name,rows,ok}. ok=false ТОЛЬКО при сетевой/парс-ошибке
 // (тогда лист уходит в повторную загрузку), а не когда у округа просто нет строк.
 function fetchSheet(sh,longMode){
-  var timeoutMs=longMode?45000:26000;
-  var maxAttempts=longMode?10:ENDPOINTS.length+2;
+  // Таймауты снижены: живой лист отвечает за 1-2с. Долгое ожидание = мёртвый
+  // прокси, нет смысла ждать 26с — быстрее переключиться на следующий способ.
+  var timeoutMs=longMode?20000:9000;
+  var maxAttempts=longMode?8:ENDPOINTS.length+1;
   return fetchSheetTry(sh,1,timeoutMs,maxAttempts);
 }
 function fetchSheetTry(sh,attempt,timeoutMs,maxAttempts){
@@ -2559,7 +2528,7 @@ function fetchSheetTry(sh,attempt,timeoutMs,maxAttempts){
       if(attempt<maxAttempts){
         setTimeout(function(){
           fetchSheetTry(sh,attempt+1,timeoutMs,maxAttempts).then(resolve);
-        },400*attempt);
+        },200*attempt);   // было 400*attempt — ускоряем переключение прокси
       }else{
         resolve({sheet:sh,name:sh.name,rows:[],ok:false});
       }
@@ -2615,7 +2584,7 @@ function reloadAll(){
   // Синхронно чистим глобальное состояние до старта любых запросов
   allData=[];loaded=0;
   mapMarkersBuilt=false;
-  selR=null;fState={round:[],dec:[],type:[]};
+  selR=null;fState={round:[],dec:[],type:[],subprog:[]};
   roundColorMap={};
   // НЕ сбрасываем geocodeCache — адреса уже известны, маркеры появятся мгновенно после загрузки
   // Сбрасываем геокодер: все ожидающие промисы дропаются через проверку _geoGen
@@ -2657,6 +2626,45 @@ function reloadAll(){
       'Листов: '+loaded+'/'+total+' · округов с данными: '+okCount+' · строк: '+allData.length;
     document.getElementById('pgfill').style.width=Math.round(loaded/total*100)+'%';
   }
+
+  // ── ОПТИМИЗИРОВАННАЯ ЗАГРУЗКА ────────────────────────────────────────────
+  // Раньше: батчи по 6 шли ПОСЛЕДОВАТЕЛЬНО — каждый батч ждал самый медленный
+  // лист в предыдущем. Теперь: пул из 10 «рабочих» тянут листы из общей очереди,
+  // как только рабочий освободился — берёт следующий. Первый рендер — как только
+  // накопилось достаточно данных, не дожидаясь всех 44 листов.
+  var CONCURRENCY=10;
+  var queue=SHEETS.slice();
+  var firstRenderDone=false;
+
+  function pump(){
+    if(stale())return;
+    if(!queue.length)return Promise.resolve();
+    var sh=queue.shift();
+    return fetchSheet(sh,false).then(function(res){
+      if(stale())return;
+      applyResult(res);
+      // Ранний рендер: как только загрузилась половина — показываем что есть
+      if(!firstRenderDone&&loaded>=Math.min(12,total)){
+        firstRenderDone=true;
+        try{
+          filteredData=allData.slice();
+          buildFilterMenus();
+          renderAll();
+          document.getElementById('loading').style.display='none';
+          document.getElementById('page-'+prevPageName).classList.add('active');
+        }catch(e){console.warn('early render:',e);}
+      }
+      return pump(); // рабочий берёт следующий лист из очереди
+    });
+  }
+
+  var workers=[];
+  for(var w=0;w<CONCURRENCY;w++)workers.push(pump());
+  Promise.all(workers).then(function(){
+    if(stale())return;
+    retryPass();
+  });
+  return; // старый nextBatch() ниже больше не используется
 
   var batchIdx=0;
   function nextBatch(){
@@ -2736,10 +2744,9 @@ function reloadAll(){
       }
     }
     startAuto();
-    if(mapInited&&ymap&&!mapMarkersBuilt){buildMapMarkers();}
+    // Карту строим ТОЛЬКО если открыта вкладка Карта (иначе зря тратим геокодер+CPU)
+    if(prevPageName==='mappage'&&mapInited&&ymap&&!mapMarkersBuilt){buildMapMarkers();}
   }
-
-  nextBatch();
 }
 function updateMskTime(){
   var now=new Date();
@@ -2756,7 +2763,8 @@ function baseFilter(){
     var okR=fState.round.length===0||fState.round.indexOf(r._sheet)>=0;
     var okD=fState.dec.length===0||fState.dec.indexOf(normDecision(r[C.decision]))>=0;
     var okT=fState.type.length===0||fState.type.indexOf(normType(r[C.certType]))>=0;
-    return okR&&okD&&okT;
+    var okS=fState.subprog.length===0||fState.subprog.indexOf(String(r[C.subprog]||'').trim())>=0;
+    return okR&&okD&&okT&&okS;
   });
 }
 function roundMap(d){
@@ -2782,12 +2790,13 @@ function areaKey(sk){return{t:'aT',sob:'aSob',nan:'aNan',cert:'aCert',vyk:'aVyk'
 function applyF(){
   selR=fState.round.length===1?fState.round[0]:null;
   filteredData=baseFilter();
+  _regShowAll=false;   // при смене фильтра возвращаем лёгкий режим таблицы
   document.getElementById('fcnt').textContent=filteredData.length<allData.length?'▶ '+filteredData.length+' строк':'';
   renderAll();
 }
 function resetF(){
-  fState={round:[],dec:[],type:[]};selR=null;
-  ['round','dec','type'].forEach(function(k){document.getElementById('fv-'+k).textContent='Все';document.getElementById('ft-'+k).classList.remove('has-val');});
+  fState={round:[],dec:[],type:[],subprog:[]};selR=null;
+  ['round','dec','type','subprog'].forEach(function(k){document.getElementById('fv-'+k).textContent='Все';document.getElementById('ft-'+k).classList.remove('has-val');});
   buildFilterMenus();
   filteredData=allData.slice();document.getElementById('fcnt').textContent='';renderAll();
 }
@@ -3023,18 +3032,36 @@ function renderRegistry(){
   else if(sort==='citizens')d.sort(function(a,b){return n(b[C.citizens])-n(a[C.citizens]);});
   else if(sort==='round')d.sort(function(a,b){return(a._sheet||'').localeCompare(b._sheet||'','ru');});
   document.getElementById('reg-title').textContent=selR?'Реестр: '+selR:'Реестр домов';
-  document.getElementById('reg-cnt').textContent=d.length.toLocaleString('ru')+' записей';
+  // Лимит DOM: рисуем первые N строк. Остальные — по кнопке «показать все».
+  // Это резко ускоряет первый рендер при 600+ записях.
+  var LIMIT=_regShowAll?d.length:200;
+  var shown=d.slice(0,LIMIT);
+  var hidden=d.length-shown.length;
+  document.getElementById('reg-cnt').textContent=d.length.toLocaleString('ru')+' записей'+(hidden>0?' · показано '+shown.length:'');
   var sr=!selR;
   document.getElementById('tbl-registry').innerHTML=
     '<thead><tr><th>№</th>'+(sr?'<th>Округ</th>':'')+'<th>Г.О/М.О</th><th>Нас. пункт</th><th>Адрес</th><th>Кв.</th><th>Площадь м²</th><th>Граждан</th><th>Тип права</th><th>Тип</th><th>Дата заявл.</th><th>Решение</th><th>Подписано</th><th>Стоимость по оценке ₽</th><th>ДКП/ДДУ</th><th>Оплата Мин-ва</th></tr></thead><tbody>'+
-    d.map(function(r,i){
+    shown.map(function(r,i){
       var nd=normDecision(r[C.decision]),ls='';
       if(nd==='Положительное')ls='border-left:3px solid #3a7d5c';
       else if(nd==='На рассмотрении')ls='border-left:3px solid #b08d4f';
       else if(nd==='Отрицательное'||nd==='Отказ')ls='border-left:3px solid #b05a4f';
       return'<tr style="'+ls+'"><td style="color:var(--muted);font-weight:700">'+(i+1)+'</td>'+(sr?'<td style="font-weight:600;white-space:nowrap;color:var(--ink)">'+(r._sheet||'—')+'</td>':'')+'<td>'+(r[C.mo]||'—')+'</td><td>'+(r[C.np]||'—')+'</td><td style="max-width:160px;white-space:normal;font-weight:600;color:var(--ink)">'+(r[C.addr]||'—')+'</td><td style="text-align:center">'+(r[C.apt]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+n(r[C.area]).toFixed(2)+'</td><td style="text-align:center;font-weight:700;color:var(--ink)">'+(r[C.citizens]||'—')+'</td><td>'+normOwner(r[C.owner])+'</td><td>'+normType(r[C.certType])+'</td><td style="white-space:nowrap">'+(r[C.dateApp]||'—')+'</td><td>'+bdec(r[C.decision])+'</td><td style="text-align:center">'+(r[C.signed]||'—')+'</td><td style="text-align:right;font-weight:700;color:var(--ink)">'+fmtRub(n(r[C.price]))+'</td><td style="text-align:center">'+(r[C.dkp]||'—')+'</td><td style="text-align:center;font-weight:700">'+(r[C.minPay]||'—')+'</td></tr>';
     }).join('')+'</tbody>';
+  var moreBox=document.getElementById('reg-more');
+  if(hidden>0){
+    if(!moreBox){
+      moreBox=document.createElement('div');moreBox.id='reg-more';
+      moreBox.style.cssText='text-align:center;padding:12px;font-size:12px;font-weight:700;color:var(--gold);cursor:pointer;border-top:1px solid var(--line-soft)';
+      moreBox.onclick=function(){_regShowAll=true;renderRegistry();};
+      var tw=document.getElementById('tbl-registry').parentNode;
+      tw.parentNode.insertBefore(moreBox,tw.nextSibling);
+    }
+    moreBox.textContent='▼ Показать все '+d.length.toLocaleString('ru')+' записей';
+    moreBox.style.display='block';
+  }else if(moreBox){moreBox.style.display='none';}
 }
+var _regShowAll=false;
 
 function renderFinance(){
   var d=filteredData;
@@ -3095,17 +3122,12 @@ function renderFinRegistry(){
     }).join('')+'</tbody>';
 }
 
-// Флаг готовности API Яндекса (выставляется когда API загружен)
+// Флаг готовности API Яндекса
 var ymapsApiReady=false;
-if(typeof ymaps!=='undefined'){
-  ymaps.ready(function(){ymapsApiReady=true;});
-}
+if(typeof ymaps!=='undefined'){ymaps.ready(function(){ymapsApiReady=true;});}
 
 // ─────────────────────────────────────────────────────────────────────────
-// АВТОЗАПУСК. Без этого блока дашборд после открытия/перезагрузки страницы
-// бесконечно висит на «Подключение к данным…», т.к. reloadAll() раньше
-// вызывался ТОЛЬКО по кнопке «Обновить». Запускаем загрузку один раз сами.
-// ─────────────────────────────────────────────────────────────────────────
+// АВТОЗАПУСК
 var _booted=false;
 function _bootstrap(){
   if(_booted)return;
