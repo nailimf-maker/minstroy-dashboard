@@ -1655,14 +1655,6 @@ function _tryLoadRealBorders(){
     if(sheetsToHL.length)_highlightDistricts(sheetsToHL);
   }).catch(function(){});
 }
-          rings=biggest;
-        }
-        if(rings){_bordersCache[nm]=flipCoords(rings);}
-      });
-      _bordersReady=true;
-    })
-    .catch(function(){_bordersReady=false;});
-}
 
 // Нормализация имени для сопоставления с кешем границ
 function _matchBorder(sheet){
