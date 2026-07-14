@@ -195,6 +195,7 @@ html[data-theme="dark"] .btn-upd{background:linear-gradient(145deg,#d4b87a,#b899
 
 /* CHARTS */
 .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.charts-row>.chart-card{min-width:0;overflow:hidden}
 .chart-card,.timeline-card,.card{background:var(--glass);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);border:1px solid var(--glass-border);border-radius:20px;padding:28px 30px;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.3)}
 .card{padding:24px}
 .cc-title,.ctitle{font-size:10.5px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;display:flex;align-items:center;gap:9px}
@@ -286,7 +287,7 @@ tr:hover td{background:var(--row-bg)}
 .mig-dst-fill{height:100%;border-radius:999px}
 .mig-dst-cnt{font-weight:800;width:34px;text-align:right;font-variant-numeric:tabular-nums;flex-shrink:0}
 /* Scrollable charts */
-.chart-scroll-h{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+.chart-scroll-h{overflow-x:auto;overflow-y:hidden;padding-bottom:6px;width:100%;max-width:100%}
 .chart-scroll-h::-webkit-scrollbar{height:7px}
 .chart-scroll-h::-webkit-scrollbar-thumb{background:rgba(128,128,128,.3);border-radius:999px}
 .chart-inner-h{height:360px;min-width:100%}
@@ -774,6 +775,7 @@ html[data-theme="dark"] #map{filter:invert(94%) hue-rotate(180deg) saturate(55%)
       <span>Миграция</span>
       <span class="mig-cnt" id="mig-cnt" style="display:none">0</span>
     </button>
+    <button class="btn-rst" onclick="exportGeoSeed()" title="Скопировать накопленные координаты для вставки в код (карта будет грузиться мгновенно)" style="padding:9px 14px;font-size:11px">⤓ Координаты</button>
     <span id="geost" style="font-size:10.5px;color:var(--gold);font-weight:700">Загрузка карты...</span>
   </div>
 
@@ -890,6 +892,17 @@ var _loadGen=0;
 var ymap=null,mapInited=false,yReady=false;
 var _tileLayer=null; // не используется в Яндекс API (для совместимости)
 var geocodeCache={};
+
+// ════════════════════════════════════════════════════════════════════════
+// ВШИТЫЕ КООРДИНАТЫ (SEED) — заполняется через кнопку «⤓ Координаты» на карте.
+// Формат ключа: "Округ|Адрес" → [lat, lon]. Для адресов нового жилья: "mig|нормализованный_адрес".
+// Когда сюда вставлены данные — карта грузится МГНОВЕННО, без обращения к API геокодера.
+// Это не кэш API (не подпадает под лимит 30 дней), а статические данные приложения.
+// ════════════════════════════════════════════════════════════════════════
+var GEO_SEED={
+  // <<< СЮДА ВСТАВЬТЕ ЭКСПОРТ (кнопка «⤓ Координаты» на вкладке Карта) >>>
+};
+
 var mapMarkersBuilt=false;
 var roundColorMap={};
 // HOUSES может задаваться во внешнем файле; если его нет — пустой массив,
@@ -1198,6 +1211,19 @@ var GEO_CACHE_KEY='minstroy_geocache_v3';  // v3 = формат с TTL
 var GEO_CACHE_TTL=30*24*60*60*1000;        // 30 дней в мс (согл. п. 5.1.5)
 var _geoCacheDirty=false;
 
+// Загружаем ВШИТЫЕ координаты (GEO_SEED) в кэш — мгновенно, без API.
+// Вызывается первым, до localStorage. Seed-данные не имеют TTL (это не кэш API).
+function _loadGeoSeed(){
+  var cnt=0;
+  try{
+    Object.keys(GEO_SEED).forEach(function(k){
+      var c=GEO_SEED[k];
+      if(Array.isArray(c)&&c.length===2&&!geocodeCache[k]){geocodeCache[k]=c;cnt++;}
+    });
+  }catch(e){}
+  return cnt;
+}
+
 // Загружаем кеш; фильтруем записи старше 30 дней
 function _loadGeoCacheFromStorage(){
   var now=Date.now();
@@ -1266,11 +1292,30 @@ function _dailyLeft(){return Math.max(0,GEO_DAY_LIMIT-_todayGeoUsed);}
 // Загружаем суточный счётчик при старте
 _loadDailyCount();
 
-// Количество записей в кеше
-function _geoCacheSize(){return Object.keys(geocodeCache).length;}
-
-// Геокодирование через Яндекс.Карты API
-// Условия: п. 5.1.5 — кеш 30 дней, п. 6.6.2 — лимит 1000/сутки
+// Экспорт накопленных координат в готовый для вставки в код блок GEO_SEED.
+function exportGeoSeed(){
+  var keys=Object.keys(geocodeCache).sort();
+  if(!keys.length){alert('Кэш координат пуст. Откройте вкладку «Карта», дождитесь появления точек и повторите.');return;}
+  var lines=keys.map(function(k){
+    var c=geocodeCache[k];
+    var safeKey=String(k).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+    return '  "'+safeKey+'":['+(+c[0]).toFixed(6)+','+(+c[1]).toFixed(6)+']';
+  });
+  var block='var GEO_SEED={\n'+lines.join(',\n')+'\n};';
+  var done=function(){
+    alert('Скопировано '+keys.length+' координат в буфер обмена.\n\nВ коде найдите строку «var GEO_SEED={ » и замените весь объект (до «};») на вставленный текст.');
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(block).then(done).catch(function(){_fallbackCopySeed(block,done);});
+  }else{_fallbackCopySeed(block,done);}
+}
+function _fallbackCopySeed(text,cb){
+  var ta=document.createElement('textarea');
+  ta.value=text;ta.style.cssText='position:fixed;left:-9999px;top:0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');cb();}catch(e){prompt('Скопируйте координаты вручную (Ctrl+C):',text);}
+  document.body.removeChild(ta);
+}
 // СТРОГО: счётчик инкрементируется ДО запроса; если лимит превышен — не вызываем API
 function _geocodeSingle(addr,sheet){
   var key=sheet+'|'+addr;
@@ -2626,7 +2671,6 @@ function reloadAll(){
   // накопилось достаточно данных, не дожидаясь всех 44 листов.
   var CONCURRENCY=10;
   var queue=SHEETS.slice();
-  var firstRenderDone=false;
 
   function pump(){
     if(stale())return;
@@ -2635,17 +2679,6 @@ function reloadAll(){
     return fetchSheet(sh,false).then(function(res){
       if(stale())return;
       applyResult(res);
-      // Ранний рендер: как только загрузилась половина — показываем что есть
-      if(!firstRenderDone&&loaded>=Math.min(12,total)){
-        firstRenderDone=true;
-        try{
-          filteredData=allData.slice();
-          buildFilterMenus();
-          renderAll();
-          document.getElementById('loading').style.display='none';
-          document.getElementById('page-'+prevPageName).classList.add('active');
-        }catch(e){console.warn('early render:',e);}
-      }
       return pump(); // рабочий берёт следующий лист из очереди
     });
   }
@@ -3124,10 +3157,12 @@ var _booted=false;
 function _bootstrap(){
   if(_booted)return;
   _booted=true;
-  // Загружаем кеш геокодинга и суточный счётчик из localStorage
+  // Загружаем координаты: сначала ВШИТЫЕ (seed, мгновенно), затем localStorage-кеш
+  var seeded=_loadGeoSeed();
   var cached=_loadGeoCacheFromStorage();
   _loadDailyCount();
-  if(cached>0)console.info('[geocache] загружено '+cached+' адресов · сегодня использовано '+_todayGeoUsed+'/'+GEO_DAY_LIMIT);
+  if(seeded>0)console.info('[geocache] вшито координат: '+seeded);
+  if(cached>0)console.info('[geocache] из localStorage: '+cached+' · сегодня использовано '+_todayGeoUsed+'/'+GEO_DAY_LIMIT);
   try{
     reloadAll();
   }catch(e){
